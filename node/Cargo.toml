@@ -65,7 +65,7 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-12'
 version = '0.10.0-dev'
 
-[dependencies.sc-consensus-aura]
+[dependencies.sc-consensus-babe]
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-12'
 version = '0.10.0-dev'
@@ -137,7 +137,7 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-12'
 version = '0.10.0-dev'
 
-[dependencies.sp-consensus-aura]
+[dependencies.sp-consensus-babe]
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-12'
 version = '0.10.0-dev'
