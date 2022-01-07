@@ -168,6 +168,41 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		transaction_pool,
 		other: (block_import, grandpa_link, mut telemetry),
 	} = new_partial(&config)?;
+	
+	let inherent_data_provider = move |_, ()| async move {
+		let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+		Ok(timestamp)
+	};
+
+	let pow_block_import = sc_consensus_pow::PowBlockImport::new(
+		client.clone(),
+		client.clone(),
+		sha3pow::MinimalSha3Algorithm,
+		0,
+		select_chain.clone(),
+		inherent_data_provider.clone(),
+		sp_consensus::CanAuthorWithNativeVersion::new(
+			client.executor().clone(),
+		),
+	);
+
+	let pow_import_queue = sc_consensus_pow::import_queue(
+		Box::new(pow_block_import.clone()),
+		None,
+		sha3pow::MinimalSha3Algorithm,
+		&task_manager.spawn_handle(),
+		config.prometheus_registry(),
+	);
+
+	pub fn build_inherent_data_providers() -> Result<InherentDataProviders, ServiceError> {
+		let providers = InherentDataProviders::new();
+		providers
+			.register_provider(sp_timestamp::InherentDataProvider)
+			.map_err(Into::into)
+			.map_err(sp_consensus::error::Error::InherentData)?;
+
+		Ok(providers)
+	}
 
 	if let Some(url) = &config.keystore_remote {
 		match remote_keystore(url) {

@@ -70,6 +70,11 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-12'
 version = '0.10.0-dev'
 
+[dependencies.sc-consensus-pow]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '0.10.0-dev'
+
 [dependencies.sc-executor]
 features = ['wasmtime']
 git = 'https://github.com/paritytech/substrate.git'
