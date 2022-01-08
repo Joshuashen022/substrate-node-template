@@ -147,6 +147,8 @@ parameter_types! {
 parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 	pub const BlockHashCount: BlockNumber = 2400;
+	pub const MaxAuthorities: u32 = 2000;
+	pub const OperationalFeeMultiplier: u8 = 1;
 	/// We allow for 2 seconds of compute with a 6 second average block time.
 	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights
 		::with_sensible_defaults(2 * WEIGHT_PER_SECOND, NORMAL_DISPATCH_RATIO);
@@ -213,17 +215,16 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 impl pallet_babe::Config for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
-	type EpochChangeTrigger = pallet_babe::SameAuthoritiesForever;
-	type DisabledValidators = DisabledValidators;
-	type KeyOwnerProof: Parameter + GetSessionNumber + GetValidatorCount;
-	type KeyOwnerIdentification: Parameter;
-	type KeyOwnerProofSystem: KeyOwnerProofSystem<
-		(KeyTypeId, AuthorityId),
-		Proof = Self::KeyOwnerProof,
-		IdentificationTuple = Self::KeyOwnerIdentification,
-	>;
-	type HandleEquivocation: HandleEquivocation<Self>;
-	type WeightInfo: WeightInfo;
+	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+	type MaxAuthorities = MaxAuthorities;
+	type DisabledValidators = ();
+	type KeyOwnerProof =
+		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+	type KeyOwnerIdentification =
+		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::IdentificationTuple;
+	type KeyOwnerProofSystem = ();
+	type HandleEquivocation =();
+	type WeightInfo = ();
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -243,6 +244,26 @@ impl pallet_grandpa::Config for Runtime {
 	type HandleEquivocation = ();
 
 	type WeightInfo = ();
+
+	type MaxAuthorities = MaxAuthorities;
+}
+
+impl pallet_session::Config for Runtime {
+	type Event = Event;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	type ValidatorIdOf = pallet_staking::StashOf<Self>;
+
+	type Keys = opaque::SessionKeys;
+	type ShouldEndSession = Babe;
+	type NextSessionRotation = Babe;
+	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, _>;
+	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type WeightInfo = ();
+}
+
+impl pallet_session::historical::Config for Runtime{
+	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
 }
 
 parameter_types! {
@@ -284,6 +305,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = CurrencyAdapter<Balances, ()>;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = IdentityFee<Balance>;
+	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type FeeMultiplierUpdate = ();
 }
 
@@ -296,6 +318,80 @@ impl pallet_sudo::Config for Runtime {
 impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
+//
+// pallet_staking_reward_curve::build! {
+//     const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
+//         min_inflation: 0_025_000,
+//         max_inflation: 0_100_000,
+//         ideal_stake: 0_500_000,
+//         falloff: 0_050_000,
+//         max_piece_count: 40,
+//         test_precision: 0_005_000,
+//     );
+// }
+//
+// parameter_types! {
+//     pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
+//     pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
+//     pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
+//     pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+//     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
+//
+//     pub const MaxNominatorRewardedPerValidator: u32 = 64;
+//     pub const MaxIterations: u32 = 5;
+//     // 0.05%. The higher the value, the more strict solution acceptance becomes.
+//     pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
+//     pub StakingUnsignedPriority: TransactionPriority =
+//         Perbill::from_percent(90) * TransactionPriority::max_value();
+// }
+//
+// parameter_types! {
+//     pub OffchainSolutionWeightLimit: Weight = BlockWeights::get()
+//         .get(DispatchClass::Normal)
+//         .max_extrinsic
+//         .expect("Normal extrinsics have weight limit configured by default; qed")
+//         .saturating_sub(BlockExecutionWeight::get());
+// }
+//
+// pub type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
+
+
+// impl pallet_staking::Config for Runtime {
+// 	type Call = Call;
+// 	type Event = Event;
+// 	type UnixTime = Timestamp;
+//
+// 	type Currency = Balances;
+// 	type CurrencyToVote = CurrencyToVote;
+// 	type RewardRemainder = (); // TODO: Treasury
+// 	type Slash = (); // TODO: Treasury
+// 	type Reward = (); // rewards are minted from the voi
+//
+// 	type SessionInterface = Self;
+// 	type NextNewSession = Session;
+// 	type SessionsPerEra = SessionsPerEra;
+// 	type BondingDuration = BondingDuration;
+// 	type SlashDeferDuration = SlashDeferDuration;
+// 	/// A super-majority of the council can cancel the slash.
+// 	type SlashCancelOrigin = EnsureRoot<Self::AccountId>; // TODO: SlashCancelOrigin
+// 	type RewardCurve = RewardCurve;
+// 	type ElectionLookahead = ElectionLookahead;
+//
+// 	type MinSolutionScoreBump = MinSolutionScoreBump;
+// 	type MaxIterations = MaxIterations;
+// 	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+// 	type UnsignedPriority = StakingUnsignedPriority; // Kusama
+// 	type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
+// 	type WeightInfo = ();
+// }
+
+// impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+// 	where
+// 		Call: From<C>,
+// {
+// 	type OverarchingCall = Call;
+// 	type Extrinsic = UncheckedExtrinsic;
+// }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
@@ -312,6 +408,7 @@ construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Historical: pallet_session::{Pallet},
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
 	}
@@ -412,15 +509,48 @@ impl_runtime_apis! {
 				slot_duration: Babe::slot_duration(),
 				epoch_length: EpochDuration::get(),
 				c: PRIMARY_PROBABILITY,
-				genesis_authorities: Babe::authorities(),
+				genesis_authorities: Babe::authorities().to_vec(),
 				randomness: Babe::randomness(),
 				allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
 			}
 		}
 
-		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
+		fn current_epoch_start() -> sp_consensus_babe::Slot{
 			Babe::current_epoch_start()
 		}
+
+        fn current_epoch() -> sp_consensus_babe::Epoch {
+            Babe::current_epoch()
+        }
+
+        fn next_epoch() -> sp_consensus_babe::Epoch {
+            Babe::next_epoch()
+        }
+
+        fn generate_key_ownership_proof(
+            _slot: sp_consensus_babe::Slot,
+            authority_id: sp_consensus_babe::AuthorityId,
+        ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
+            use codec::Encode;
+
+           	Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+                .map(|p| p.encode())
+                .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
+        }
+
+        fn submit_report_equivocation_unsigned_extrinsic(
+            equivocation_proof: sp_consensus_babe::EquivocationProof<<Block as BlockT>::Header>,
+            key_owner_proof: sp_consensus_babe::OpaqueKeyOwnershipProof,
+            ) -> Option<()> {
+            let key_owner_proof = key_owner_proof.decode()?;
+
+            Babe::submit_unsigned_equivocation_report(
+                equivocation_proof,
+                key_owner_proof,
+                )
+        }
+
+
 	}
 
 	// impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
