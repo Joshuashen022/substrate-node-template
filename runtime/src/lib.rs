@@ -22,7 +22,10 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-
+// use sp_runtime::traits::{
+// 	BlakeTwo256, Block as BlockT,
+// 	AccountIdLookup, Verify, IdentifyAccount, OpaqueKeys, NumberFor,
+// };
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
 	construct_runtime, parameter_types,
@@ -38,7 +41,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 use pallet_transaction_payment::CurrencyAdapter;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Permill};
+pub use sp_runtime::{Perbill, Permill, traits::OpaqueKeys};
 
 /// Import the template pallet.
 pub use pallet_template;
@@ -250,13 +253,15 @@ impl pallet_grandpa::Config for Runtime {
 
 impl pallet_session::Config for Runtime {
 	type Event = Event;
+	//the trait `From<pallet_session::Event>` is not implemented for `Event`
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
+	//the trait `pallet_staking::Config` is not implemented for `Runtime`
 
 	type Keys = opaque::SessionKeys;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
-	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, _>;
+	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type WeightInfo = ();
 }
@@ -264,6 +269,7 @@ impl pallet_session::Config for Runtime {
 impl pallet_session::historical::Config for Runtime{
 	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
 	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
+	//the trait `pallet_staking::Config` is not implemented for `Runtime`
 }
 
 parameter_types! {
