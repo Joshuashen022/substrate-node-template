@@ -254,7 +254,17 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 
 		// let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+		let inherent_data_providers = move |_, ()| async move {
+			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+			let slot_duration = babe_link.config().slot_duration();
+			let slot =
+				sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
+					*timestamp,
+					slot_duration,
+				);
 
+			Ok((timestamp, slot))
+		};
 		let babe_config = sc_consensus_babe::BabeParams {
 			keystore: keystore_container.sync_keystore(),
 			client: client.clone(),
