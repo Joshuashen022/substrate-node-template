@@ -6,11 +6,14 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use pallet_grandpa::{
-	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
-};
+pub mod common;
+pub mod constants;
+
+// use pallet_grandpa::{
+// 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
+// };
 use sp_api::impl_runtime_apis;
-use sp_consensus_babe::*;
+// use sp_consensus_babe::*;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
@@ -84,7 +87,7 @@ pub mod opaque {
 	impl_opaque_keys! {
 		pub struct SessionKeys {
 			pub babe: Babe,
-			pub grandpa: Grandpa,
+			// pub grandpa: Grandpa,
 		}
 	}
 }
@@ -230,47 +233,47 @@ impl pallet_babe::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_grandpa::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+// impl pallet_grandpa::Config for Runtime {
+// 	type Event = Event;
+// 	type Call = Call;
+//
+// 	type KeyOwnerProofSystem = ();
+//
+// 	type KeyOwnerProof =
+// 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+//
+// 	type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
+// 		KeyTypeId,
+// 		GrandpaId,
+// 	)>>::IdentificationTuple;
+//
+// 	type HandleEquivocation = ();
+//
+// 	type WeightInfo = ();
+//
+// 	type MaxAuthorities = MaxAuthorities;
+// }
 
-	type KeyOwnerProofSystem = ();
-
-	type KeyOwnerProof =
-		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-
-	type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-		KeyTypeId,
-		GrandpaId,
-	)>>::IdentificationTuple;
-
-	type HandleEquivocation = ();
-
-	type WeightInfo = ();
-
-	type MaxAuthorities = MaxAuthorities;
-}
-
-impl pallet_session::Config for Runtime {
-	type Event = Event;
-	//the trait `From<pallet_session::Event>` is not implemented for `Event`
-	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	type ValidatorIdOf = pallet_staking::StashOf<Self>;
-	//the trait `pallet_staking::Config` is not implemented for `Runtime`
-
-	type Keys = opaque::SessionKeys;
-	type ShouldEndSession = Babe;
-	type NextSessionRotation = Babe;
-	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
-	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type WeightInfo = ();
-}
-
-impl pallet_session::historical::Config for Runtime{
-	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
-	//the trait `pallet_staking::Config` is not implemented for `Runtime`
-}
+// impl pallet_session::Config for Runtime {
+// 	type Event = Event;
+// 	//the trait `From<pallet_session::Event>` is not implemented for `Event`
+// 	type ValidatorId = <Self as frame_system::Config>::AccountId;
+// 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
+// 	//the trait `pallet_staking::Config` is not implemented for `Runtime`
+//
+// 	type Keys = opaque::SessionKeys;
+// 	type ShouldEndSession = Babe;
+// 	type NextSessionRotation = Babe;
+// 	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+// 	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+// 	type WeightInfo = ();
+// }
+//
+// impl pallet_session::historical::Config for Runtime{
+// 	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+// 	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
+// 	//the trait `pallet_staking::Config` is not implemented for `Runtime`
+// }
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
@@ -410,11 +413,11 @@ construct_runtime!(
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Babe: pallet_babe::{Call, Storage, Config},
-		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event},
+		// Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Historical: pallet_session::{Pallet},
+		// Historical: pallet_session::{Pallet},
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
 	}
@@ -464,7 +467,8 @@ impl_runtime_apis! {
 
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
-			Runtime::metadata().into()
+			use codec::Encode;
+			OpaqueMetadata::new(Runtime::metadata().encode())
 		}
 	}
 
@@ -539,9 +543,12 @@ impl_runtime_apis! {
         ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
             use codec::Encode;
 
-           	Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
-                .map(|p| p.encode())
-                .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
+			// Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+            //     .map(|p| p.encode())
+            //     .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
+
+			let proof = authority_id;
+			Some(sp_consensus_babe::OpaqueKeyOwnershipProof::new(proof.encode()))
         }
 
         fn submit_report_equivocation_unsigned_extrinsic(
@@ -581,35 +588,35 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl fg_primitives::GrandpaApi<Block> for Runtime {
-		fn grandpa_authorities() -> GrandpaAuthorityList {
-			Grandpa::grandpa_authorities()
-		}
-
-		fn current_set_id() -> fg_primitives::SetId {
-			Grandpa::current_set_id()
-		}
-
-		fn submit_report_equivocation_unsigned_extrinsic(
-			_equivocation_proof: fg_primitives::EquivocationProof<
-				<Block as BlockT>::Hash,
-				NumberFor<Block>,
-			>,
-			_key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
-		) -> Option<()> {
-			None
-		}
-
-		fn generate_key_ownership_proof(
-			_set_id: fg_primitives::SetId,
-			_authority_id: GrandpaId,
-		) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
-			// NOTE: this is the only implementation possible since we've
-			// defined our key owner proof type as a bottom type (i.e. a type
-			// with no values).
-			None
-		}
-	}
+	// impl fg_primitives::GrandpaApi<Block> for Runtime {
+	// 	fn grandpa_authorities() -> GrandpaAuthorityList {
+	// 		Grandpa::grandpa_authorities()
+	// 	}
+	//
+	// 	fn current_set_id() -> fg_primitives::SetId {
+	// 		Grandpa::current_set_id()
+	// 	}
+	//
+	// 	fn submit_report_equivocation_unsigned_extrinsic(
+	// 		_equivocation_proof: fg_primitives::EquivocationProof<
+	// 			<Block as BlockT>::Hash,
+	// 			NumberFor<Block>,
+	// 		>,
+	// 		_key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
+	// 	) -> Option<()> {
+	// 		None
+	// 	}
+	//
+	// 	fn generate_key_ownership_proof(
+	// 		_set_id: fg_primitives::SetId,
+	// 		_authority_id: GrandpaId,
+	// 	) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
+	// 		// NOTE: this is the only implementation possible since we've
+	// 		// defined our key owner proof type as a bottom type (i.e. a type
+	// 		// with no values).
+	// 		None
+	// 	}
+	// }
 
 	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index> for Runtime {
 		fn account_nonce(account: AccountId) -> Index {

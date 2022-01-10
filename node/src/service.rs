@@ -1,7 +1,7 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
-use sc_client_api::{ExecutorProvider, RemoteBackend};
+use sc_client_api::{ExecutorProvider, StateBackend};
 use sc_consensus_babe:: SlotProportion;
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_finality_grandpa::SharedVoterState;
@@ -9,6 +9,7 @@ use sc_keystore::LocalKeystore;
 use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus::SlotData;
+use sp_inherents::InherentDataProvider;
 use std::{sync::Arc, time::Duration};
 
 // Our native executor instance.
@@ -106,49 +107,59 @@ pub fn new_partial(
 		telemetry.as_ref().map(|x| x.handle()),
 	)?;
 
-	let babe_config = sc_consensus_babe::Config::get_or_compute(&*client)?;
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,
 		grandpa_block_import.clone(),
 		client.clone(),
 	)?;
 
-	let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
-
+	// let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+	let inherent_data_providers = InherentDataProvider::new();
 	let justification_import = grandpa_block_import.clone();
 
-	let babe_import_queue = sc_consensus_babe::import_queue(
+	// let import_queue = sc_consensus_babe::import_queue(
+	// 	babe_link.clone(),
+	// 	block_import.clone(),
+	// 	Some(Box::new(justification_import)),
+	// 	client.clone(),
+	// 	client.clone(),
+	// 	move |_, ()| async move {
+	// 		let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+	//
+	// 		let slot =
+	// 			sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+	// 				*timestamp,
+	// 				slot_duration,
+	// 			);
+	//
+	// 		Ok((timestamp, slot))
+	// 	},
+	// 	&task_manager.spawn_essential_handle(),
+	// 	registry,
+	// 	sp_consensus::CanAuthorWithNativeVersion::new(
+	// 		client.clone().executor().clone()
+	// 	),
+	// 	telemetry.as_ref().map(|x| x.handle())
+	// )?;
+
+	let import_queue = sc_consensus_babe::import_queue(
 		babe_link.clone(),
 		block_import.clone(),
 		Some(Box::new(justification_import)),
 		client.clone(),
-		client.clone(),
-		move |_, ()| async move {
-			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-
-			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-					*timestamp,
-					slot_duration,
-				);
-
-			Ok((timestamp, slot))
-		},
-		&task_manager.spawn_essential_handle(),
-		registry,
-		sp_consensus::CanAuthorWithNativeVersion::new(
-			client.clone().executor().clone()
-		),
-		telemetry.as_ref().map(|x| x.handle())
+		select_chain.clone(),
+		inherent_data_providers.clone(),
+		&task_manager.spawn_handle(),
+		config.prometheus_registry(),
+		sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+		telemetry.as_ref().map(|x| x.handle()),
 	)?;
-
-	// let import_setup = Some((block_import, grandpa_link.clone(), babe_link));
 
 	Ok(sc_service::PartialComponents {
 		client,
 		backend,
 		task_manager,
-		import_queue:babe_import_queue,
+		import_queue,
 		keystore_container,
 		select_chain,
 		transaction_pool,
@@ -249,7 +260,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 	})?;
 
 	if role.is_authority() {
-		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
+		let proposer = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
 			transaction_pool,
@@ -260,8 +271,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		let can_author_with =
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 
-		let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
-		let raw_slot_duration = slot_duration.slot_duration();
+		// let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
 		let babe_config = sc_consensus_babe::BabeParams {
 			keystore: keystore.clone(),
@@ -293,41 +303,41 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 	let keystore =
 		if role.is_authority() { Some(keystore_container.sync_keystore()) } else { None };
 
-	let grandpa_config = sc_finality_grandpa::Config {
-		// FIXME #1578 make this available through chainspec
-		gossip_duration: Duration::from_millis(333),
-		justification_period: 512,
-		name: Some(name),
-		observer_enabled: false,
-		keystore,
-		local_role: role,
-		telemetry: telemetry.as_ref().map(|x| x.handle()),
-	};
-
-	if enable_grandpa {
-		// start the full GRANDPA voter
-		// NOTE: non-authorities could run the GRANDPA observer protocol, but at
-		// this point the full voter should provide better guarantees of block
-		// and vote data availability than the observer. The observer has not
-		// been tested extensively yet and having most nodes in a network run it
-		// could lead to finality stalls.
-		let grandpa_config = sc_finality_grandpa::GrandpaParams {
-			config: grandpa_config,
-			link: grandpa_link,
-			network,
-			voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
-			prometheus_registry,
-			shared_voter_state: SharedVoterState::empty(),
-			telemetry: telemetry.as_ref().map(|x| x.handle()),
-		};
-
-		// the GRANDPA voter task is considered infallible, i.e.
-		// if it fails we take down the service with it.
-		task_manager.spawn_essential_handle().spawn_blocking(
-			"grandpa-voter",
-			sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
-		);
-	}
+	// let grandpa_config = sc_finality_grandpa::Config {
+	// 	// FIXME #1578 make this available through chainspec
+	// 	gossip_duration: Duration::from_millis(333),
+	// 	justification_period: 512,
+	// 	name: Some(name),
+	// 	observer_enabled: false,
+	// 	keystore,
+	// 	local_role: role,
+	// 	telemetry: telemetry.as_ref().map(|x| x.handle()),
+	// };
+	//
+	// if enable_grandpa {
+	// 	// start the full GRANDPA voter
+	// 	// NOTE: non-authorities could run the GRANDPA observer protocol, but at
+	// 	// this point the full voter should provide better guarantees of block
+	// 	// and vote data availability than the observer. The observer has not
+	// 	// been tested extensively yet and having most nodes in a network run it
+	// 	// could lead to finality stalls.
+	// 	let grandpa_config = sc_finality_grandpa::GrandpaParams {
+	// 		config: grandpa_config,
+	// 		link: grandpa_link,
+	// 		network,
+	// 		voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
+	// 		prometheus_registry,
+	// 		shared_voter_state: SharedVoterState::empty(),
+	// 		telemetry: telemetry.as_ref().map(|x| x.handle()),
+	// 	};
+	//
+	// 	// the GRANDPA voter task is considered infallible, i.e.
+	// 	// if it fails we take down the service with it.
+	// 	task_manager.spawn_essential_handle().spawn_blocking(
+	// 		"grandpa-voter",
+	// 		sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
+	// 	);
+	// }
 
 	network_starter.start_network();
 	Ok(task_manager)

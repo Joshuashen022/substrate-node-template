@@ -2,16 +2,17 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use sp_runtime::serde::{Deserialize, Serialize};
 
-use codec::{Decode, Encode};
-use sp_std::convert::{Into, TryFrom, TryInto};
+// use codec::{Decode, Encode};
+// use sp_std::convert::{Into, TryFrom, TryInto};
 use sp_runtime::{
     generic,
     traits::{
         BlakeTwo256, Verify, IdentifyAccount
     },
-    MultiSignature, RuntimeDebug,
+    MultiSignature,
+	// RuntimeDebug,
 };
 use crate::UncheckedExtrinsic;
 
@@ -37,7 +38,7 @@ pub type Index = u32;
 pub type EraIndex = u32;
 pub type AuctionId = u32;
 pub type Hash = sp_core::H256;
-pub type DigestItem = generic::DigestItem<Hash>;
+pub type DigestItem = generic::DigestItem;
 
 pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
