@@ -14,6 +14,15 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 
+mod babe_genesis{
+	const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
+	pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
+		sp_consensus_babe::BabeEpochConfiguration {
+			c: PRIMARY_PROBABILITY,
+			allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots
+		};
+}
+
 /// Generate a crypto pair from seed.
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
@@ -134,14 +143,14 @@ fn testnet_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
 		babe: BabeConfig {
-			authorities: initial_authorities.iter().map(|x| (x.clone())).collect(),
+			authorities: Default::default(), // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
+			epoch_config: Some(babe_genesis::BABE_GENESIS_EPOCH_CONFIG),
 		},
 		// grandpa: GrandpaConfig {
 		// 	authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
