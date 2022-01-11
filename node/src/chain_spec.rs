@@ -152,9 +152,6 @@ fn testnet_genesis(
 			authorities: Default::default(), // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
 			epoch_config: Some(babe_genesis::BABE_GENESIS_EPOCH_CONFIG),
 		},
-		// grandpa: GrandpaConfig {
-		// 	authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
-		// },
 		sudo: SudoConfig {
 			// Assign network admin rights.
 			key: root_key,
