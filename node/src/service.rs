@@ -1,17 +1,13 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
-use sc_client_api::{ExecutorProvider, StateBackend};
+use sc_client_api::ExecutorProvider;
 use sc_consensus_babe:: SlotProportion;
 pub use sc_executor::NativeElseWasmExecutor;
-use sc_finality_grandpa::SharedVoterState;
 use sc_keystore::LocalKeystore;
 use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
-use sp_consensus::SlotData;
-use sp_inherents::InherentDataProvider;
-use std::{sync::Arc, time::Duration};
-use sc_consensus_babe::BabeBlockImport;
+use std::sync::Arc;
 // Our native executor instance.
 pub struct ExecutorDispatch;
 
@@ -151,7 +147,7 @@ fn remote_keystore(_url: &String) -> Result<Arc<LocalKeystore>, &'static str> {
 }
 
 /// Builds a new service for a full client.
-pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> {
+pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 	let sc_service::PartialComponents {
 		client,
 		backend,

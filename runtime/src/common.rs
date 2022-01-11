@@ -1,11 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unnecessary_cast)]
 
-#[cfg(feature = "std")]
-use sp_runtime::serde::{Deserialize, Serialize};
-
-// use codec::{Decode, Encode};
-// use sp_std::convert::{Into, TryFrom, TryInto};
 use sp_runtime::{
     generic,
     traits::{
