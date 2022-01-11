@@ -20,21 +20,18 @@ version = '2.0.0'
 
 [dependencies.frame-benchmarking]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
+path = "../../b6c1c1b/frame/benchmarking"
 optional = true
-tag = 'monthly-2021-12'
 version = '4.0.0-dev'
 
 [dependencies.frame-support]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../../b6c1c1b/frame/support"
 version = '4.0.0-dev'
 
 [dependencies.frame-system]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../../b6c1c1b/frame/system"
 version = '4.0.0-dev'
 
 [dependencies.scale-info]
@@ -44,20 +41,17 @@ version = '1.0'
 
 [dev-dependencies.sp-core]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../../b6c1c1b/primitives/core"
 version = '4.0.0-dev'
 
 [dev-dependencies.sp-io]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../../b6c1c1b/primitives/io"
 version = '4.0.0-dev'
 
 [dev-dependencies.sp-runtime]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../../b6c1c1b/primitives/runtime"
 version = '4.0.0-dev'
 
 [features]

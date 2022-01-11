@@ -17,15 +17,8 @@ default-features = false
 path = '../pallets/template'
 version = '4.0.0-dev'
 
-[dependencies.pallet-staking]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
-version = '4.0.0-dev'
-
 [build-dependencies.substrate-wasm-builder]
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/utils/wasm-builder"
 version = '5.0.0-dev'
 
 [dependencies.codec]
@@ -36,40 +29,34 @@ version = '2.0.0'
 
 [dependencies.frame-benchmarking]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
+path = "../b6c1c1b/frame/benchmarking"
 optional = true
-tag = 'monthly-2021-12'
 version = '4.0.0-dev'
 
 [dependencies.frame-executive]
+path = "../b6c1c1b/frame/executive"
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
 version = '4.0.0-dev'
 
 [dependencies.frame-support]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/support"
 version = '4.0.0-dev'
 
 [dependencies.frame-system]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/system"
 version = '4.0.0-dev'
 
 [dependencies.frame-system-benchmarking]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
+path = "../b6c1c1b/frame/system/benchmarking"
 optional = true
-tag = 'monthly-2021-12'
 version = '4.0.0-dev'
 
 [dependencies.frame-system-rpc-runtime-api]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/system/rpc/runtime-api"
 version = '4.0.0-dev'
 
 [dependencies.hex-literal]
@@ -78,58 +65,44 @@ version = '0.3.1'
 
 [dependencies.pallet-babe]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/babe"
 version = '4.0.0-dev'
 
 [dependencies.pallet-balances]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
-version = '4.0.0-dev'
-
-[dependencies.pallet-grandpa]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/balances"
 version = '4.0.0-dev'
 
 [dependencies.pallet-randomness-collective-flip]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/randomness-collective-flip"
 version = '4.0.0-dev'
 
 
 [dependencies.pallet-sudo]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/sudo"
 version = '4.0.0-dev'
 
 [dependencies.pallet-session]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
+path = "../b6c1c1b/frame/session"
 features = ["historical"]
-tag = 'monthly-2021-12'
 version = '4.0.0-dev'
 
 [dependencies.pallet-timestamp]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/timestamp"
 version = '4.0.0-dev'
 
 [dependencies.pallet-transaction-payment]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/transaction-payment"
 version = '4.0.0-dev'
 
 [dependencies.pallet-transaction-payment-rpc-runtime-api]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/frame/transaction-payment/rpc/runtime-api"
 version = '4.0.0-dev'
 
 [dependencies.scale-info]
@@ -139,68 +112,57 @@ version = '1.0'
 
 [dependencies.sp-api]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/api"
 version = '4.0.0-dev'
 
 [dependencies.sp-block-builder]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/block-builder"
 version = '4.0.0-dev'
 
 [dependencies.sp-consensus-babe]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/consensus/babe"
 version = '0.10.0-dev'
 
 [dependencies.sp-core]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/core"
 version = '4.0.0-dev'
 
 [dependencies.sp-inherents]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/inherents"
 version = '4.0.0-dev'
 
 [dependencies.sp-offchain]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/offchain"
 version = '4.0.0-dev'
 
 [dependencies.sp-runtime]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/runtime"
 version = '4.0.0-dev'
 
 [dependencies.sp-session]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/session"
 version = '4.0.0-dev'
 
 [dependencies.sp-std]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/std"
 version = '4.0.0-dev'
 
 [dependencies.sp-transaction-pool]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/transaction-pool"
 version = '4.0.0-dev'
 
 [dependencies.sp-version]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'monthly-2021-12'
+path = "../b6c1c1b/primitives/version"
 version = '4.0.0-dev'
 
 [features]
@@ -225,7 +187,6 @@ std = [
     'frame-system/std',
     'pallet-babe/std',
     'pallet-balances/std',
-    'pallet-grandpa/std',
     'pallet-randomness-collective-flip/std',
     'pallet-sudo/std',
     'pallet-template/std',
@@ -239,7 +200,6 @@ std = [
     'sp-inherents/std',
     'sp-offchain/std',
     'sp-runtime/std',
-    'sp-session/std',
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
