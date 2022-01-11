@@ -9,7 +9,7 @@ https://github.com/kaichaosun/tao
 
 **Target**: change consensus from `babe` to `praos`
 
-**Done**: Cut Grandpa; Using Babe
+**Done**: Cut Grandpa; Using Babe with partial grandpa
 
 **P.S.** :Currently running `--dev` contains no nodes
 

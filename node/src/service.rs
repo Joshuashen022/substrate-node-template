@@ -46,8 +46,8 @@ pub fn new_partial(
 		(
 			sc_consensus_babe::BabeBlockImport<
 				Block,
-				FullClient,// <Block, <_>, NativeElseWasmExecutor<ExecutorDispatch>>
-				Arc<FullClient>, //<FullClient<Block, <_>, NativeElseWasmExecutor<ExecutorDispatch>>>
+				FullClient,
+				sc_finality_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient, FullSelectChain>,
 			>,
 			Option<sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>>,
 			Option<Telemetry>,
@@ -101,18 +101,18 @@ pub fn new_partial(
 		client.clone(),
 	);
 
-	// let (grandpa_block_import, grandpa_link) = sc_consensus::block_import(
-	// 	client.clone(),
-	// 	&(client.clone() as Arc<_>),
-	// 	select_chain.clone(),
-	// 	telemetry.as_ref().map(|x| x.handle()),
-	// )?;
+	let (grandpa_block_import, grandpa_link) = sc_finality_grandpa::block_import(
+		client.clone(),
+		&(client.clone() as Arc<_>),
+		select_chain.clone(),
+		telemetry.as_ref().map(|x| x.handle()),
+	)?;
 
-	// let justification_import = grandpa_block_import.clone();
+	let justification_import = grandpa_block_import.clone();
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,
-		client.clone(),  // grandpa_block_import, TODO::here's the problem
+		grandpa_block_import,  // grandpa_block_import, TODO::here's the problem
 		client.clone(),
 	)?;
 
@@ -131,7 +131,7 @@ pub fn new_partial(
 	let import_queue = sc_consensus_babe::import_queue(
 		babe_link.clone(),
 		block_import.clone(),
-		None, //Some(Box::new(justification_import)),
+		Some(Box::new(justification_import)), //Some(Box::new(justification_import)),
 		client.clone(),
 		select_chain.clone(),
 		inherent_data_providers.clone(),
