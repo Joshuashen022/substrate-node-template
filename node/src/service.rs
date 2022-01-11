@@ -11,7 +11,7 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus::SlotData;
 use sp_inherents::InherentDataProvider;
 use std::{sync::Arc, time::Duration};
-
+use sc_consensus_babe::BabeBlockImport;
 // Our native executor instance.
 pub struct ExecutorDispatch;
 
@@ -31,6 +31,8 @@ type FullClient =
 	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
 type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
+//variable block_import:
+//BabeBlockImport<Block, TFullClient<Block, <unknown>, NativeElseWasmExecutor<ExecutorDispatch>>, Arc<TFullClient<Block, <unknown>, NativeElseWasmExecutor<ExecutorDispatch>>>>
 
 pub fn new_partial(
 	config: &Configuration,
@@ -42,12 +44,11 @@ pub fn new_partial(
 		sc_consensus::DefaultImportQueue<Block, FullClient>,
 		sc_transaction_pool::FullPool<Block, FullClient>,
 		(
-			Option<sc_finality_grandpa::GrandpaBlockImport<
-				FullBackend,
+			sc_consensus_babe::BabeBlockImport<
 				Block,
-				FullClient,
-				FullSelectChain,
-			>>,
+				FullClient,// <Block, <_>, NativeElseWasmExecutor<ExecutorDispatch>>
+				Arc<FullClient>, //<FullClient<Block, <_>, NativeElseWasmExecutor<ExecutorDispatch>>>
+			>,
 			Option<sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>>,
 			Option<Telemetry>,
 			sc_consensus_babe::BabeLink<Block>,
@@ -100,16 +101,18 @@ pub fn new_partial(
 		client.clone(),
 	);
 
-	let (grandpa_block_import, grandpa_link) = sc_finality_grandpa::block_import(
-		client.clone(),
-		&(client.clone() as Arc<_>),
-		select_chain.clone(),
-		telemetry.as_ref().map(|x| x.handle()),
-	)?;
+	// let (grandpa_block_import, grandpa_link) = sc_consensus::block_import(
+	// 	client.clone(),
+	// 	&(client.clone() as Arc<_>),
+	// 	select_chain.clone(),
+	// 	telemetry.as_ref().map(|x| x.handle()),
+	// )?;
+
+	// let justification_import = grandpa_block_import.clone();
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
 		sc_consensus_babe::Config::get_or_compute(&*client)?,
-		None,
+		client.clone(),  // grandpa_block_import, TODO::here's the problem
 		client.clone(),
 	)?;
 
@@ -125,15 +128,14 @@ pub fn new_partial(
 
 		Ok((timestamp, slot))
 	};
-
 	let import_queue = sc_consensus_babe::import_queue(
 		babe_link.clone(),
 		block_import.clone(),
-		None,
+		None, //Some(Box::new(justification_import)),
 		client.clone(),
 		select_chain.clone(),
 		inherent_data_providers.clone(),
-		&task_manager.spawn_handle(),
+		&task_manager.spawn_essential_handle(),
 		config.prometheus_registry(),
 		sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		telemetry.as_ref().map(|x| x.handle()),
@@ -148,7 +150,7 @@ pub fn new_partial(
 		keystore_container,
 		select_chain,
 		transaction_pool,
-		other: (None, None, telemetry, babe_link),
+		other: (block_import, None, telemetry, babe_link),// TODO::here's the problem first None
 	} )
 }
 
@@ -169,7 +171,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		mut keystore_container,
 		select_chain,
 		transaction_pool,
-		other: (block_import, grandpa_link, mut telemetry, babe_link),
+		other: (block_import, _, mut telemetry, babe_link),
 	} = new_partial(&config)?;
 
 	if let Some(url) = &config.keystore_remote {
@@ -211,9 +213,8 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;
-	let backoff_authoring_blocks: Option<()> = None;
-	let name = config.network.node_name.clone();
-	let enable_grandpa = !config.disable_grandpa;
+	// let name = config.network.node_name.clone();
+	// let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
 
 	let rpc_extensions_builder = {
@@ -252,11 +253,11 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 		let can_author_with =
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-
+		let slot_duration = babe_link.config().slot_duration();
 		// let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
-		let inherent_data_providers = move |_, ()| async move {
+		let inherent_data_providers = move |_, ()| async move{
 			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-			let slot_duration = babe_link.config().slot_duration();
+
 			let slot =
 				sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
 					*timestamp,
@@ -265,6 +266,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 			Ok((timestamp, slot))
 		};
+		let backoff_authoring_blocks: Option<()> = None;
 		let babe_config = sc_consensus_babe::BabeParams {
 			keystore: keystore_container.sync_keystore(),
 			client: client.clone(),
@@ -275,7 +277,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			justification_sync_link: network.clone(),
 			create_inherent_data_providers: inherent_data_providers.clone(),
 			force_authoring,
-			backoff_authoring_blocks: None,
+			backoff_authoring_blocks, // error
 			babe_link,
 			can_author_with,
 			block_proposal_slot_portion:SlotProportion::new(2f32 / 3f32),
@@ -292,8 +294,8 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 	// if the node isn't actively participating in consensus then it doesn't
 	// need a keystore, regardless of which protocol we use below.
-	let keystore =
-		if role.is_authority() { Some(keystore_container.sync_keystore()) } else { None };
+	// let keystore =
+	// 	if role.is_authority() { Some(keystore_container.sync_keystore()) } else { None };
 
 	// let grandpa_config = sc_finality_grandpa::Config {
 	// 	// FIXME #1578 make this available through chainspec

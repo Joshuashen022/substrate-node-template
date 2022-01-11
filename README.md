@@ -5,6 +5,18 @@ https://zhuanlan.zhihu.com/p/261336716
 
 https://github.com/kaichaosun/tao
 
+**Branch**: origin/main
+
+**Target**: change consensus from `babe` to `praos`
+
+**Done**: Cut Grandpa; Using Babe
+
+**P.S.** :Currently running `--dev` contains no nodes
+
+Author: Joshua022
+-----------------
+
+
 [![Try on playground](https://img.shields.io/badge/Playground-Node_Template-brightgreen?logo=Parity%20Substrate)](https://playground.substrate.dev/?deploy=node-template) [![Matrix](https://img.shields.io/matrix/substrate-technical:matrix.org)](https://matrix.to/#/#substrate-technical:matrix.org)
 
 A fresh FRAME-based [Substrate](https://www.substrate.io/) node, ready for hacking :rocket:
