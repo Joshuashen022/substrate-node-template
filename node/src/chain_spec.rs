@@ -139,7 +139,14 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 ) -> GenesisConfig {
-	let _ = initial_authorities;
+	use sp_consensus_babe::BabeAuthorityWeight;
+
+	let mut authorities:Vec<(BabeId,BabeAuthorityWeight)> = Vec::new();
+	for auth in initial_authorities{
+		let stake:BabeAuthorityWeight = 1;
+		authorities.push((auth,stake));
+	}
+
 	GenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
@@ -150,7 +157,7 @@ fn testnet_genesis(
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
 		babe: BabeConfig {
-			authorities: Default::default(), // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
+			authorities, // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
 			epoch_config: Some(babe_genesis::BABE_GENESIS_EPOCH_CONFIG),
 		},
 		sudo: SudoConfig {
