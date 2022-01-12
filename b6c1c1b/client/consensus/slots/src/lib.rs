@@ -385,6 +385,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		);
 
 		let header = block_import_params.post_header();
+		info!("import block & epoch change");
 		match block_import.import_block(block_import_params, Default::default()).await {
 			Ok(res) => {
 				res.handle_justification(
@@ -493,6 +494,7 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 		Slots::new(slot_duration.slot_duration(), create_inherent_data_providers, client);
 
 	loop {
+		info!("Updating time");
 		let slot_info = match slots.next_slot().await {
 			Ok(r) => r,
 			Err(e) => {
