@@ -465,9 +465,13 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 		cli: &C,
 		tokio_handle: tokio::runtime::Handle,
 	) -> Result<Configuration> {
+		println!("(create_configuration)");
 		let is_dev = self.is_dev()?;
 		let chain_id = self.chain_id(is_dev)?;
+		// something wrong happen
 		let chain_spec = cli.load_spec(&chain_id)?;
+		println!("^^^^^^^^^^^^^^^^^^");
+		println!("(create_configuration) base_path");
 		let base_path = self
 			.base_path()?
 			.unwrap_or_else(|| BasePath::from_project("", "", &C::executable_name()));

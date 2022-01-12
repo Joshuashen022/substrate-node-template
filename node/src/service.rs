@@ -71,13 +71,14 @@ pub fn new_partial(
 		config.default_heap_pages,
 		config.max_runtime_instances,
 	);
-
+	println!("(new_partial) new_full_parts");
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
 			&config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
 		)?;
+	println!("(new_partial) client");
 	let client = Arc::new(client);
 
 	let telemetry = telemetry.map(|(worker, telemetry)| {
@@ -113,6 +114,7 @@ pub fn new_partial(
 
 		Ok((timestamp, slot))
 	};
+
 	let import_queue = sc_consensus_babe::import_queue(
 		babe_link.clone(),
 		block_import.clone(),
@@ -158,7 +160,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 		transaction_pool,
 		other: (block_import, _, mut telemetry, babe_link),
 	} = new_partial(&config)?;
-
+	println!("[new_full]");
 	if let Some(url) = &config.keystore_remote {
 		match remote_keystore(url) {
 			Ok(k) => keystore_container.set_remote_keystore(k),

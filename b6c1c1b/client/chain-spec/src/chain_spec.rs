@@ -51,6 +51,7 @@ impl<G> Clone for GenesisSource<G> {
 
 impl<G: RuntimeGenesis> GenesisSource<G> {
 	fn resolve(&self) -> Result<Genesis<G>, String> {
+		println!("(resolve)");
 		#[derive(Serialize, Deserialize)]
 		struct GenesisContainer<G> {
 			genesis: Genesis<G>,
@@ -66,12 +67,17 @@ impl<G: RuntimeGenesis> GenesisSource<G> {
 				Ok(genesis.genesis)
 			},
 			Self::Binary(buf) => {
+				println!("(resolve) Self::Binary");
 				let genesis: GenesisContainer<G> = json::from_reader(buf.as_ref())
 					.map_err(|e| format!("Error parsing embedded file: {}", e))?;
 				Ok(genesis.genesis)
 			},
-			Self::Factory(f) => Ok(Genesis::Runtime(f())),
+			Self::Factory(f) => {
+				println!("(resolve) Self::Factory");
+				Ok(Genesis::Runtime(f()))
+			},
 			Self::Storage(storage) => {
+				println!("(resolve) Self::Storage");
 				let top = storage
 					.top
 					.iter()
@@ -101,28 +107,38 @@ impl<G: RuntimeGenesis> GenesisSource<G> {
 
 impl<G: RuntimeGenesis, E> BuildStorage for ChainSpec<G, E> {
 	fn build_storage(&self) -> Result<Storage, String> {
+		println!("(build_storage)");
 		match self.genesis.resolve()? {
-			Genesis::Runtime(gc) => gc.build_storage(),
-			Genesis::Raw(RawGenesis { top: map, children_default: children_map }) => Ok(Storage {
-				top: map.into_iter().map(|(k, v)| (k.0, v.0)).collect(),
-				children_default: children_map
-					.into_iter()
-					.map(|(storage_key, child_content)| {
-						let child_info = ChildInfo::new_default(storage_key.0.as_slice());
-						(
-							storage_key.0,
-							StorageChild {
-								data: child_content.into_iter().map(|(k, v)| (k.0, v.0)).collect(),
-								child_info,
-							},
-						)
-					})
-					.collect(),
-			}),
+			Genesis::Runtime(gc) => {
+				println!("(build_storage) Genesis::Runtime");
+				gc.build_storage()
+			},
+			Genesis::Raw(RawGenesis { top: map, children_default: children_map }) => {
+				println!("(build_storage) Genesis::Raw");
+				Ok(Storage {
+					top: map.into_iter().map(|(k, v)| (k.0, v.0)).collect(),
+					children_default: children_map
+						.into_iter()
+						.map(|(storage_key, child_content)| {
+							let child_info = ChildInfo::new_default(storage_key.0.as_slice());
+							(
+								storage_key.0,
+								StorageChild {
+									data: child_content.into_iter().map(|(k, v)| (k.0, v.0)).collect(),
+									child_info,
+								},
+							)
+						})
+						.collect(),
+				})
+			},
 			// The `StateRootHash` variant exists as a way to keep note that other clients support
 			// it, but Substrate itself isn't capable of loading chain specs with just a hash at the
 			// moment.
-			Genesis::StateRootHash(_) => Err("Genesis storage in hash format not supported".into()),
+			Genesis::StateRootHash(_) => {
+				println!("(build_storage) Genesis::StateRootHash");
+				Err("Genesis storage in hash format not supported".into())
+			},
 		}
 	}
 

@@ -135,6 +135,7 @@ mod tests {
 		}
 
 		fn load_spec(&self, _: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
+			println!("(sc_cli::command::load_spec");
 			Ok(Box::new(GenericChainSpec::from_genesis(
 				"test",
 				"test_id",

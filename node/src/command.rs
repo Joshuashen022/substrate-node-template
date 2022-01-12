@@ -50,9 +50,16 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
+		println!("(node_template::command::load_spec)"); // --chain-local --dev
 		Ok(match id {
-			"dev" => Box::new(chain_spec::development_config()?),
-			"" | "local" => Box::new(chain_spec::local_testnet_config()?),
+			"dev" => {
+				println!("(load_spec) development_config");
+				Box::new(chain_spec::development_config()?)
+			},
+			"" | "local" => {
+				println!("(load_spec) local_testnet_config");
+				Box::new(chain_spec::local_testnet_config()?)
+			},
 			path =>
 				Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
 		})
@@ -66,7 +73,7 @@ impl SubstrateCli for Cli {
 /// Parse and run command line arguments
 pub fn run() -> sc_cli::Result<()> {
 	let cli = Cli::from_args();
-
+	println!("(run)");
 	match &cli.subcommand {
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
 		Some(Subcommand::BuildSpec(cmd)) => {
@@ -126,7 +133,9 @@ pub fn run() -> sc_cli::Result<()> {
 					.into())
 			},
 		None => {
+			println!("(run) None");
 			let runner = cli.create_runner(&cli.run)?;
+			println!("(run) None run_node_until_exit");
 			runner.run_node_until_exit(|config| async move {
 				service::new_full(config).map_err(sc_cli::Error::Service)
 			})

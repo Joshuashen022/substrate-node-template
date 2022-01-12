@@ -115,7 +115,6 @@ impl<C: SubstrateCli> Runner<C> {
 	pub fn new<T: CliConfiguration>(cli: &C, command: &T) -> Result<Runner<C>> {
 		let tokio_runtime = build_runtime()?;
 		let runtime_handle = tokio_runtime.handle().clone();
-
 		Ok(Runner {
 			config: command.create_configuration(cli, runtime_handle)?,
 			tokio_runtime,
