@@ -9,9 +9,16 @@ https://github.com/kaichaosun/tao
 
 **Target**: change consensus from `babe` to `praos`
 
-**Done**: Cut Grandpa; Using Babe without any grandpa[errors]
+**Done**:
 
-**P.S.** :Currently running `--dev` contains no nodes
+Cut Grandpa
+
+Using Babe without any grandpa
+
+Currently running `--dev` contains no nodes **fixed**
+
+**P.S.** :
+After 100 blocks were generated, block generation will stop.
 
 Author: Joshua022
 -----------------
