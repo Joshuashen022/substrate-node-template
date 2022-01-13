@@ -330,17 +330,17 @@ where
 		telemetry: Option<TelemetryHandle>,
 		config: ClientConfig<Block>,
 	) -> sp_blockchain::Result<Self> {
-		println!("(new)");
+
 		let info = backend.blockchain().info();
 		let mut finalized_state_is_none = info.finalized_state.is_none();
 		println!("(new) finalized_state is none? {}", finalized_state_is_none);
 
 		finalized_state_is_none = true;
 		if finalized_state_is_none {
-			println!("(new) genesis_storage");
+
 			let genesis_storage =
 				build_genesis_storage.build_storage().map_err(sp_blockchain::Error::Storage)?;
-			println!("(new) op");
+
 			let mut op = backend.begin_operation()?;
 			let state_root = op.set_genesis_state(genesis_storage, !config.no_genesis)?;
 			let genesis_block = genesis::construct_genesis_block::<Block>(state_root.into());

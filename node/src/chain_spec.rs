@@ -47,7 +47,7 @@ pub fn authority_keys_from_seed(s: &str) -> BabeId {
 
 pub fn development_config() -> Result<ChainSpec, String> {
 	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?;
-	println!("using development {}", line!());
+	// println!("using development {}", line!());
 	Ok(ChainSpec::from_genesis(
 		// Name
 		"Development",
@@ -86,7 +86,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
 
 pub fn local_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?;
-	println!("using local_testnet {}", line!());
+	// println!("using local_testnet {}", line!());
 	Ok(ChainSpec::from_genesis(
 		// Name
 		"Local Testnet",
@@ -94,7 +94,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		"local_testnet",
 		ChainType::Local,
 		move || {
-			println!("calling (testnet_genesis) {}", line!());
+			// println!("calling (testnet_genesis) {}", line!());
 			testnet_genesis(
 				wasm_binary,
 				// Initial PoA authorities
@@ -141,7 +141,7 @@ fn testnet_genesis(
 	_enable_println: bool,
 ) -> GenesisConfig {
 	use sp_consensus_babe::BabeAuthorityWeight;
-	println!("(testnet_genesis)");
+	// println!("(testnet_genesis)");
 	let mut authorities:Vec<(BabeId,BabeAuthorityWeight)> = Vec::new();
 	for auth in initial_authorities{
 		let stake:BabeAuthorityWeight = 1;

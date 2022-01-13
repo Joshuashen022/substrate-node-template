@@ -999,9 +999,9 @@ impl<Block: BlockT> Backend<Block> {
 	///
 	/// The pruning window is how old a block must be before the state is pruned.
 	pub fn new(config: DatabaseSettings, canonicalization_delay: u64) -> ClientResult<Self> {
-		println!("(Backend::new) db");
+
 		let db = crate::utils::open_database::<Block>(&config, DatabaseType::Full)?;
-		println!("(Backend::new) from_database");
+
 		Self::from_database(db as Arc<_>, canonicalization_delay, &config)
 	}
 

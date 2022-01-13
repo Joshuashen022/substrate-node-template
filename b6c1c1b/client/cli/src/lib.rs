@@ -225,7 +225,7 @@ pub trait SubstrateCli: Sized {
 	/// a tokio runtime
 	fn create_runner<T: CliConfiguration>(&self, command: &T) -> error::Result<Runner<Self>> {
 		command.init::<Self>()?;
-		println!("(Runner::new)");
+
 		Runner::new(self, command)
 	}
 

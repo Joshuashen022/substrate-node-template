@@ -1548,6 +1548,8 @@ where
 				// used by pruning may not know about the block that is being
 				// imported.
 				let prune_and_import = || {
+
+					// Gets the best finalized block and its slot, and prunes the given epoch tree.
 					prune_finalized(self.client.clone(), &mut epoch_changes)?;
 
 					epoch_changes
@@ -1668,6 +1670,10 @@ where
 			.slot()
 	};
 
+
+	// Prune out finalized epochs, except for the ancestor of the finalized
+	// block. The given slot should be the slot number at which the finalized
+	// block was authored.
 	epoch_changes
 		.prune_finalized(
 			descendent_query(&*client),

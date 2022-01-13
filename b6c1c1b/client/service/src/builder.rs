@@ -243,7 +243,7 @@ where
 	TExec: CodeExecutor + RuntimeVersionOf + Clone,
 	TBl::Hash: FromStr,
 {
-	println!("(new_full_parts)");
+
 	let keystore_container = KeystoreContainer::new(&config.keystore)?;
 
 	let task_manager = {
@@ -270,9 +270,9 @@ where
 			keep_blocks: config.keep_blocks.clone(),
 			transaction_storage: config.transaction_storage.clone(),
 		};
-		println!("(new_full_parts) backend");
+
 		let backend = new_db_backend(db_config)?;
-		println!("(new_full_parts) extensions");
+
 		let extensions = sc_client_api::execution_extensions::ExecutionExtensions::new(
 			config.execution_strategies.clone(),
 			Some(keystore_container.sync_keystore()),
@@ -359,7 +359,7 @@ where
 	Block: BlockT,
 	E: CodeExecutor + RuntimeVersionOf,
 {
-	println!("(new_client)");
+
 	let executor = crate::client::LocalCallExecutor::new(
 		backend.clone(),
 		executor,

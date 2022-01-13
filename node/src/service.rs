@@ -71,14 +71,14 @@ pub fn new_partial(
 		config.default_heap_pages,
 		config.max_runtime_instances,
 	);
-	println!("(new_partial) new_full_parts");
+
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
 			&config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
 		)?;
-	println!("(new_partial) client");
+
 	let client = Arc::new(client);
 
 	let telemetry = telemetry.map(|(worker, telemetry)| {

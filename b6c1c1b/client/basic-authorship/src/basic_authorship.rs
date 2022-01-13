@@ -201,7 +201,7 @@ where
 		let id = BlockId::hash(parent_hash);
 
 		info!("🙌 Starting consensus session on top of parent {:?}", parent_hash);
-
+		info!("check proposer {}", line!());
 		let proposer = Proposer::<_, _, _, _, PR> {
 			spawn_handle: self.spawn_handle.clone(),
 			client: self.client.clone(),
