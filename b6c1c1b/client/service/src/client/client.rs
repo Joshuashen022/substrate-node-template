@@ -269,6 +269,7 @@ where
 		F: FnOnce(&mut ClientImportOperation<Block, B>) -> Result<R, Err>,
 		Err: From<sp_blockchain::Error>,
 	{
+		log::trace!("(lock_import_and_run)");
 		let inner = || {
 			let _import_lock = self.backend.get_import_lock().write();
 
@@ -1592,7 +1593,7 @@ where
 		params: CallApiAtParams<'a, Block, NC, B::State>,
 	) -> Result<NativeOrEncoded<R>, sp_api::ApiError> {
 		let at = params.at;
-
+		log::trace!("(call_api_at)");
 		let (manager, extensions) =
 			self.execution_extensions.manager_and_extensions(at, params.context);
 
@@ -1650,7 +1651,7 @@ where
 	) -> Result<ImportResult, Self::Error> {
 		let span = tracing::span!(tracing::Level::DEBUG, "import_block");
 		let _enter = span.enter();
-
+		trace!("(import_block)");
 		let storage_changes =
 			match self.prepare_block_storage_changes(&mut import_block).map_err(|e| {
 				warn!("Block prepare storage changes error:\n{:?}", e);
@@ -1928,6 +1929,7 @@ where
 		// operations that tries to set aux data. Note that for consensus
 		// layer, one can always use atomic operations to make sure
 		// import is only locked once.
+		log::trace!("(insert_aux)");
 		self.lock_import_and_run(|operation| apply_aux(operation, insert, delete))
 	}
 	/// Query auxiliary data from key-value store.

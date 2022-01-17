@@ -163,6 +163,7 @@ where
 		inherent_digests: Digest,
 		backend: &'a B,
 	) -> Result<Self, Error> {
+		log::trace!("(new) {}", line!()); // nothing
 		let header = <<Block as BlockT>::Header as HeaderT>::new(
 			parent_number + One::one(),
 			Default::default(),
@@ -170,19 +171,19 @@ where
 			parent_hash,
 			inherent_digests,
 		);
-
+		log::trace!("(new) {}", line!());// nothing
 		let estimated_header_size = header.encoded_size();
-
+		log::trace!("(new) {}", line!());// nothing
 		let mut api = api.runtime_api();
-
+		log::trace!("(new) {}", line!());// nothing
 		if record_proof.yes() {
 			api.record_proof();
 		}
-
+		log::trace!("(new) {}", line!());// nothing
 		let block_id = BlockId::Hash(parent_hash);
-
+		log::trace!("(new) {}", line!());
 		api.initialize_block_with_context(&block_id, ExecutionContext::BlockConstruction, &header)?;
-
+		log::trace!("(new) {}", line!());
 		Ok(Self {
 			parent_hash,
 			extrinsics: Vec::new(),
@@ -234,7 +235,7 @@ where
 				self.extrinsics.iter().map(Encode::encode).collect(),
 			),
 		);
-
+		println!("(build)header {:?}", header.digest());
 		let proof = self.api.extract_proof();
 
 		let state = self.backend.state_at(self.block_id)?;

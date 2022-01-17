@@ -25,6 +25,7 @@ sc-client-api = { version = "4.0.0-dev", path = "../api" }
 codec = { package = "parity-scale-codec", version = "2.0.0", features = [
     "derive",
 ] }
+log = "0.4.14"
 
 [dev-dependencies]
 substrate-test-runtime-client = { path = "../../test-utils/runtime/client" }

@@ -1062,6 +1062,7 @@ impl JustificationImport<Block> for ForceFinalized {
 		_number: NumberFor<Block>,
 		justification: Justification,
 	) -> Result<(), Self::Error> {
+		log::trace!("(import_justification) test?");
 		self.0
 			.finalize_block(BlockId::Hash(hash), Some(justification), true)
 			.map_err(|_| ConsensusError::InvalidJustification.into())

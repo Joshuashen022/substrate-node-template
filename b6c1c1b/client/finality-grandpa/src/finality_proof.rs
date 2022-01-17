@@ -313,6 +313,7 @@ pub(crate) mod tests {
 	}
 
 	fn store_best_justification(client: &TestClient, just: &GrandpaJustification<Block>) {
+		log::trace!("(store_best_justification) grandpa?");
 		client
 			.lock_import_and_run(|import_op| {
 				crate::aux_schema::update_best_justification(just, |insert| {

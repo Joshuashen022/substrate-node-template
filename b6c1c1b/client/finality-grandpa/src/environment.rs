@@ -1256,7 +1256,7 @@ where
 	//       also implicitly synchronizes the check for last finalized number
 	//       below.
 	let mut authority_set = authority_set.inner();
-
+	log::trace!("(finalize_block) grandpa env?");
 	let status = client.info();
 
 	if number <= status.finalized_number && client.hash(number)? == Some(hash) {

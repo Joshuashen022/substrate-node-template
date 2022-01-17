@@ -329,6 +329,7 @@ fn parse_renamed_attribute(renamed: &Attribute) -> Result<(String, u32)> {
 
 /// Generate the functions that call the api at a given block for a given trait method.
 fn generate_call_api_at_calls(decl: &ItemTrait) -> Result<TokenStream> {
+	log::trace!("(generate_call_api_at_calls)");
 	let fns = decl.items.iter().filter_map(|i| match i {
 		TraitItem::Method(ref m) => Some((&m.attrs, &m.sig)),
 		_ => None,

@@ -90,6 +90,7 @@ where
 		Block: BlockT,
 		B: backend::Backend<Block>,
 	{
+		log::trace!("(check_override)");
 		let spec = self.runtime_version(id)?.spec_version;
 		let code = if let Some(d) = self
 			.wasm_override
@@ -149,6 +150,7 @@ where
 		strategy: ExecutionStrategy,
 		extensions: Option<Extensions>,
 	) -> sp_blockchain::Result<Vec<u8>> {
+		log::trace!("(call)");
 		let mut changes = OverlayedChanges::default();
 		let state = self.backend.state_at(*at)?;
 		let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);
@@ -202,6 +204,7 @@ where
 	where
 		ExecutionManager<EM>: Clone,
 	{
+		log::trace!("(contextual_call)");
 		let mut storage_transaction_cache = storage_transaction_cache.map(|c| c.borrow_mut());
 
 		let state = self.backend.state_at(*at)?;

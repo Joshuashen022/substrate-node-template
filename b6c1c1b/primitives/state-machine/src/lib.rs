@@ -398,6 +398,7 @@ mod execution {
 			NC: FnOnce() -> result::Result<R, Box<dyn std::error::Error + Send + Sync>>
 				+ UnwindSafe,
 		{
+			log::trace!("(execute_aux)");
 			let mut cache = StorageTransactionCache::default();
 
 			let cache = match self.storage_transaction_cache.as_mut() {
@@ -460,6 +461,7 @@ mod execution {
 				CallResult<R, Exec::Error>,
 			) -> CallResult<R, Exec::Error>,
 		{
+			log::trace!("(execute_call_with_both_strategy)");
 			self.overlay.start_transaction();
 			let (result, was_native) = self.execute_aux(true, native_call.take());
 
@@ -490,6 +492,7 @@ mod execution {
 			NC: FnOnce() -> result::Result<R, Box<dyn std::error::Error + Send + Sync>>
 				+ UnwindSafe,
 		{
+			log::trace!("(execute_call_with_native_else_wasm_strategy)");
 			self.overlay.start_transaction();
 			let (result, was_native) = self.execute_aux(true, native_call.take());
 
@@ -526,6 +529,7 @@ mod execution {
 				CallResult<R, Exec::Error>,
 			) -> CallResult<R, Exec::Error>,
 		{
+			log::trace!("(execute_using_consensus_failure_handler)");
 			let result = {
 				match manager {
 					ExecutionManager::Both(on_consensus_failure) => self
@@ -604,6 +608,7 @@ mod execution {
 		Exec: CodeExecutor + 'static + Clone,
 		Spawn: SpawnNamed + Send + 'static,
 	{
+		trace!("(prove_execution_on_trie_backend)");
 		let proving_backend = proving_backend::ProvingBackend::new(trie_backend);
 		let mut sm = StateMachine::<_, H, Exec>::new(
 			&proving_backend,
@@ -669,6 +674,7 @@ mod execution {
 		Exec: CodeExecutor + Clone + 'static,
 		Spawn: SpawnNamed + Send + 'static,
 	{
+		trace!("(execution_proof_check_on_trie_backend)");
 		let mut sm = StateMachine::<_, H, Exec>::new(
 			trie_backend,
 			overlay,

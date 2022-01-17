@@ -1254,6 +1254,7 @@ impl<Block: BlockT> Backend<Block> {
 	}
 
 	fn try_commit_operation(&self, mut operation: BlockImportOperation<Block>) -> ClientResult<()> {
+		log::trace!("(try_commit_operation)");
 		let mut transaction = Transaction::new();
 		let mut finalization_displaced_leaves = None;
 
@@ -1907,7 +1908,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 		let hash = self.blockchain.expect_block_hash_from_id(&block)?;
 		let header = self.blockchain.expect_header(block)?;
 		let mut displaced = None;
-
+		log::trace!("(finalize_block_with_transaction)");
 		let m = self.finalize_block_with_transaction(
 			&mut transaction,
 			&hash,

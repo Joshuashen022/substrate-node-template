@@ -916,9 +916,22 @@ fn find_next_epoch_digest<B: BlockT>(
 		trace!(target: "babe", "Checking log {:?}, looking for epoch change digest.", log);
 		let log = log.try_to::<ConsensusLog>(OpaqueDigestItemId::Consensus(&BABE_ENGINE_ID));
 		match (log, epoch_digest.is_some()) {
-			(Some(ConsensusLog::NextEpochData(_)), true) =>
-				return Err(babe_err(Error::MultipleEpochChangeDigests)),
-			(Some(ConsensusLog::NextEpochData(epoch)), false) => epoch_digest = Some(epoch),
+			(Some(ConsensusLog::NextEpochData(epoch)), true) => {
+				let mut s = String::new();
+				for (id, stake) in epoch.authorities{
+					s += &format!("({},{})", id, stake);
+				}
+				info!("(find_next_epoch_digest) true {:?}", s);
+				return Err(babe_err(Error::MultipleEpochChangeDigests))
+			},
+			(Some(ConsensusLog::NextEpochData(epoch)), false) =>{
+				let mut s = String::new();
+				for (id, stake) in epoch.clone().authorities{
+					s += &format!("({},{})", id, stake);
+				}
+				info!("(find_next_epoch_digest) true {:?}", s);
+				epoch_digest = Some(epoch)
+			},
 			_ => trace!(target: "babe", "Ignoring digest not meant for us"),
 		}
 	}
@@ -1475,6 +1488,22 @@ where
 				let first_in_epoch = parent_slot < epoch_descriptor.start_slot();
 				(epoch_descriptor, first_in_epoch, parent_weight)
 			};
+
+			// Current Epoch Information
+			match &epoch_descriptor{
+				ViableEpochDescriptor::Signaled(epoch_identifier, epoch_header) => {
+					let position = epoch_identifier.position;
+					let _hash = epoch_identifier.hash;
+					let number = epoch_identifier.number;
+					let start_slot = epoch_header.start_slot;
+					let end_slot = epoch_header.end_slot;
+
+					log::info!("[EPOCH]{:?} ({:?}-{:?}) {:?}", number, start_slot, end_slot, position);
+				}
+				_ => {
+					log::info!("[EPOCH] {:?}", &epoch_descriptor);
+				}
+			}
 
 			let total_weight = parent_weight + pre_digest.added_weight();
 

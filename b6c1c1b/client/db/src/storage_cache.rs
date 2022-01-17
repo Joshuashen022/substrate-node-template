@@ -167,6 +167,7 @@ impl<B: BlockT> Cache<B> {
 	/// that are invalidated by chain reorganization. It should be called
 	/// externally when chain reorg happens without importing a new block.
 	pub fn sync(&mut self, enacted: &[B::Hash], retracted: &[B::Hash]) {
+		trace!("(sync)");
 		trace!("Syncing shared cache, enacted = {:?}, retracted = {:?}", enacted, retracted);
 
 		// Purge changes from re-enacted and retracted blocks.
@@ -334,6 +335,7 @@ impl<B: BlockT> CacheChanges<B> {
 		commit_number: Option<NumberFor<B>>,
 		is_best: bool,
 	) {
+		trace!("(sync_cache)");
 		let mut cache = self.shared_cache.write();
 		trace!(
 			"Syncing cache, id = (#{:?}, {:?}), parent={:?}, best={}",
@@ -525,6 +527,7 @@ impl<S: StateBackend<HashFor<B>>, B: BlockT> StateBackend<HashFor<B>> for Cachin
 	fn storage(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Self::Error> {
 		let local_cache = self.cache.local_cache.upgradable_read();
 		// Note that local cache makes that lru is not refreshed
+		trace!("(storage)");
 		if let Some(entry) = local_cache.storage.get(key).cloned() {
 			trace!("Found in local cache: {:?}", HexDisplay::from(&key));
 			self.usage.tally_key_read(key, entry.as_ref(), true);

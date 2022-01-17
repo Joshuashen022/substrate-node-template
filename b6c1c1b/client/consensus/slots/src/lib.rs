@@ -312,7 +312,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 				None,
 			)
 			.map_err(|e| sp_consensus::Error::ClientImport(format!("{:?}", e)));
-
+		log::debug!("[Block Generation] after claiming the right to generate block, now we need to generate a block");
 		let proposal = match futures::future::select(proposing, proposing_remaining).await {
 			Either::Left((Ok(p), _)) => p,
 			Either::Left((Err(err), _)) => {
@@ -341,7 +341,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 				return None
 			},
 		};
-
+		log::debug!("[Block Generation] Block generation finished");
 		let block_import_params_maker = self.block_import_params();
 		let block_import = self.block_import();
 
@@ -385,7 +385,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		);
 
 		let header = block_import_params.post_header();
-		info!("import block & epoch change");
+		info!("[import block]");
 		match block_import.import_block(block_import_params, Default::default()).await {
 			Ok(res) => {
 				res.handle_justification(
@@ -494,6 +494,9 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 		Slots::new(slot_duration.slot_duration(), create_inherent_data_providers, client);
 
 	loop {
+		info!("");
+		info!("");
+		info!("");
 		info!("Updating time");
 		let slot_info = match slots.next_slot().await {
 			Ok(r) => r,
@@ -503,11 +506,14 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 			},
 		};
 
+		log::debug!("sync_oracle.is_major_syncing");
 		if sync_oracle.is_major_syncing() {
 			debug!(target: "slots", "Skipping proposal slot due to sync.");
 			continue
 		}
 
+		log::debug!("can_author_with.can_author_with");
+		// sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 		if let Err(err) =
 			can_author_with.can_author_with(&BlockId::Hash(slot_info.chain_head.hash()))
 		{
