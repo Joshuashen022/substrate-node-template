@@ -163,7 +163,7 @@ where
 		inherent_digests: Digest,
 		backend: &'a B,
 	) -> Result<Self, Error> {
-		log::trace!("(new) {}", line!()); // nothing
+		log::trace!("(new)");
 		let header = <<Block as BlockT>::Header as HeaderT>::new(
 			parent_number + One::one(),
 			Default::default(),
@@ -171,19 +171,22 @@ where
 			parent_hash,
 			inherent_digests,
 		);
-		log::trace!("(new) {}", line!());// nothing
+
 		let estimated_header_size = header.encoded_size();
-		log::trace!("(new) {}", line!());// nothing
+
 		let mut api = api.runtime_api();
-		log::trace!("(new) {}", line!());// nothing
+
 		if record_proof.yes() {
 			api.record_proof();
 		}
-		log::trace!("(new) {}", line!());// nothing
+
 		let block_id = BlockId::Hash(parent_hash);
-		log::trace!("(new) {}", line!());
+
+		log::trace!("(initialize_block_with_context) before");
 		api.initialize_block_with_context(&block_id, ExecutionContext::BlockConstruction, &header)?;
-		log::trace!("(new) {}", line!());
+		log::trace!("(initialize_block_with_context) after");
+
+
 		Ok(Self {
 			parent_hash,
 			extrinsics: Vec::new(),
@@ -225,27 +228,29 @@ where
 	/// supplied by `self.api`, combined as [`BuiltBlock`].
 	/// The storage proof will be `Some(_)` when proof recording was enabled.
 	pub fn build(mut self) -> Result<BuiltBlock<Block, backend::StateBackendFor<B, Block>>, Error> {
+		log::trace!("(finalize_block_with_context) before ");
 		let header = self
 			.api
 			.finalize_block_with_context(&self.block_id, ExecutionContext::BlockConstruction)?;
-
+		log::trace!("(finalize_block_with_context) after ");
 		debug_assert_eq!(
 			header.extrinsics_root().clone(),
 			HashFor::<Block>::ordered_trie_root(
 				self.extrinsics.iter().map(Encode::encode).collect(),
 			),
 		);
-		println!("(build)header {:?}", header.digest());
+		log::trace!("(build)header {:#?}", header);
+		log::trace!("(extract_proof) before ");
 		let proof = self.api.extract_proof();
-
+		log::trace!("(extract_proof) after ");
 		let state = self.backend.state_at(self.block_id)?;
 		let parent_hash = self.parent_hash;
-
+		log::trace!("(into_storage_changes) before ");
 		let storage_changes = self
 			.api
 			.into_storage_changes(&state, parent_hash)
 			.map_err(|e| sp_blockchain::Error::StorageChanges(e))?;
-
+		log::trace!("(into_storage_changes) after ");
 		Ok(BuiltBlock {
 			block: <Block as BlockT>::new(header, self.extrinsics),
 			storage_changes,

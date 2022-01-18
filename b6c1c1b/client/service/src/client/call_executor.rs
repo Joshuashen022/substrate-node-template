@@ -296,6 +296,7 @@ where
 		method: &str,
 		call_data: &[u8],
 	) -> sp_blockchain::Result<(Vec<u8>, StorageProof)> {
+		log::trace!("(prove_execution)");
 		let state = self.backend.state_at(*at)?;
 
 		let trie_backend = state.as_trie_backend().ok_or_else(|| {

@@ -331,6 +331,7 @@ where
 	}
 
 	fn runtime_version(&self, block: Option<Block::Hash>) -> FutureResult<RuntimeVersion> {
+
 		let r = self.block_or_best(block).map_err(client_err).and_then(|block| {
 			self.client
 				.runtime_version_at(&BlockId::Hash(block))
@@ -388,6 +389,7 @@ where
 		_meta: crate::Metadata,
 		subscriber: Subscriber<RuntimeVersion>,
 	) {
+
 		self.subscriptions.add(subscriber, |sink| {
 			let version = self
 				.block_or_best(None)

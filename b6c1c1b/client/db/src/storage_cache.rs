@@ -473,6 +473,7 @@ impl<S: StateBackend<HashFor<B>>, B: BlockT> CachingState<S, B> {
 		parent_hash: &Option<B::Hash>,
 		modifications: &VecDeque<BlockChanges<B::Header>>,
 	) -> bool {
+		trace!("(is_allowed)");
 		let mut parent = match *parent_hash {
 			None => {
 				trace!(
@@ -555,6 +556,7 @@ impl<S: StateBackend<HashFor<B>>, B: BlockT> StateBackend<HashFor<B>> for Cachin
 	}
 
 	fn storage_hash(&self, key: &[u8]) -> Result<Option<B::Hash>, Self::Error> {
+		trace!("(storage_hash)");
 		let local_cache = self.cache.local_cache.upgradable_read();
 		if let Some(entry) = local_cache.hashes.get(key).cloned() {
 			trace!("Found hash in local cache: {:?}", HexDisplay::from(&key));

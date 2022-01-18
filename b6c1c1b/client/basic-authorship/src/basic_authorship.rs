@@ -394,12 +394,12 @@ where
 		let block_timer = time::Instant::now();
 		let mut skipped = 0;
 		let mut unqueue_invalid = Vec::new();
-		log::trace!("(propose_with) {}", line!());
+
 		let mut t1 = self.transaction_pool.ready_at(self.parent_number).fuse();
-		log::trace!("(propose_with) {}", line!());
+
 		let mut t2 =
 			futures_timer::Delay::new(deadline.saturating_duration_since((self.now)()) / 8).fuse();
-		log::trace!("(propose_with) {}", line!());
+
 		let mut pending_iterator = select! {
 			res = t1 => res,
 			_ = t2 => {
@@ -411,14 +411,14 @@ where
 				self.transaction_pool.ready()
 			},
 		};
-		log::trace!("(propose_with) {}", line!());
+
 		let block_size_limit = block_size_limit.unwrap_or(self.default_block_size_limit);
-		log::trace!("(propose_with) {}", line!());
+
 		debug!("Attempting to push transactions from the pool.");
 		debug!("Pool status: {:?}", self.transaction_pool.status());
 		let mut transaction_pushed = false;
 		let mut hit_block_size_limit = false;
-		log::trace!("(propose_with) {}", line!());
+
 		while let Some(pending_tx) = pending_iterator.next() {
 			let now = (self.now)();
 			if now > deadline {
@@ -497,23 +497,25 @@ where
 				},
 			}
 		}
-		log::trace!("(propose_with) {}", line!());
+
 		if hit_block_size_limit && !transaction_pushed {
 			warn!(
 				"Hit block size limit of `{}` without including any transaction!",
 				block_size_limit,
 			);
 		}
-		log::trace!("(propose_with) {}", line!());
+
 		self.transaction_pool.remove_invalid(&unqueue_invalid);
-		log::trace!("(propose_with) {}", line!());
+
+		log::trace!("(build) before");
 		let (block, storage_changes, proof) = block_builder.build()?.into_inner();
-		log::trace!("(propose_with) {}", line!());
+		log::trace!("(build) before");
+
 		self.metrics.report(|metrics| {
 			metrics.number_of_transactions.set(block.extrinsics().len() as u64);
 			metrics.block_constructed.observe(block_timer.elapsed().as_secs_f64());
 		});
-		log::trace!("(propose_with) {}", line!());
+
 		info!(
 			"🎁 Prepared block for proposing at {} ({} ms) [hash: {:?}; parent_hash: {}; extrinsics ({}): [{}]]",
 			block.header().number(),
@@ -527,16 +529,16 @@ where
 				.collect::<Vec<_>>()
 				.join(", ")
 		);
-		log::trace!("(propose_with) {}", line!());
+
 		let digest_logs: &Vec<sp_runtime::DigestItem> = &block.header().digest().logs;
 		info!("digest log in block header {}", digest_logs.len());
 		for log in digest_logs{
 			match log {
-				sp_runtime::DigestItem::PreRuntime(_,_) => info!(" DigestItem::PreRuntime"),
-				sp_runtime::DigestItem::Seal(_,_) => info!(" DigestItem::Seal"),
-				sp_runtime::DigestItem::Consensus(_,_) => info!(" DigestItem::Consensus"),
-				sp_runtime::DigestItem::Other(_) => info!(" DigestItem::Other"),
-				sp_runtime::DigestItem::RuntimeEnvironmentUpdated => info!(" DigestItem::RuntimeEnvironmentUpdated"),
+				sp_runtime::DigestItem::PreRuntime(_,_) => info!("	DigestItem::PreRuntime"),
+				sp_runtime::DigestItem::Seal(_,_) => info!("	DigestItem::Seal"),
+				sp_runtime::DigestItem::Consensus(_,_) => info!("	DigestItem::Consensus"),
+				sp_runtime::DigestItem::Other(_) => info!("	DigestItem::Other"),
+				sp_runtime::DigestItem::RuntimeEnvironmentUpdated => info!("	DigestItem::RuntimeEnvironmentUpdated"),
 			};
 		}
 		telemetry!(
@@ -546,22 +548,22 @@ where
 			"number" => ?block.header().number(),
 			"hash" => ?<Block as BlockT>::Hash::from(block.header().hash()),
 		);
-		log::trace!("(propose_with) {}", line!());
+
 		if Decode::decode(&mut block.encode().as_slice()).as_ref() != Ok(&block) {
 			error!("Failed to verify block encoding/decoding");
 		}
-		log::trace!("(propose_with) {}", line!());
+
 		if let Err(err) =
 			evaluation::evaluate_initial(&block, &self.parent_hash, self.parent_number)
 		{
 			error!("Failed to evaluate authored block: {:?}", err);
 		}
-		log::trace!("(propose_with) {}", line!());
+
 		let proof =
 			PR::into_proof(proof).map_err(|e| sp_blockchain::Error::Application(Box::new(e)))?;
-		log::trace!("(propose_with) {}", line!());
+
 		let propose_with_end = time::Instant::now();
-		log::trace!("(propose_with) {}", line!());
+
 		self.metrics.report(|metrics| {
 			metrics.create_block_proposal_time.observe(
 				propose_with_end.saturating_duration_since(propose_with_start).as_secs_f64(),

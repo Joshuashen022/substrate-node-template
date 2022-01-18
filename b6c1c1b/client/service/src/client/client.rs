@@ -411,6 +411,7 @@ where
 
 	/// Get the RuntimeVersion at a given block.
 	pub fn runtime_version_at(&self, id: &BlockId<Block>) -> sp_blockchain::Result<RuntimeVersion> {
+
 		self.executor.runtime_version(id)
 	}
 
@@ -1593,11 +1594,11 @@ where
 		params: CallApiAtParams<'a, Block, NC, B::State>,
 	) -> Result<NativeOrEncoded<R>, sp_api::ApiError> {
 		let at = params.at;
-		log::trace!("(call_api_at)");
+		log::trace!("(call_api_at) start");
 		let (manager, extensions) =
 			self.execution_extensions.manager_and_extensions(at, params.context);
 
-		self.executor
+		let s = self.executor
 			.contextual_call::<fn(_, _) -> _, _, _>(
 				at,
 				params.function,
@@ -1608,12 +1609,16 @@ where
 				params.native_call,
 				params.recorder,
 				Some(extensions),
-			)
-			.map_err(Into::into)
+			);
+		log::trace!("(call_api_at) end");
+		s.map_err(Into::into)
 	}
 
 	fn runtime_version_at(&self, at: &BlockId<Block>) -> Result<RuntimeVersion, sp_api::ApiError> {
-		self.runtime_version_at(at).map_err(Into::into)
+		trace!("(runtime_version_at) start");
+		let a = self.runtime_version_at(at);
+		trace!("(runtime_version_at) end");
+		a.map_err(Into::into)
 	}
 }
 

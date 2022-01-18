@@ -329,7 +329,7 @@ fn parse_renamed_attribute(renamed: &Attribute) -> Result<(String, u32)> {
 
 /// Generate the functions that call the api at a given block for a given trait method.
 fn generate_call_api_at_calls(decl: &ItemTrait) -> Result<TokenStream> {
-	log::trace!("(generate_call_api_at_calls)");
+
 	let fns = decl.items.iter().filter_map(|i| match i {
 		TraitItem::Method(ref m) => Some((&m.attrs, &m.sig)),
 		_ => None,
@@ -399,6 +399,7 @@ fn generate_call_api_at_calls(decl: &ItemTrait) -> Result<TokenStream> {
 				context: #crate_::ExecutionContext,
 				recorder: &Option<#crate_::ProofRecorder<Block>>,
 			) -> std::result::Result<#crate_::NativeOrEncoded<R>, #crate_::ApiError> {
+
 				let version = call_runtime_at.runtime_version_at(at)?;
 
 				#(
@@ -968,7 +969,7 @@ fn check_trait_decls(decls: &[ItemTrait]) -> Result<()> {
 pub fn decl_runtime_apis_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	// Parse all trait declarations
 	let RuntimeApiDecls { decls: api_decls } = parse_macro_input!(input as RuntimeApiDecls);
-
+	log::trace!("(decl_runtime_apis!)");
 	decl_runtime_apis_impl_inner(&api_decls)
 		.unwrap_or_else(|e| e.to_compile_error())
 		.into()
