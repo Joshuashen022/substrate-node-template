@@ -486,6 +486,7 @@ impl<T: Config> Pallet<T> {
 		// epoch 0 as having started at the slot of block 1. We want to use
 		// the same randomness and validator set as signalled in the genesis,
 		// so we don't rotate the epoch.
+		log::trace!("#[pallet::babe] (should_epoch_change)");
 		now != One::one() && {
 			let diff = CurrentSlot::<T>::get().saturating_sub(Self::current_epoch_start());
 			*diff >= T::EpochDuration::get()
@@ -508,6 +509,7 @@ impl<T: Config> Pallet<T> {
 	// WEIGHT NOTE: This function is tied to the weight of `EstimateNextSessionRotation`. If you
 	// update this function, you must also update the corresponding weight.
 	pub fn next_expected_epoch_change(now: T::BlockNumber) -> Option<T::BlockNumber> {
+		log::trace!("#[pallet::babe] (next_expected_epoch_change)");
 		let next_slot = Self::current_epoch_start().saturating_add(T::EpochDuration::get());
 		next_slot.checked_sub(*CurrentSlot::<T>::get()).map(|slots_remaining| {
 			// This is a best effort guess. Drifts in the slot/block ratio will cause errors here.
@@ -525,6 +527,7 @@ impl<T: Config> Pallet<T> {
 		authorities: WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>,
 		next_authorities: WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>,
 	) {
+		log::trace!("#[pallet::babe] (enact_epoch_change)");
 		// PRECONDITION: caller has done initialization and is guaranteed
 		// by the session module to be called before this.
 		debug_assert!(Self::initialized().is_some());
@@ -583,11 +586,13 @@ impl<T: Config> Pallet<T> {
 	/// give correct results after `do_initialize` of the first block
 	/// in the chain (as its result is based off of `GenesisSlot`).
 	pub fn current_epoch_start() -> Slot {
+		log::trace!("#[pallet::babe] (current_epoch_start)");
 		Self::epoch_start(EpochIndex::<T>::get())
 	}
 
 	/// Produces information about the current epoch.
 	pub fn current_epoch() -> Epoch {
+		log::trace!("#[pallet::babe] (current_epoch)");
 		Epoch {
 			epoch_index: EpochIndex::<T>::get(),
 			start_slot: Self::current_epoch_start(),
