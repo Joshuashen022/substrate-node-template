@@ -400,6 +400,7 @@ where
 	pub fn finalize_block() -> System::Header {
 		sp_io::init_tracing();
 		sp_tracing::enter_span!(sp_tracing::Level::TRACE, "finalize_block");
+		log::trace!("finalize_block()");
 		<frame_system::Pallet<System>>::note_finished_extrinsics();
 		let block_number = <frame_system::Pallet<System>>::block_number();
 

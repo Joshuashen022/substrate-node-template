@@ -324,6 +324,7 @@ where
 
 	/// Return the [`RuntimeCode`] build from the wrapped `backend`.
 	pub fn runtime_code(&self) -> Result<RuntimeCode, &'static str> {
+		log::trace!("(runtime_code)");
 		let hash = self
 			.backend
 			.storage_hash(sp_core::storage::well_known_keys::CODE)

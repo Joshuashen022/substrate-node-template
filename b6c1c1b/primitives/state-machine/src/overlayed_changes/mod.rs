@@ -506,6 +506,7 @@ impl OverlayedChanges {
 	where
 		H::Out: Ord + Encode + 'static,
 	{
+		log::trace!("AFTER RUNTIME (into_storage_changes)");
 		self.drain_storage_changes(backend, parent_hash, &mut cache)
 	}
 

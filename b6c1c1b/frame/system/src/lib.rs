@@ -1325,6 +1325,7 @@ impl<T: Config> Pallet<T> {
 	/// Remove temporary "environment" entries in storage, compute the storage root and return the
 	/// resulting header for this block.
 	pub fn finalize() -> T::Header {
+		log::trace!("(finalize)");
 		ExecutionPhase::<T>::kill();
 		AllExtrinsicsLen::<T>::kill();
 
@@ -1338,15 +1339,19 @@ impl<T: Config> Pallet<T> {
 		// - <Digest<T>>
 		//
 		// stay to be inspected by the client and will be cleared by `Self::initialize`.
+		log::trace!("(finalize) number");
 		let number = <Number<T>>::get();
+		log::trace!("(finalize) parent_hash");
 		let parent_hash = <ParentHash<T>>::get();
+		log::trace!("(finalize) digest");
 		let digest = <Digest<T>>::get();
-
+		log::trace!("(finalize) extrinsics");
 		let extrinsics = (0..ExtrinsicCount::<T>::take().unwrap_or_default())
 			.map(ExtrinsicData::<T>::take)
 			.collect();
+		log::trace!("(finalize) extrinsics_root");
 		let extrinsics_root = extrinsics_data_root::<T::Hashing>(extrinsics);
-
+		log::trace!("(finalize) block_hash_count");
 		// move block hash pruning window by one block
 		let block_hash_count = T::BlockHashCount::get();
 		let to_remove = number.saturating_sub(block_hash_count).saturating_sub(One::one());

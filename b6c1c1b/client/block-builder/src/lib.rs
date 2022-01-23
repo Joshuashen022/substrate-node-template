@@ -239,7 +239,8 @@ where
 				self.extrinsics.iter().map(Encode::encode).collect(),
 			),
 		);
-		log::trace!("(build)header {:#?}", header);
+		log::trace!("(build) header");
+		log::trace!("{:#?}", header);
 		log::trace!("(extract_proof) before ");
 		let proof = self.api.extract_proof();
 		log::trace!("(extract_proof) after ");

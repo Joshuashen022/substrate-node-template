@@ -223,7 +223,7 @@ where
 		let runtime_code =
 			state_runtime_code.runtime_code().map_err(sp_blockchain::Error::RuntimeCode)?;
 		let runtime_code = self.check_override(runtime_code, at)?;
-
+		log::trace!("(contextual_call) {}", line!());
 		match recorder {
 			Some(recorder) => {
 				let trie_state = state.as_trie_backend().ok_or_else(|| {
@@ -247,6 +247,7 @@ where
 					self.spawn_handle.clone(),
 				)
 				.set_parent_hash(at_hash);
+				log::trace!("(contextual_call) {}", line!());
 				// TODO: https://github.com/paritytech/substrate/issues/4455
 				state_machine.execute_using_consensus_failure_handler(
 					execution_manager,
@@ -268,6 +269,7 @@ where
 					storage_transaction_cache.as_mut().map(|c| &mut **c),
 				)
 				.set_parent_hash(at_hash);
+				log::trace!("(contextual_call) {}", line!());
 				state_machine.execute_using_consensus_failure_handler(
 					execution_manager,
 					native_call.map(|n| || (n)().map_err(|e| Box::new(e) as Box<_>)),

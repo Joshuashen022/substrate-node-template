@@ -349,6 +349,8 @@ pub mod pallet {
 			// that this block was the first in a new epoch, the changeover logic has
 			// already occurred at this point, so the under-construction randomness
 			// will only contain outputs from the right epoch.
+
+			log::trace!("#[pallet_babe::hooks] (on_finalize)");
 			if let Some(Some(randomness)) = Initialized::<T>::take() {
 				Self::deposit_randomness(&randomness);
 			}
@@ -664,6 +666,7 @@ impl<T: Config> Pallet<T> {
 	fn do_initialize(now: T::BlockNumber) {
 		// since do_initialize can be called twice (if session module is present)
 		// => let's ensure that we only modify the storage once per block
+		log::trace!("fn do_initialize(now: T::BlockNumber) ");
 		let initialized = Self::initialized().is_some();
 		if initialized {
 			return

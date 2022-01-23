@@ -167,7 +167,7 @@ impl<B: BlockT> Cache<B> {
 	/// that are invalidated by chain reorganization. It should be called
 	/// externally when chain reorg happens without importing a new block.
 	pub fn sync(&mut self, enacted: &[B::Hash], retracted: &[B::Hash]) {
-		trace!("(sync)");
+
 		trace!("Syncing shared cache, enacted = {:?}, retracted = {:?}", enacted, retracted);
 
 		// Purge changes from re-enacted and retracted blocks.
@@ -335,7 +335,7 @@ impl<B: BlockT> CacheChanges<B> {
 		commit_number: Option<NumberFor<B>>,
 		is_best: bool,
 	) {
-		trace!("(sync_cache)");
+
 		let mut cache = self.shared_cache.write();
 		trace!(
 			"Syncing cache, id = (#{:?}, {:?}), parent={:?}, best={}",
@@ -473,7 +473,7 @@ impl<S: StateBackend<HashFor<B>>, B: BlockT> CachingState<S, B> {
 		parent_hash: &Option<B::Hash>,
 		modifications: &VecDeque<BlockChanges<B::Header>>,
 	) -> bool {
-		trace!("(is_allowed)");
+
 		let mut parent = match *parent_hash {
 			None => {
 				trace!(
@@ -556,7 +556,7 @@ impl<S: StateBackend<HashFor<B>>, B: BlockT> StateBackend<HashFor<B>> for Cachin
 	}
 
 	fn storage_hash(&self, key: &[u8]) -> Result<Option<B::Hash>, Self::Error> {
-		trace!("(storage_hash)");
+
 		let local_cache = self.cache.local_cache.upgradable_read();
 		if let Some(entry) = local_cache.hashes.get(key).cloned() {
 			trace!("Found hash in local cache: {:?}", HexDisplay::from(&key));
