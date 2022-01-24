@@ -233,6 +233,19 @@ impl pallet_babe::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_session::Config for Runtime {
+	type Event = Event;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	type ValidatorIdOf = ();
+
+	type Keys = opaque::SessionKeys;
+	type ShouldEndSession = Babe;
+	type NextSessionRotation = Babe;
+	type SessionManager = ();
+	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
 }
@@ -300,6 +313,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
+		Session: pallet_session::{Call, Storage, Event, Config<T>},
 	}
 );
 
@@ -389,6 +403,7 @@ impl_runtime_apis! {
 			Executive::offchain_worker(header)
 		}
 	}
+
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
 		// The choice of `c` parameter (where `1 - c` represents the
 		// probability of a slot being empty), is done in accordance to the

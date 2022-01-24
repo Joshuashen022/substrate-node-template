@@ -118,6 +118,11 @@ version = '0.10.0-dev'
 path = "../b6c1c1b/primitives/consensus/babe"
 version = '0.10.0-dev'
 
+[dependencies.pallet-session]
+default-features = false
+path = "../b6c1c1b/frame/session"
+version = '4.0.0-dev'
+
 [dependencies.sp-core]
 path = "../b6c1c1b/primitives/core"
 version = '4.0.0-dev'

@@ -1,7 +1,8 @@
 use node_template_runtime::{
-	AccountId, BabeConfig, BalancesConfig, GenesisConfig, Signature, SudoConfig,
-	SystemConfig, WASM_BINARY,
+	AccountId, BabeConfig, BalancesConfig, GenesisConfig, Signature, SudoConfig, SessionConfig,
+	SystemConfig, WASM_BINARY,SessionKeys
 };
+// use pallet_session::pallet::GenesisConfig;
 use sc_service::ChainType;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{sr25519, Pair, Public};
@@ -84,6 +85,10 @@ pub fn development_config() -> Result<ChainSpec, String> {
 	))
 }
 
+fn session_keys(babe: BabeId) -> SessionKeys {
+	SessionKeys { babe}
+}
+
 pub fn local_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?;
 	// println!("using local_testnet {}", line!());
@@ -148,6 +153,13 @@ fn testnet_genesis(
 		authorities.push((auth,stake));
 	}
 
+	let session_keys = endowed_accounts
+		.iter()
+		.zip( initial_authorities.iter().map(|&x| session_keys(x)))
+		.map(|(account, key)| (account, account, key))
+		.collect::<Vec<_>>();
+
+
 	GenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
@@ -160,6 +172,9 @@ fn testnet_genesis(
 		babe: BabeConfig {
 			authorities, // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
 			epoch_config: Some(babe_genesis::BABE_GENESIS_EPOCH_CONFIG),
+		},
+		session: SessionConfig {
+			keys: session_keys,
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
