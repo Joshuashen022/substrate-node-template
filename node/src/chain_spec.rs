@@ -1,6 +1,6 @@
 use node_template_runtime::{
 	AccountId, BabeConfig, BalancesConfig, GenesisConfig, Signature, SudoConfig, SessionConfig,
-	SystemConfig, WASM_BINARY,SessionKeys
+	SystemConfig, WASM_BINARY, opaque::SessionKeys
 };
 // use pallet_session::pallet::GenesisConfig;
 use sc_service::ChainType;
@@ -148,17 +148,15 @@ fn testnet_genesis(
 	use sp_consensus_babe::BabeAuthorityWeight;
 	// println!("(testnet_genesis)");
 	let mut authorities:Vec<(BabeId,BabeAuthorityWeight)> = Vec::new();
-	for auth in initial_authorities{
+	for auth in initial_authorities.clone(){
 		let stake:BabeAuthorityWeight = 1;
 		authorities.push((auth,stake));
 	}
 
-	let session_keys = endowed_accounts
-		.iter()
-		.zip( initial_authorities.iter().map(|&x| session_keys(x)))
-		.map(|(account, key)| (account, account, key))
-		.collect::<Vec<_>>();
-
+	let mut sessionkeys = Vec::new();
+	for (account, key) in endowed_accounts.iter().zip(initial_authorities){
+		sessionkeys.push((account.clone(), account.clone(), session_keys(key.clone())));
+	}
 
 	GenesisConfig {
 		system: SystemConfig {
@@ -170,11 +168,11 @@ fn testnet_genesis(
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
 		babe: BabeConfig {
-			authorities, // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
+			authorities: Default::default(), // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
 			epoch_config: Some(babe_genesis::BABE_GENESIS_EPOCH_CONFIG),
 		},
 		session: SessionConfig {
-			keys: session_keys,
+			keys: sessionkeys,
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
