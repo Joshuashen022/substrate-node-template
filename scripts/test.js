@@ -105,36 +105,21 @@ var makeTransaction = new Object({
   },
 
   transfer_to_charlie_from: async function(api, account){
-    console.log(`make a transfer to`);
     const CHARLIE = '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y';
+    console.log(`make a transfer to ${CHARLIE}`);
     
-    const [unsub] = await Promise.all([
-      api.tx.balances
-      .transfer(CHARLIE, 2)
-      .signAndSend(account, (result) => {
-        console.log(`Current status is ${result.status}`);
+    const unsub = await api.tx.balances
+    .transfer(CHARLIE, 2)
+    .signAndSend(account, (result) => {
+      console.log(`Current status is ${result.status}`);
 
-        if (result.status.isInBlock) {
-          console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-        } else if (result.status.isFinalized) {
-          console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-          unsub();
-        }
-      })
-    ]);
-
-    // const unsub = await api.tx.balances
-    // .transfer(CHARLIE, 2)
-    // .signAndSend(account, (result) => {
-    //   console.log(`Current status is ${result.status}`);
-
-    //   if (result.status.isInBlock) {
-    //     console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-    //   } else if (result.status.isFinalized) {
-    //     console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-    //     unsub();
-    //   }
-    // });
+      if (result.status.isInBlock) {
+        console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+      } else if (result.status.isFinalized) {
+        console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+        unsub();
+      }
+    });
   }
 
 })
@@ -287,7 +272,7 @@ async function main () {
   // makeTransaction.alice_sign_verify(alice);
 
   await makeTransaction.transfer_to_charlie_from(api, test_account);
-  console.log(`make a transfer to done`);
+  console.log(`make a transfer to done too`);
 }
 
 main().catch(console.error).finally(() => process.exit());
