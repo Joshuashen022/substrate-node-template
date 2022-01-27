@@ -3,6 +3,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api';
 // const { ApiPromise, WsProvider } = require('@polkadot/api');
 import { stringToU8a, u8aToHex } from '@polkadot/util';
 import fs from 'fs';
+import { resolve } from 'path';
 
 
 var makeTransaction = new Object({
@@ -120,6 +121,7 @@ var makeTransaction = new Object({
         unsub();
       }
     });
+    return unsub
   }
 
 })
@@ -208,7 +210,7 @@ var makeQuery = new Object({
 })
 
 var getJson = new Object({
-  read_json: function(){
+  readJson: function(){
     
     // const fs = require('fs');
 
@@ -226,23 +228,35 @@ var getJson = new Object({
     //     console.log(data);
     //     return data
     // });
-    const [data] = Promise.all([
-      fs.readFile('test.json', 'utf-8', (err, data) => {
-        if (err) {
-            console.log(err);
-            throw err;
-        }
+    
+    fs.readFile('test.json', 'utf-8', (err, data) => {
+      if (err) {
+          console.log(err);
+          throw err;
+      }
 
-        // parse JSON object
-        // const test = JSON.parse(data.toString());
+      // parse JSON object
+      // const test = JSON.parse(data.toString());
 
-        // print JSON object
-        console.log(data);
-        return data
+      // print JSON object
+      console.log(data);
+      return new Promise((resolve, reject) =>{
+        fs.readFile('test.json', 'utf-8', (err, data) => {
+          if (err) {
+              console.log(err);
+              reject(err);
+              return
+          }
+  
+          // parse JSON object
+          // const test = JSON.parse(data.toString());
+  
+          // print JSON object
+          console.log(data);
+          resolve(data)
+        })
       })
-    ]);
-
-    return data
+    })
   },
 
   import_json: function(){
@@ -269,10 +283,19 @@ async function main () {
 
   const test_account = await makeTransaction.get_test_account(api);
 
-  // makeTransaction.alice_sign_verify(alice);
+  const unsub = await makeTransaction.transfer_to_charlie_from(api, test_account);
 
-  await makeTransaction.transfer_to_charlie_from(api, test_account);
-  console.log(`make a transfer to done too`);
+  console.log(`transfer done ${unsub}`);
+
+
+  // getJson.readJson()
+  // .then( data => console.log(data))
+  // .catch(err => console.error(err))
+
 }
 
-main().catch(console.error).finally(() => process.exit());
+
+const execute = await main()
+console.log('finished')
+// execute.then(()=>console.log('finished'))
+// main().catch(err => console.error(err)).finally(() => process.exit());
