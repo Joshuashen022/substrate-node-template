@@ -172,12 +172,12 @@ var makeQuery = new Object({
   },
 
   // TODO:NOT WORKING
-  read_some_block: async function(api){
+  read_some_block: async function(api, chain){
     
     // Subscribe to the new headers
-    await api.rpc.chain.subscribeNewHeads((lastHeader) => {
-      console.log(`${chain}: last block #${lastHeader.number} has hash ${lastHeader.hash}`);
-    });
+    // await api.rpc.chain.subscribeNewHeads((lastHeader) => {
+    //   console.log(`${chain}: last block #${lastHeader.number} has hash ${lastHeader.hash}`);
+    // });
 
     console.log(`You are connected to the International`);
     let count = 0;
@@ -281,13 +281,14 @@ async function main () {
   
   console.log(`You are connected to chain  -${chain} using -${nodeName} v-${nodeVersion}`);
 
-  const test_account = await makeTransaction.get_test_account(api);
+  // const test_account = await makeTransaction.get_test_account(api);
 
-  const unsub = await makeTransaction.transfer_to_charlie_from(api, test_account);
+  // const unsub = await makeTransaction.transfer_to_charlie_from(api, test_account);
 
-  console.log(`transfer done ${unsub}`);
+  // console.log(`transfer done ${unsub}`);
 
-
+ 
+  await Promise.bind( makeQuery.read_some_block(api, chain));
   // getJson.readJson()
   // .then( data => console.log(data))
   // .catch(err => console.error(err))
@@ -295,7 +296,16 @@ async function main () {
 }
 
 
-const execute = await main()
-console.log('finished')
+// const execute = await main()
+await main()
+.then(()=>console.log('then'))
+.catch(err => console.error(err))
+.finally(
+  () => {
+    console.log('finally');
+    process.exit();
+});
+
+console.log('Code End')
 // execute.then(()=>console.log('finished'))
-// main().catch(err => console.error(err)).finally(() => process.exit());
+
