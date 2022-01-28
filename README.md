@@ -5,20 +5,22 @@ https://zhuanlan.zhihu.com/p/261336716
 
 https://github.com/kaichaosun/tao
 
-**Branch**: origin/main
+
+**Branch**: origin/babe
 
 **Target**: change consensus from `babe` to `praos`
 
 **Done**:
 
-Cut Grandpa
+Using Babe without GRANDPA
 
-Using Babe without any grandpa
+Epoch change fixed by adding `session` pallet
 
-Currently running `--dev` contains no nodes **fixed**
+Add `transfer_async.js` to make a transfer by sctips.
 
 **P.S.** :
-After 100 blocks were generated, block generation will stop.
+Currently no finalize is constructed. Wait to see if it's a problem,
+since we are not using GRANDPA.
 
 Author: Joshua022
 -----------------
@@ -109,6 +111,13 @@ local node template.
 If you want to see the multi-node consensus algorithm in action, refer to our
 [Start a Private Network tutorial](https://substrate.dev/docs/en/tutorials/start-a-private-network/).
 
+Start a test net use `alice.sh` & `bob.sh`, remember to reset boot node id before start `bob.sh`.
+### Interact With Local Chain
+JS codes is used to interact with the local chain.
+```shell
+node scripts/javascripts/ *.js
+```
+More info at [polkadot.{js}](https://polkadot.js.org/docs/)
 ## Template Structure
 
 A Substrate project such as this consists of a number of components that are spread across a few
