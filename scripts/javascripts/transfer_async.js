@@ -22,9 +22,9 @@ function make_a_transfer(api) {
             // console.log(`Current status is ${result.status}`);
             
             if (result.status.isReady){
-                console.log('ready');
+                console.log('node has accepted our transaction proposal waiting on chain...');
             } else if (result.status.isInBlock) {
-                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+                console.log(`Transaction successfully included at block Hash:${result.status.asInBlock}`);
                 
                 // return value and exit promise
                 resolve(result.status) 
@@ -56,7 +56,10 @@ async function asyncCall() {
     console.log(`You are connected to chain  -${chain} using -${nodeName} v-${nodeVersion}`);
 
     const result = await make_a_transfer(api);
-    console.log(`${result}`); // {"inBlock":"0xc84e9..."}
+    if (result.isInBlock){
+        console.log('Test success'); // {"inBlock":"0xc84e9..."}
+    }
+    
     console.log('program exit');
     process.exit();
 }
