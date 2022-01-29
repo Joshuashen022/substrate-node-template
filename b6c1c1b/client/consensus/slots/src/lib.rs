@@ -259,7 +259,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		}
 
 		let claim = self.claim_slot(&slot_info.chain_head, slot, &epoch_data).await?;
-
+		log::debug!("[Block Generation] after claiming the right to generate block, now we need to generate a block");
 		if self.should_backoff(slot, &slot_info.chain_head) {
 			return None
 		}
@@ -312,7 +312,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 				None,
 			)
 			.map_err(|e| sp_consensus::Error::ClientImport(format!("{:?}", e)));
-		log::debug!("[Block Generation] after claiming the right to generate block, now we need to generate a block");
+
 		let proposal = match futures::future::select(proposing, proposing_remaining).await {
 			Either::Left((Ok(p), _)) => p,
 			Either::Left((Err(err), _)) => {

@@ -530,17 +530,17 @@ where
 				.join(", ")
 		);
 
-		let digest_logs: &Vec<sp_runtime::DigestItem> = &block.header().digest().logs;
-		info!("digest log in block header {}", digest_logs.len());
-		for log in digest_logs{
-			match log {
-				sp_runtime::DigestItem::PreRuntime(_,_) => info!("	DigestItem::PreRuntime"),
-				sp_runtime::DigestItem::Seal(_,_) => info!("	DigestItem::Seal"),
-				sp_runtime::DigestItem::Consensus(_,_) => info!("	DigestItem::Consensus"),
-				sp_runtime::DigestItem::Other(_) => info!("	DigestItem::Other"),
-				sp_runtime::DigestItem::RuntimeEnvironmentUpdated => info!("	DigestItem::RuntimeEnvironmentUpdated"),
-			};
-		}
+		// let digest_logs: &Vec<sp_runtime::DigestItem> = &block.header().digest().logs;
+		// info!("digest log in block header {}", digest_logs.len());
+		// for log in digest_logs{
+		// 	match log {
+		// 		sp_runtime::DigestItem::PreRuntime(_,_) => info!("	DigestItem::PreRuntime"),
+		// 		sp_runtime::DigestItem::Seal(_,_) => info!("	DigestItem::Seal"),
+		// 		sp_runtime::DigestItem::Consensus(_,_) => info!("	DigestItem::Consensus"),
+		// 		sp_runtime::DigestItem::Other(_) => info!("	DigestItem::Other"),
+		// 		sp_runtime::DigestItem::RuntimeEnvironmentUpdated => info!("	DigestItem::RuntimeEnvironmentUpdated"),
+		// 	};
+		// }
 		telemetry!(
 			self.telemetry;
 			CONSENSUS_INFO;

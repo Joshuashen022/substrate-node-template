@@ -46,6 +46,20 @@ pub(super) fn calculate_primary_threshold(
 	let theta = authorities[authority_index].1 as f64 /
 		authorities.iter().map(|(_, weight)| weight).sum::<u64>() as f64;
 
+	// Output information of "theta" at info log level
+	{
+		let stake_i = &authorities[authority_index].1;
+		let mut stake_all = String::from("(");
+		for (_, weight) in authorities{
+			stake_all += &format!("{} + ", weight);
+		}
+		stake_all.pop();
+		stake_all.pop();
+		stake_all.pop();
+		stake_all.push(')');
+		log::info!("[Staking]theta = si/S => {} = {}/{}", theta, stake_i, stake_all);
+	}
+
 	assert!(theta > 0.0, "authority with weight 0.");
 
 	// NOTE: in the equation `p = 1 - (1 - c)^theta` the value of `p` is always
@@ -62,6 +76,9 @@ pub(super) fn calculate_primary_threshold(
 		 base and exponent are in that domain; \
 		 qed.",
 	);
+
+	// Output information of "p" at info log level
+	log::info!("[Staking]p = 1 - (1 - c)^theta => {}= 1 - (1 - {})^{}", p, c, theta  );
 
 	let numer = p.numer().to_biguint().expect(
 		"returns None when the given value is negative; \
@@ -231,8 +248,8 @@ fn claim_primary_slot(
 	keys: &[(AuthorityId, usize)],
 ) -> Option<(PreDigest, AuthorityId)> {
 	let Epoch { authorities, randomness, epoch_index, .. } = epoch;
-	// log::info!("(claim_primary_slot)");
-	// log::info!("epoch {:?}", epoch);
+	log::trace!("(claim_primary_slot)");
+	log::trace!("epoch {:#?}", epoch);
 	for (authority_id, authority_index) in keys {
 		let transcript = make_transcript(randomness, slot, *epoch_index);
 		let transcript_data = make_transcript_data(randomness, slot, *epoch_index);

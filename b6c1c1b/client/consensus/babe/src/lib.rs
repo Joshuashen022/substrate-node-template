@@ -921,7 +921,7 @@ fn find_next_epoch_digest<B: BlockT>(
 				for (id, stake) in epoch.authorities{
 					s += &format!("({},{})", id, stake);
 				}
-				info!("(find_next_epoch_digest) true {:?}", s);
+				// info!("(find_next_epoch_digest) true {:?}", s);
 				return Err(babe_err(Error::MultipleEpochChangeDigests))
 			},
 			(Some(ConsensusLog::NextEpochData(epoch)), false) =>{
@@ -929,7 +929,7 @@ fn find_next_epoch_digest<B: BlockT>(
 				for (id, stake) in epoch.clone().authorities{
 					s += &format!("({},{})", id, stake);
 				}
-				info!("(find_next_epoch_digest) true {:?}", s);
+				// info!("(find_next_epoch_digest) true {:?}", s);
 				epoch_digest = Some(epoch)
 			},
 			_ => trace!(target: "babe", "Ignoring digest not meant for us"),
@@ -1498,7 +1498,7 @@ where
 					let start_slot = epoch_header.start_slot;
 					let end_slot = epoch_header.end_slot;
 
-					log::info!("[EPOCH]{:?} ({:?}-{:?}) {:?}", number, start_slot, end_slot, position);
+					log::info!("[EPOCH] {:?} ({:?}-{:?}) {:?}", number, start_slot, end_slot, position);
 				}
 				_ => {
 					log::info!("[EPOCH] {:?}", &epoch_descriptor);
