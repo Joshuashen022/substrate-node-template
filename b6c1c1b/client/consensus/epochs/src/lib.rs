@@ -539,6 +539,7 @@ where
 		if let Some(e) = &self.gap.as_ref().and_then(|gap| gap.epoch(id)) {
 			return Some(e)
 		}
+		log::debug!("[epoch] Signaled position {:?}", id.position);
 		self.epochs.get(&(id.hash, id.number)).and_then(|v| match v {
 			PersistedEpoch::Genesis(ref epoch_0, _)
 				if id.position == EpochIdentifierPosition::Genesis0 =>
@@ -563,10 +564,13 @@ where
 		G: FnOnce(E::Slot) -> E,
 	{
 		match descriptor {
-			ViableEpochDescriptor::UnimportedGenesis(slot) =>
-				Some(ViableEpoch::UnimportedGenesis(make_genesis(*slot))),
-			ViableEpochDescriptor::Signaled(identifier, _) =>
-				self.epoch(&identifier).map(ViableEpoch::Signaled),
+			ViableEpochDescriptor::UnimportedGenesis(slot) =>{
+				log::info!("[Unknown] UnimportedGenesis ");
+				Some(ViableEpoch::UnimportedGenesis(make_genesis(*slot)))
+			},
+			ViableEpochDescriptor::Signaled(identifier, _) =>{
+				self.epoch(&identifier).map(ViableEpoch::Signaled)
+			},
 		}
 	}
 

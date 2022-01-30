@@ -385,7 +385,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		);
 
 		let header = block_import_params.post_header();
-		info!("begin to [import block]");
+		log::trace!("begin to [import block]");
 		match block_import.import_block(block_import_params, Default::default()).await {
 			Ok(res) => {
 				res.handle_justification(

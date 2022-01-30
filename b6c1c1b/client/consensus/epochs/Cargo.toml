@@ -19,3 +19,4 @@ sp-runtime = {  path = "../../../primitives/runtime" , version = "4.0.0-dev"}
 sp-blockchain = { version = "4.0.0-dev", path = "../../../primitives/blockchain" }
 sc-client-api = { path = "../../api" , version = "4.0.0-dev"}
 sc-consensus = { path = "../common" , version = "0.10.0-dev"}
+log = "0.4.14"

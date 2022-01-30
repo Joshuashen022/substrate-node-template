@@ -921,7 +921,7 @@ fn find_next_epoch_digest<B: BlockT>(
 				for (id, stake) in epoch.authorities{
 					s += &format!("({},{})", id, stake);
 				}
-				// info!("(find_next_epoch_digest) true {:?}", s);
+				info!("[ERROR] MultipleEpochChangeDigests");
 				return Err(babe_err(Error::MultipleEpochChangeDigests))
 			},
 			(Some(ConsensusLog::NextEpochData(epoch)), false) =>{
@@ -929,7 +929,7 @@ fn find_next_epoch_digest<B: BlockT>(
 				for (id, stake) in epoch.clone().authorities{
 					s += &format!("({},{})", id, stake);
 				}
-				// info!("(find_next_epoch_digest) true {:?}", s);
+				info!("[EPOCH] authorities: {:?}", s);
 				epoch_digest = Some(epoch)
 			},
 			_ => trace!(target: "babe", "Ignoring digest not meant for us"),
@@ -1492,13 +1492,14 @@ where
 			// Current Epoch Information
 			match &epoch_descriptor{
 				ViableEpochDescriptor::Signaled(epoch_identifier, epoch_header) => {
-					let position = epoch_identifier.position;
+					let _position = epoch_identifier.position;
 					let _hash = epoch_identifier.hash;
-					let number = epoch_identifier.number;
-					let start_slot = epoch_header.start_slot;
-					let end_slot = epoch_header.end_slot;
+					let _number = epoch_identifier.number;
+					let _start_slot = epoch_header.start_slot;
+					let _end_slot = epoch_header.end_slot;
 
-					log::info!("[EPOCH] {:?} ({:?}-{:?}) {:?}", number, start_slot, end_slot, position);
+					// there is a bug at "number"
+					// log::info!("[EPOCH] {:?} ({:?}-{:?}) {:?}", number, start_slot.0, end_slot.0, position);
 				}
 				_ => {
 					log::info!("[EPOCH] {:?}", &epoch_descriptor);
@@ -1514,17 +1515,17 @@ where
 				.map_err(|e| ConsensusError::ClientImport(e.to_string()))?;
 
 			match (first_in_epoch, next_epoch_digest.is_some(), next_config_digest.is_some()) {
-				(true, true, _) => {},
-				(false, false, false) => {},
-				(false, false, true) =>
+				(true, true, _) => {}, // should change and has change-info
+				(false, false, false) => {},// should not change and does not have change-info and config
+				(false, false, true) =>	// should not change does not have change-info but have config info
 					return Err(ConsensusError::ClientImport(
 						babe_err(Error::<Block>::UnexpectedConfigChange).into(),
 					)),
-				(true, false, _) =>
+				(true, false, _) =>	// should change does not have change-info
 					return Err(ConsensusError::ClientImport(
 						babe_err(Error::<Block>::ExpectedEpochChange(hash, slot)).into(),
 					)),
-				(false, true, _) =>
+				(false, true, _) =>	// should not change but have change-info
 					return Err(ConsensusError::ClientImport(
 						babe_err(Error::<Block>::UnexpectedEpochChange).into(),
 					)),
