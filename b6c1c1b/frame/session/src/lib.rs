@@ -561,10 +561,13 @@ pub mod pallet {
 		/// Called when a block is initialized. Will rotate session if it is the last
 		/// block of the current session.
 		fn on_initialize(n: T::BlockNumber) -> Weight {
+			log::trace!("#[pallet::hooks]::on_initialize() {:?}", n);
 			if T::ShouldEndSession::should_end_session(n) {
+				log::info!("Should end session yes!");
 				Self::rotate_session();
 				T::BlockWeights::get().max_block
 			} else {
+				log::trace!("Should end session no!");
 				// NOTE: the non-database part of the weight for `should_end_session(n)` is
 				// included as weight for empty block, the database part is expected to be in
 				// cache.

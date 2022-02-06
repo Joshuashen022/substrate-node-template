@@ -5662,6 +5662,7 @@ name = "sc-consensus-epochs"
 version = "0.10.0-dev"
 dependencies = [
  "fork-tree",
+ "log",
  "parity-scale-codec",
  "sc-client-api",
  "sc-consensus",
