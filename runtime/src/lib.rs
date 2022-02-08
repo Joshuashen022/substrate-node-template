@@ -313,7 +313,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
-		Session: pallet_session::{Call, Storage, Event, Config<T>},
+		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
 	}
 );
 

@@ -623,6 +623,16 @@ pub mod pallet {
 			Self::do_purge_keys(&who)?;
 			Ok(())
 		}
+
+		/// Test pallet::call
+		#[pallet::weight(100)]
+		pub fn hello_world(origin: OriginFor<T>, num:u8) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			log::info!("{:?} says hello world with {}",who, num);
+			Self::inner_transfer_to(&who)?;
+			Ok(())
+		}
+
 	}
 }
 
@@ -806,6 +816,19 @@ impl<T: Config> Pallet<T> {
 			let assertion = frame_system::Pallet::<T>::inc_consumers(&account).is_ok();
 			debug_assert!(assertion, "can_inc_consumer() returned true; no change since; qed");
 		}
+
+		Ok(())
+	}
+
+	/// Transfer stake to the according owner of Key,
+	/// if Key owner not exist, report error
+	/// if stake ratio not enough, report error
+	fn inner_transfer_to(account: &T::AccountId) -> DispatchResult {
+		let who = T::ValidatorIdOf::convert(account.clone())
+			.or_else(|| T::ValidatorId::try_from(account.clone()).ok())
+			.ok_or(Error::<T>::NoAssociatedValidatorId)?;
+		log::info!("ValidatorId {:?} ",who);
+		ensure!(frame_system::Pallet::<T>::can_inc_consumer(&account), Error::<T>::NoAccount);
 
 		Ok(())
 	}
