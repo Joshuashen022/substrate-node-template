@@ -90,11 +90,18 @@ path = "../b6c1c1b/frame/session"
 features = ["historical"]
 version = '4.0.0-dev'
 
+# for staking
+[dependencies.pallet-staking]
+default-features = false
+path = "../b6c1c1b/frame/staking"
+version = '4.0.0-dev'
+
 [dependencies.pallet-timestamp]
 default-features = false
 path = "../b6c1c1b/frame/timestamp"
 version = '4.0.0-dev'
 
+#pallet_transaction_payment for staking
 [dependencies.pallet-transaction-payment]
 default-features = false
 path = "../b6c1c1b/frame/transaction-payment"
@@ -148,6 +155,11 @@ version = '4.0.0-dev'
 [dependencies.sp-session]
 default-features = false
 path = "../b6c1c1b/primitives/session"
+version = '4.0.0-dev'
+
+[dependencies.sp-staking]
+default-features = false
+path = "../b6c1c1b/primitives/staking"
 version = '4.0.0-dev'
 
 [dependencies.sp-std]

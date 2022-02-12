@@ -25,6 +25,7 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
+use frame_system::{EnsureRoot, EnsureOneOf};
 // use sp_runtime::traits::{
 // 	BlakeTwo256, Block as BlockT,
 // 	AccountIdLookup, Verify, IdentifyAccount, OpaqueKeys, NumberFor,
@@ -241,8 +242,72 @@ impl pallet_session::Config for Runtime {
 	type Keys = opaque::SessionKeys;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
-	type SessionManager = ();
+	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type WeightInfo = ();
+}
+
+impl pallet_session::historical::Config for Runtime {
+	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
+}
+
+parameter_types! {
+	// Six sessions in an era (24 hours).
+	pub const SessionsPerEra: sp_staking::SessionIndex = 6;
+	// 28 eras for unbonding (28 days).
+	pub const BondingDuration: pallet_staking::EraIndex = 28;
+	pub const SlashDeferDuration: pallet_staking::EraIndex = 27;
+	pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
+	// pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+	pub const MaxNominatorRewardedPerValidator: u32 = 64;
+}
+
+// type SlashCancelOrigin = EnsureOneOf<
+// 	AccountId,
+// 	EnsureRoot<AccountId>,
+// 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+// >;
+
+// impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+// 	where
+// 		Call: From<C>,
+// {
+// 	type Extrinsic = UncheckedExtrinsic;
+// 	type OverarchingCall = Call;
+// }
+pub type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
+
+impl pallet_staking::Config for Runtime {
+	const MAX_NOMINATIONS: u32 = 30;
+
+	type UnixTime = Timestamp;
+	type Event = Event;
+
+	type Currency = Balances;
+	type CurrencyToVote = CurrencyToVote;
+	type RewardRemainder = ();
+	type Slash = ();
+	type Reward = ();
+
+	type SessionInterface = Self;
+	type NextNewSession = Session;
+
+	type SessionsPerEra = SessionsPerEra;
+	type BondingDuration = BondingDuration;
+	type SlashDeferDuration = SlashDeferDuration;
+	// A super-majority of the council can cancel the slash.
+	type SlashCancelOrigin = EnsureRoot<Self::AccountId>;
+
+	type EraPayout = ();
+	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+
+	type OffendingValidatorsThreshold = ();
+	type SortedListProvider = ();
+	type BenchmarkingConfig = runtime_common::elections::GenesisElectionOf<Self>;
+
+	type ElectionProvider = ();
+	type GenesisElectionProvider = ();
 	type WeightInfo = ();
 }
 
@@ -314,6 +379,8 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
+		Staking: pallet_staking::{Storage, Config<T>, Event<T>},
+
 	}
 );
 
