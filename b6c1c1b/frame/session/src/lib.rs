@@ -529,6 +529,14 @@ pub mod pallet {
 	pub type KeyOwner<T: Config> =
 		StorageMap<_, Twox64Concat, (KeyTypeId, Vec<u8>), T::ValidatorId, OptionQuery>;
 
+	/// Stake is changing between epoch, storage Validator's storage.
+	///
+	/// Key is "session index",
+	/// Value is a vector of "the validator ID transferred to" and "stake amount".
+	#[pallet::storage]
+	pub type StakeChange<T: Config> =
+		StorageMap<_, Twox64Concat, SessionIndex, Vec<(T::ValidatorId, f64)>, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event {
@@ -827,7 +835,8 @@ impl<T: Config> Pallet<T> {
 		let who = T::ValidatorIdOf::convert(account.clone())
 			.or_else(|| T::ValidatorId::try_from(account.clone()).ok())
 			.ok_or(Error::<T>::NoAssociatedValidatorId)?;
-		log::info!("ValidatorId {:?} ",who);
+
+		log::info!("ValidatorId stake is {:?} ",who);
 		ensure!(frame_system::Pallet::<T>::can_inc_consumer(&account), Error::<T>::NoAccount);
 
 		Ok(())
