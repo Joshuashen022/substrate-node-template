@@ -496,8 +496,6 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 	loop {
 		info!("");
 		info!("");
-		info!("");
-		info!("Updating time");
 		let slot_info = match slots.next_slot().await {
 			Ok(r) => r,
 			Err(e) => {

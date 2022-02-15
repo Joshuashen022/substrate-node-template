@@ -48,7 +48,7 @@ pub fn authority_keys_from_seed(s: &str) -> BabeId {
 
 pub fn development_config() -> Result<ChainSpec, String> {
 	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?;
-	// println!("using development {}", line!());
+	println!("using development {}", line!());
 	Ok(ChainSpec::from_genesis(
 		// Name
 		"Development",
@@ -91,7 +91,7 @@ fn session_keys(babe: BabeId) -> SessionKeys {
 
 pub fn local_testnet_config() -> Result<ChainSpec, String> {
 	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?;
-	// println!("using local_testnet {}", line!());
+	println!("using local_testnet {}", line!());
 	Ok(ChainSpec::from_genesis(
 		// Name
 		"Local Testnet",

@@ -246,6 +246,14 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	/// Authorities for test purpose
+	#[pallet::storage]
+	pub(super) type SomeAuthorities<T: Config> = StorageValue<
+		_,
+		WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>,
+		ValueQuery,
+	>;
+
 	/// Randomness under construction.
 	///
 	/// We make a trade-off between storage accesses and list length.
@@ -326,6 +334,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
+
 			SegmentIndex::<T>::put(0);
 			Pallet::<T>::initialize_authorities(&self.authorities);
 			EpochConfig::<T>::put(
@@ -343,13 +352,14 @@ pub mod pallet {
 		}
 
 		/// Block finalization
-		fn on_finalize(_n: BlockNumberFor<T>) {
+		fn on_finalize(sl: BlockNumberFor<T>) {
 			// at the end of the block, we can safely include the new VRF output
 			// from this block into the under-construction randomness. If we've determined
 			// that this block was the first in a new epoch, the changeover logic has
 			// already occurred at this point, so the under-construction randomness
-			// will only contain outputs from the right epoch.
+			// will only contain outputs from the right epoch.<Validators<T>>::put(initial_validators_0);
 
+			log::info!("slot[{:?}]", sl);
 			log::trace!("#[pallet_babe::hooks] (on_finalize)");
 			if let Some(Some(randomness)) = Initialized::<T>::take() {
 				Self::deposit_randomness(&randomness);
@@ -464,8 +474,23 @@ impl<T: Config> pallet_session::ShouldEndSession<T::BlockNumber> for Pallet<T> {
 		// => because pallet_session on_initialize() is called earlier than ours, let's ensure
 		// that we have synced with digest before checking if session should be ended.
 		Self::do_initialize(now);
+		let result = Self::should_epoch_change(now);
 
-		Self::should_epoch_change(now)
+		if result {
+			// do something
+			log::info!("SomeAuth");
+			let mut new_auth = Vec::new();
+			let old_auth = <SomeAuthorities<T>>::get();
+			for (id, weight) in old_auth {
+				let auth = (id, weight.checked_add(1).unwrap());
+				new_auth.push(auth);
+				log::info!("some id has weight {:?}", weight);
+			}
+			let input = WeakBoundedVec::<_, T::MaxAuthorities>::try_from(new_auth.to_vec())
+				.expect("Initial number of authorities should be lower than T::MaxAuthorities");
+			SomeAuthorities::<T>::put(&input);
+		}
+		 result
 	}
 }
 
@@ -784,7 +809,9 @@ impl<T: Config> Pallet<T> {
 				WeakBoundedVec::<_, T::MaxAuthorities>::try_from(authorities.to_vec())
 					.expect("Initial number of authorities should be lower than T::MaxAuthorities");
 			Authorities::<T>::put(&bounded_authorities);
+			// WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>
 			NextAuthorities::<T>::put(&bounded_authorities);
+			SomeAuthorities::<T>::put(&bounded_authorities);
 		}
 	}
 

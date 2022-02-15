@@ -409,8 +409,9 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
+
 	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
+	pub struct GenesisConfig<T: Config> { // T = Runtime
 		pub keys: Vec<(T::AccountId, T::ValidatorId, T::Keys)>,
 	}
 
@@ -424,6 +425,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+
 			if T::SessionHandler::KEY_TYPE_IDS.len() != T::Keys::key_ids().len() {
 				panic!("Number of keys in session handler and session keys does not match");
 			}
@@ -442,6 +444,7 @@ pub mod pallet {
 				});
 
 			for (account, val, keys) in self.keys.iter().cloned() {
+
 				<Pallet<T>>::inner_set_keys(&val, keys)
 					.expect("genesis config must not contain duplicates; qed");
 				if frame_system::Pallet::<T>::inc_consumers(&account).is_err() {
@@ -482,6 +485,8 @@ pub mod pallet {
 			// Tell everyone about the genesis session keys
 			T::SessionHandler::on_genesis_session::<T::Keys>(&queued_keys);
 
+			<Validators2<T>>::put(initial_validators_0.clone());
+
 			<Validators<T>>::put(initial_validators_0);
 			<QueuedKeys<T>>::put(queued_keys);
 
@@ -489,10 +494,28 @@ pub mod pallet {
 		}
 	}
 
+	/// Map from all Validators account to the normal account.
+	#[pallet::storage]
+	#[pallet::getter(fn bond)]
+	pub type Bond<T: Config> = StorageMap<
+		_,
+		Twox64Concat,
+		T::ValidatorId,
+		T::AccountId,
+		ValueQuery,
+		GetDefault,
+		ConstU32<300_000>,
+	>;
+
 	/// The current set of validators.
 	#[pallet::storage]
 	#[pallet::getter(fn validators)]
 	pub type Validators<T: Config> = StorageValue<_, Vec<T::ValidatorId>, ValueQuery>;
+
+	/// For test only
+	#[pallet::storage]
+	#[pallet::getter(fn validators2)]
+	pub type Validators2<T: Config> = StorageValue<_, Vec<T::ValidatorId>, ValueQuery>;
 
 	/// Current index of the session.
 	#[pallet::storage]
@@ -563,6 +586,7 @@ pub mod pallet {
 		fn on_initialize(n: T::BlockNumber) -> Weight {
 			log::trace!("#[pallet::hooks]::on_initialize() {:?}", n);
 			if T::ShouldEndSession::should_end_session(n) {
+
 				log::info!("Should end session yes!");
 				Self::rotate_session();
 				T::BlockWeights::get().max_block
@@ -629,6 +653,10 @@ pub mod pallet {
 		pub fn hello_world(origin: OriginFor<T>, num:u8) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			log::info!("{:?} says hello world with {}",who, num);
+			let validators1 = <Validators<T>>::get();
+			let validators2 = Self::validators();
+			log::info!("get validators {:?}", validators1);
+			log::info!("Self::validators() {:?}", validators2);
 			Self::inner_transfer_to(&who)?;
 			Ok(())
 		}
@@ -652,10 +680,15 @@ impl<T: Config> Pallet<T> {
 
 		// Get queued session keys and validators.
 		let session_keys = <QueuedKeys<T>>::get();
+
+		// log::info!(" session hook rotate_session Validators2 {:?}", <Validators2<T>>::get()); // [, ]
+		// log::info!(" session hook session_keys {:?}", session_keys); // [(, <wasm:stripped>), (, <wasm:stripped>)]
+
 		let validators =
 			session_keys.iter().map(|(validator, _)| validator.clone()).collect::<Vec<_>>();
 		<Validators<T>>::put(&validators);
 
+		// log::info!(" session hook rotate_session after {:?}", <Validators<T>>::get()); // [, ]
 		if changed {
 			// reset disabled validators
 			<DisabledValidators<T>>::take();
