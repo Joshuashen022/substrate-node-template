@@ -325,14 +325,20 @@ impl<AId> SessionHandler<AId> for Tuple {
 		validators: &[(AId, Ks)],
 		queued_validators: &[(AId, Ks)],
 	) {
+		log::info!("SessionHandler for Tuple");
+		// let _account_id = &validators[0].0;
+		// let validator =  &validators[0].1
+		// 	.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
+		// 	.unwrap();
+		// log::info!("validator {:?}", validator.as_slice());
 		for_tuples!(
 			#(
 				let our_keys: Box<dyn Iterator<Item=_>> = Box::new(validators.iter()
 					.map(|k| (&k.0, k.1.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
-						.unwrap_or_default())));
+						.unwrap()))); // .unwrap_or_default())));
 				let queued_keys: Box<dyn Iterator<Item=_>> = Box::new(queued_validators.iter()
 					.map(|k| (&k.0, k.1.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
-						.unwrap_or_default())));
+						.unwrap()))); // .unwrap_or_default())));
 				Tuple::on_new_session(changed, our_keys, queued_keys);
 			)*
 		)
@@ -484,9 +490,10 @@ pub mod pallet {
 
 			// Tell everyone about the genesis session keys
 			T::SessionHandler::on_genesis_session::<T::Keys>(&queued_keys);
-
+			log::info!("initial_validators {:?}", initial_validators_0);
 			<Validators2<T>>::put(initial_validators_0.clone());
-
+			let gets = <Validators2<T>>::get();
+			log::info!("Validators2 gets {:?}", gets);
 			<Validators<T>>::put(initial_validators_0);
 			<QueuedKeys<T>>::put(queued_keys);
 
@@ -585,11 +592,13 @@ pub mod pallet {
 		/// block of the current session.
 		fn on_initialize(n: T::BlockNumber) -> Weight {
 			log::trace!("#[pallet::hooks]::on_initialize() {:?}", n);
+			// log::info!("AccountId {:?}", T::AccountId);
+			let max_block = T::BlockWeights::get().max_block;
+			// log::info!("max_block {:?}", max_block); // 2000000000000
 			if T::ShouldEndSession::should_end_session(n) {
-
 				log::info!("Should end session yes!");
 				Self::rotate_session();
-				T::BlockWeights::get().max_block
+				max_block
 			} else {
 				log::trace!("Should end session no!");
 				// NOTE: the non-database part of the weight for `should_end_session(n)` is
@@ -736,6 +745,7 @@ impl<T: Config> Pallet<T> {
 			let queued_amalgamated = next_validators
 				.into_iter()
 				.map(|a| {
+					// log::info!(" rotate_session ValidatorId {:?}", a);
 					let k = Self::load_keys(&a).unwrap_or_default();
 					check_next_changed(&k);
 					(a, k)

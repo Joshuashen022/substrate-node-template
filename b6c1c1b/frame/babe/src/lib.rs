@@ -94,6 +94,7 @@ pub struct SameAuthoritiesForever;
 impl EpochChangeTrigger for SameAuthoritiesForever {
 	fn trigger<T: Config>(now: T::BlockNumber) {
 		if <Pallet<T>>::should_epoch_change(now) {
+			log::info!("#[pallet::babe] SameAuthoritiesForever");
 			let authorities = <Pallet<T>>::authorities();
 			let next_authorities = authorities.clone();
 
@@ -490,7 +491,7 @@ impl<T: Config> pallet_session::ShouldEndSession<T::BlockNumber> for Pallet<T> {
 				.expect("Initial number of authorities should be lower than T::MaxAuthorities");
 			SomeAuthorities::<T>::put(&input);
 		}
-		 result
+		result
 	}
 }
 
@@ -513,7 +514,7 @@ impl<T: Config> Pallet<T> {
 		// epoch 0 as having started at the slot of block 1. We want to use
 		// the same randomness and validator set as signalled in the genesis,
 		// so we don't rotate the epoch.
-		log::trace!("#[pallet::babe] (should_epoch_change)");
+		// log::trace!("#[pallet::babe] (should_epoch_change)");
 		now != One::one() && {
 			let diff = CurrentSlot::<T>::get().saturating_sub(Self::current_epoch_start());
 			*diff >= T::EpochDuration::get()
@@ -536,7 +537,7 @@ impl<T: Config> Pallet<T> {
 	// WEIGHT NOTE: This function is tied to the weight of `EstimateNextSessionRotation`. If you
 	// update this function, you must also update the corresponding weight.
 	pub fn next_expected_epoch_change(now: T::BlockNumber) -> Option<T::BlockNumber> {
-		log::trace!("#[pallet::babe] (next_expected_epoch_change)");
+		log::info!("#[pallet::babe] (next_expected_epoch_change)");
 		let next_slot = Self::current_epoch_start().saturating_add(T::EpochDuration::get());
 		next_slot.checked_sub(*CurrentSlot::<T>::get()).map(|slots_remaining| {
 			// This is a best effort guess. Drifts in the slot/block ratio will cause errors here.
@@ -554,7 +555,7 @@ impl<T: Config> Pallet<T> {
 		authorities: WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>,
 		next_authorities: WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>,
 	) {
-		log::trace!("#[pallet::babe] (enact_epoch_change)");
+		log::info!("#[pallet::babe] (enact_epoch_change)");
 		// PRECONDITION: caller has done initialization and is guaranteed
 		// by the session module to be called before this.
 		debug_assert!(Self::initialized().is_some());
@@ -940,7 +941,11 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	where
 		I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
 	{
-		let authorities = validators.map(|(_account, k)| (k, 1)).collect::<Vec<_>>();
+		log::info!("#[pallet::babe] (on_new_session)");
+		let authorities = validators.map(|(_account, k)|{
+			log::info!("AuthorityId {:?}",k.as_slice() ); // [..28, 97, 20..]
+			(k, 1)
+		}).collect::<Vec<_>>();
 		let bounded_authorities = WeakBoundedVec::<_, T::MaxAuthorities>::force_from(
 			authorities,
 			Some(

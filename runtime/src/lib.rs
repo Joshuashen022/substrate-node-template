@@ -9,9 +9,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 pub mod common;
 pub mod constants;
 
-// use pallet_grandpa::{
-// 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
-// };
 use sp_api::impl_runtime_apis;
 
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -221,9 +218,10 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 impl pallet_babe::Config for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
+	// ExternalTrigger has the same meaning as "()"
 	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
 	type MaxAuthorities = MaxAuthorities;
-	type DisabledValidators = ();
+	type DisabledValidators = Session;
 	type KeyOwnerProof =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
 	type KeyOwnerIdentification =
