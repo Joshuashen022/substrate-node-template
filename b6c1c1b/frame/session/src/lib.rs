@@ -558,6 +558,7 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type KeyOwner<T: Config> =
 		StorageMap<_, Twox64Concat, (KeyTypeId, Vec<u8>), T::ValidatorId, OptionQuery>;
+	// pub struct KeyTypeId(pub [u8; 4]); //[98, 97, 98, 101],
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -678,6 +679,28 @@ impl<T: Config> Pallet<T> {
 	/// validator set have a session of delay to take effect. This allows for equivocation
 	/// punishment after a fork.
 	pub fn rotate_session() {
+		{
+			log::info!("Test values");
+			// KeyOwner<T>
+			{
+				// let values_of_storagemap_iter = <KeyOwner<T>>::iter(); // <Validators<T>>::get()
+				// let keys_of_of_storagemap_iter = <KeyOwner<T>>::iter_keys();
+				// for (key, value) in values_of_storagemap_iter.zip(keys_of_of_storagemap_iter){
+				// 	let ((key_type_id, vec_u8), id) = key;
+				// 	let (key_type_id_2, vec_u8_2) = value;
+				// 	log::info!("key {:?},{:?},{:?}  values {:?},{:?}",
+				// 		key_type_id.0,//[98, 97, 98, 101],
+				// 		vec_u8, // [212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159,
+				// 				// 214, 130, 44, 133, 88, 133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125]
+				// 		id,		// outputs nothing
+				// 		key_type_id_2.0, // same as above
+				// 		vec_u8_2		 // same as above
+				// 	);
+				// }
+			}
+			log::info!("Test stops");
+		}
+
 		let session_index = <CurrentIndex<T>>::get();
 		log::trace!(target: "runtime::session", "rotating session {:?}", session_index);
 
