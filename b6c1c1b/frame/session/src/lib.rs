@@ -136,7 +136,7 @@ use sp_std::{
 	ops::{Rem, Sub},
 	prelude::*,
 };
-
+use log::info;
 pub use pallet::*;
 pub use weights::WeightInfo;
 
@@ -244,6 +244,7 @@ pub trait SessionManager<ValidatorId> {
 	/// The session manager might decide to treat this in a different way. Default impl is simply
 	/// using [`new_session`](Self::new_session).
 	fn new_session_genesis(new_index: SessionIndex) -> Option<Vec<ValidatorId>> {
+		// log::info!("origin new_session_genesis"); // calling this function
 		Self::new_session(new_index)
 	}
 	/// End the session.
@@ -258,10 +259,14 @@ pub trait SessionManager<ValidatorId> {
 }
 
 impl<A> SessionManager<A> for () {
-	fn new_session(_: SessionIndex) -> Option<Vec<A>> {
+	fn new_session(_n: SessionIndex) -> Option<Vec<A>> {
+		// log::info!("new_session {} for ()", _n);// calling this one
 		None
 	}
-	fn start_session(_: SessionIndex) {}
+	fn start_session(_: SessionIndex) {
+		log::trace!("Start session for ()");
+		// log::info!(" QueuedKeys at start_session for () {:?}", <QueuedKeys<T>>::get());
+	}
 	fn end_session(_: SessionIndex) {}
 }
 
@@ -345,6 +350,7 @@ impl<AId> SessionHandler<AId> for Tuple {
 	}
 
 	fn on_before_session_ending() {
+		// log::info!("on_before_session_ending for_tuples");
 		for_tuples!( #( Tuple::on_before_session_ending(); )* )
 	}
 
@@ -435,6 +441,9 @@ pub mod pallet {
 			if T::SessionHandler::KEY_TYPE_IDS.len() != T::Keys::key_ids().len() {
 				panic!("Number of keys in session handler and session keys does not match");
 			}
+			// for id in T::Keys::key_ids(){
+			// 	info!("id {:?}", id.0); // [98, 97, 98, 101] only one
+			// }
 
 			T::SessionHandler::KEY_TYPE_IDS
 				.iter()
@@ -451,6 +460,12 @@ pub mod pallet {
 
 			for (account, val, keys) in self.keys.iter().cloned() {
 
+				// info!("account {:?} val {:?} keys {:?}", account, val, keys);
+				// account 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...)
+				// val 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...)
+				// keys
+				// SessionKeys { babe: Public(8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...)) }
+
 				<Pallet<T>>::inner_set_keys(&val, keys)
 					.expect("genesis config must not contain duplicates; qed");
 				if frame_system::Pallet::<T>::inc_consumers(&account).is_err() {
@@ -462,12 +477,32 @@ pub mod pallet {
 				}
 			}
 
+			// test NextKeys value in Genesis build.
+			{
+				// info!("Genesis NextKeys test start");
+				// let next_keys_maps_value = <NextKeys<T>>::iter();
+				// let next_keys_maps_key = <NextKeys<T>>::iter_keys();
+				// for (key, value) in next_keys_maps_key.zip(next_keys_maps_value){
+				// 	info!("key {:?} value {:?}", key, value);
+				// 	// key 	ValidatorId d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...)
+				// 	// value (
+				// 	// 		ValidatorId d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...),
+				// 	// 		SessionKeys { babe: Public(d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...))
+				// 	// })
+				// }
+				// info!("Genesis NextKeys test end");
+			}
+
+
 			let initial_validators_0 =
 				T::SessionManager::new_session_genesis(0).unwrap_or_else(|| {
+					// `new_session_genesis(0)` will return `None`
+					// So the following will executing
 					frame_support::print(
 						"No initial validator provided by `SessionManager`, use \
 						session config keys to generate initial validator set.",
 					);
+					// info!("You are right");
 					self.keys.iter().map(|x| x.1.clone()).collect()
 				});
 			assert!(
@@ -475,6 +510,7 @@ pub mod pallet {
 				"Empty validator set for session 0 in genesis block!"
 			);
 
+			// `epoch1` equals `epoch0`
 			let initial_validators_1 = T::SessionManager::new_session_genesis(1)
 				.unwrap_or_else(|| initial_validators_0.clone());
 			assert!(
@@ -490,14 +526,25 @@ pub mod pallet {
 
 			// Tell everyone about the genesis session keys
 			T::SessionHandler::on_genesis_session::<T::Keys>(&queued_keys);
-			log::info!("initial_validators {:?}", initial_validators_0);
-			<Validators2<T>>::put(initial_validators_0.clone());
-			let gets = <Validators2<T>>::get();
-			log::info!("Validators2 gets {:?}", gets);
-			<Validators<T>>::put(initial_validators_0);
-			<QueuedKeys<T>>::put(queued_keys);
 
-			T::SessionManager::start_session(0);
+			// [d435..da27d (5GrwvaEF...), 8eaf..6a48 (5FHneW46...)]
+			// log::info!("initial_validators {:?}", initial_validators_0);
+
+			<Validators<T>>::put(initial_validators_0.clone());
+			<QueuedKeys<T>>::put(queued_keys);
+			<Validators2<T>>::put(initial_validators_0);
+
+			// let _ = <Validators2<T>>::get();
+			// [d435..da27d (5GrwvaEF...), 8eaf..6a48 (5FHneW46...)]
+			// log::info!("Validators2 gets {:?}", <Validators2<T>>::get());
+
+
+			//[(d4..7d (5GrwvaEF...), SessionKeys { babe: Public(d4..7d (5GrwvaEF...)) }),
+			// (8e..48 (5FHneW46...), SessionKeys { babe: Public(8e..48 (5FHneW46...)) })]
+			log::info!("(start_session) before {:?}", <QueuedKeys<T>>::get());
+
+			T::SessionManager::start_session(0); // do nothing
+			log::info!("(start_session) after {:?}", <QueuedKeys<T>>::get());
 		}
 	}
 
@@ -592,16 +639,15 @@ pub mod pallet {
 		/// Called when a block is initialized. Will rotate session if it is the last
 		/// block of the current session.
 		fn on_initialize(n: T::BlockNumber) -> Weight {
-			log::trace!("#[pallet::hooks]::on_initialize() {:?}", n);
-			// log::info!("AccountId {:?}", T::AccountId);
+			log::info!("#[pallet::hooks]::on_initialize() {:?}", n);
+			log::info!("(on_initialize) {:?}", <QueuedKeys<T>>::get());
 			let max_block = T::BlockWeights::get().max_block;
-			// log::info!("max_block {:?}", max_block); // 2000000000000
 			if T::ShouldEndSession::should_end_session(n) {
 				log::info!("Should end session yes!");
 				Self::rotate_session();
 				max_block
 			} else {
-				log::trace!("Should end session no!");
+				log::info!("Should end session no!");
 				// NOTE: the non-database part of the weight for `should_end_session(n)` is
 				// included as weight for empty block, the database part is expected to be in
 				// cache.
@@ -679,9 +725,9 @@ impl<T: Config> Pallet<T> {
 	/// validator set have a session of delay to take effect. This allows for equivocation
 	/// punishment after a fork.
 	pub fn rotate_session() {
+		// KeyOwner<T>
 		{
-			log::info!("Test values");
-			// KeyOwner<T>
+			// log::info!("Test values");
 			{
 				// let values_of_storagemap_iter = <KeyOwner<T>>::iter(); // <Validators<T>>::get()
 				// let keys_of_of_storagemap_iter = <KeyOwner<T>>::iter_keys();
@@ -698,29 +744,26 @@ impl<T: Config> Pallet<T> {
 				// 	);
 				// }
 			}
-			log::info!("Test stops");
+			// log::info!("Test stops");
 		}
+		log::info!("(rotate_session) {:?}", <QueuedKeys<T>>::get());
 
-		let session_index = <CurrentIndex<T>>::get();
+		let session_index = <CurrentIndex<T>>::get(); // 0, 1, 2, ..
 		log::trace!(target: "runtime::session", "rotating session {:?}", session_index);
 
 		let changed = <QueuedChanged<T>>::get();
 
+		let session_keys = <QueuedKeys<T>>::get();
+		log::info!(" session hook session_keys {:?}", session_keys); // [(, <wasm:stripped>), (, <wasm:stripped>)]
 		// Inform the session handlers that a session is going to end.
 		T::SessionHandler::on_before_session_ending();
 		T::SessionManager::end_session(session_index);
 
 		// Get queued session keys and validators.
-		let session_keys = <QueuedKeys<T>>::get();
-
-		// log::info!(" session hook rotate_session Validators2 {:?}", <Validators2<T>>::get()); // [, ]
-		// log::info!(" session hook session_keys {:?}", session_keys); // [(, <wasm:stripped>), (, <wasm:stripped>)]
-
-		let validators =
+		let validators = // [, ]
 			session_keys.iter().map(|(validator, _)| validator.clone()).collect::<Vec<_>>();
 		<Validators<T>>::put(&validators);
 
-		// log::info!(" session hook rotate_session after {:?}", <Validators<T>>::get()); // [, ]
 		if changed {
 			// reset disabled validators
 			<DisabledValidators<T>>::take();
@@ -730,7 +773,7 @@ impl<T: Config> Pallet<T> {
 		let session_index = session_index + 1;
 		<CurrentIndex<T>>::put(session_index);
 
-		T::SessionManager::start_session(session_index);
+		T::SessionManager::start_session(session_index); // do nothing
 
 		// Get next validator set.
 		let maybe_next_validators = T::SessionManager::new_session(session_index + 1);

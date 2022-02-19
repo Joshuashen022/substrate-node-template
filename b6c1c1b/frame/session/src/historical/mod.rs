@@ -204,6 +204,7 @@ where
 	}
 
 	fn new_session_genesis(new_index: SessionIndex) -> Option<Vec<T::ValidatorId>> {
+		log::info!("historical new_session_genesis");
 		Self::do_new_session(new_index, true)
 	}
 

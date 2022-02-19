@@ -479,13 +479,13 @@ impl<T: Config> pallet_session::ShouldEndSession<T::BlockNumber> for Pallet<T> {
 
 		if result {
 			// do something
-			log::info!("SomeAuth");
+			// log::info!("SomeAuth");
 			let mut new_auth = Vec::new();
 			let old_auth = <SomeAuthorities<T>>::get();
 			for (id, weight) in old_auth {
 				let auth = (id, weight.checked_add(1).unwrap());
 				new_auth.push(auth);
-				log::info!("some id has weight {:?}", weight);
+				// log::info!("some id has weight {:?}", weight);
 			}
 			let input = WeakBoundedVec::<_, T::MaxAuthorities>::try_from(new_auth.to_vec())
 				.expect("Initial number of authorities should be lower than T::MaxAuthorities");

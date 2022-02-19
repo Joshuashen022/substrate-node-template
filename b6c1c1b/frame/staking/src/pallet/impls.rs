@@ -1036,6 +1036,7 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 		Self::new_session(new_index, false)
 	}
 	fn new_session_genesis(new_index: SessionIndex) -> Option<Vec<T::AccountId>> {
+		log::info!("staking new_session_genesis");
 		log!(trace, "planning new session {} at genesis", new_index);
 		CurrentPlannedSession::<T>::put(new_index);
 		Self::new_session(new_index, true)

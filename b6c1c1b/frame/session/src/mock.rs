@@ -148,6 +148,7 @@ impl SessionHandler<u64> for TestSessionHandler {
 		DISABLED.with(|l| *l.borrow_mut() = true)
 	}
 	fn on_before_session_ending() {
+		info!("on_before_session_ending TestSessionHandler u64");
 		BEFORE_SESSION_END_CALLED.with(|b| *b.borrow_mut() = true);
 	}
 }
