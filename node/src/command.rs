@@ -135,7 +135,7 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			// println!("(run) None");
 			let runner = cli.create_runner(&cli.run)?;
-			// println!("(run) None run_node_until_exit");
+			// println!("{:?}", config.role);
 			runner.run_node_until_exit(|config| async move {
 				service::new_full(config).map_err(sc_cli::Error::Service)
 			})

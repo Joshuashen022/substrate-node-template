@@ -599,14 +599,14 @@ pub mod pallet {
 
 	/// The next session keys for a validator.
 	#[pallet::storage]
-	pub type NextKeys<T: Config> =
+	pub type NextKeys<T: Config> = // not using since session manager is ()
 		StorageMap<_, Twox64Concat, T::ValidatorId, T::Keys, OptionQuery>;
 
 	/// The owner of a key. The key is the `KeyTypeId` + the encoded key.
 	#[pallet::storage]
 	pub type KeyOwner<T: Config> =
 		StorageMap<_, Twox64Concat, (KeyTypeId, Vec<u8>), T::ValidatorId, OptionQuery>;
-	// pub struct KeyTypeId(pub [u8; 4]); //[98, 97, 98, 101],
+	// pub struct KeyTypeId(pub [u8; 4]); //[98, 97, 98, 101] =  b"babe";
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -678,7 +678,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			ensure!(keys.ownership_proof_is_valid(&proof), Error::<T>::InvalidProof);
 
-			Self::do_set_keys(&who, keys)?;
+			Self::do_set_keys(&who, keys)?;// <NextKeys<T>>::insert(v, keys);
 			Ok(())
 		}
 
@@ -743,6 +743,25 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Add a key for existing account
+		#[pallet::weight(100)]
+		pub fn add_key(origin: OriginFor<T>, keys: T::Keys, proof: Vec<u8>) -> DispatchResult {// keys: T::Keys, proof: Vec<u8>
+			// inpute key
+			// 0xd6b08f73213e7d8234b4307f333e08fca285c4812699345bf099350387512d55
+			let who = ensure_signed(origin)?;
+
+			// Here assume Validator is the same as AccountId
+			// let converet = who as <T as Config>::ValidatorId;
+
+			let raw = keys.get_raw(KeyTypeId::try_from("babe").unwrap());
+			// log::info!("raw_key {:?}", raw);
+			// [214, 176, 143, 115, 33, 62, 125, 130, 52, 180, 48, 127, 51, 62, 8, 252,
+			// 162, 133, 196, 129, 38, 153, 52, 91, 240, 153, 53, 3, 135, 81, 45, 85]
+
+			log::info!("{}", vec_into_key(Vec::from(raw)));
+			Self::inner_set_keys(&converet, keys)?;
+			Ok(())
+		}
 	}
 }
 
@@ -1146,4 +1165,13 @@ impl<T: Config, Inner: FindAuthor<u32>> FindAuthor<T::ValidatorId>
 		let validators = <Pallet<T>>::validators();
 		validators.get(i as usize).map(|k| k.clone())
 	}
+}
+
+fn vec_into_key(v: Vec<u8>) -> String {
+	v.iter()
+		.map(|x| format!("{:X}",x))
+		.fold(String::new(),|mut sum, s|{
+			sum += &s;
+			sum
+		})
 }

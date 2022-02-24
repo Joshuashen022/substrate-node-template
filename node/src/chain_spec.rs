@@ -155,6 +155,8 @@ fn testnet_genesis(
 
 	let mut sessionkeys = Vec::new();
 	for (account, key) in endowed_accounts.iter().zip(initial_authorities){
+		println!("account {:?}", account);
+		// println!("key {:?}", key);
 		sessionkeys.push((account.clone(), account.clone(), session_keys(key.clone())));
 	}
 
