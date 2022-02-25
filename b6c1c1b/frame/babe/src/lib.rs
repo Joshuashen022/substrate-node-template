@@ -474,9 +474,11 @@ impl<T: Config> pallet_session::ShouldEndSession<T::BlockNumber> for Pallet<T> {
 		// should_end_session() from it's own on_initialize() handler
 		// => because pallet_session on_initialize() is called earlier than ours, let's ensure
 		// that we have synced with digest before checking if session should be ended.
+		// log::info!("(should_end_session)");
 		Self::do_initialize(now);
+		// log::info!("(should_end_session) should_epoch_change");
 		let result = Self::should_epoch_change(now);
-
+		// log::info!("(should_end_session) result");
 		if result {
 			// do something
 			// log::info!("SomeAuth");

@@ -139,6 +139,15 @@ use sp_std::{
 pub use pallet::*;
 pub use weights::WeightInfo;
 
+// use scale_info::prelude::string::String;
+// fn vec_into_key(v: Vec<u8>) -> String {
+// 	v.iter()
+// 		.map(|x| format!("{:X}",x))
+// 		.fold(String::new(),|mut sum, s|{
+// 			sum += &s;
+// 			sum
+// 		})
+// }
 /// Decides whether the session should be ended.
 pub trait ShouldEndSession<BlockNumber> {
 	/// Return `true` if the session should be ended.
@@ -465,7 +474,8 @@ pub mod pallet {
 				// keys
 				// SessionKeys { babe: Public(8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...)) }
 
-				// <KeyOwner<T>>
+				// <KeyOwner<T>> (id, key_raw), v
+				// <NextKeys<T>> v, k
 				<Pallet<T>>::inner_set_keys(&val, keys)
 					.expect("genesis config must not contain duplicates; qed");
 				if frame_system::Pallet::<T>::inc_consumers(&account).is_err() {
@@ -544,6 +554,9 @@ pub mod pallet {
 			//[(d4..7d (5GrwvaEF...), SessionKeys { babe: Public(d4..7d (5GrwvaEF...)) }),
 			// (8e..48 (5FHneW46...), SessionKeys { babe: Public(8e..48 (5FHneW46...)) })]
 			log::info!("(start_session) before {:?}", <QueuedKeys<T>>::get());
+
+			// Reset next key to none.
+			// <Pallet<T>>::reset_next_keys();
 
 			T::SessionManager::start_session(0); // do nothing
 		}
@@ -648,7 +661,7 @@ pub mod pallet {
 				Self::rotate_session();
 				max_block
 			} else {
-				log::info!("Should end session no!");
+				log::trace!("Should end session no!");
 				// NOTE: the non-database part of the weight for `should_end_session(n)` is
 				// included as weight for empty block, the database part is expected to be in
 				// cache.
@@ -745,21 +758,28 @@ pub mod pallet {
 
 		/// Add a key for existing account
 		#[pallet::weight(100)]
-		pub fn add_key(origin: OriginFor<T>, keys: T::Keys, proof: Vec<u8>) -> DispatchResult {// keys: T::Keys, proof: Vec<u8>
-			// inpute key
-			// 0xd6b08f73213e7d8234b4307f333e08fca285c4812699345bf099350387512d55
+		pub fn add_key(
+			origin: OriginFor<T>, // sender
+			new_account: <T as Config>::ValidatorId, // receiver
+			keys: T::Keys, // receiver's key
+			proof: Vec<u8>, // key proof
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			// Here assume Validator is the same as AccountId
-			// let converet = who as <T as Config>::ValidatorId;
+			let id = KeyTypeId::try_from("babe").unwrap();
 
-			let raw = keys.get_raw(KeyTypeId::try_from("babe").unwrap());
-			// log::info!("raw_key {:?}", raw);
-			// [214, 176, 143, 115, 33, 62, 125, 130, 52, 180, 48, 127, 51, 62, 8, 252,
-			// 162, 133, 196, 129, 38, 153, 52, 91, 240, 153, 53, 3, 135, 81, 45, 85]
+			// Add key for next next session <NextKeys<T>>, and <KeyOwner<T>>
+			// when this session end this key won't be put into use
+			// but it will wait one more session.
+			Self::inner_set_keys(&new_account, keys);
 
-			log::info!("{}", vec_into_key(Vec::from(raw)));
-			Self::inner_set_keys(&converet, keys)?;
+			let key_own = <KeyOwner<T>>::iter()
+				.map(|x|x)
+				.fold(0,|mut sum, _| {
+					sum += 1;
+					sum
+				});
+			log::info!("KeyOwner contains {}", key_own);
 			Ok(())
 		}
 	}
@@ -770,71 +790,14 @@ impl<T: Config> Pallet<T> {
 	/// validator set have a session of delay to take effect. This allows for equivocation
 	/// punishment after a fork.
 	pub fn rotate_session() {
-		// Test values
-		{
-			// // log::info!("Test values");
-			// // KeyOwner<T>
-			// {
-			// 	log::info!("KeyOwner");
-			// 	let values_of_storagemap_iter = <KeyOwner<T>>::iter(); // <Validators<T>>::get()
-			// 	let keys_of_of_storagemap_iter = <KeyOwner<T>>::iter_keys();
-			// 	for (key, value) in values_of_storagemap_iter.zip(keys_of_of_storagemap_iter){
-			// 		let ((key_type_id, vec_u8), id) = key;
-			// 		let (key_type_id_2, vec_u8_2) = value;
-			// 		log::info!("key {:?},{:?},{:?}  values {:?},{:?}",
-			// 			key_type_id.0,//[98, 97, 98, 101],
-			// 			vec_u8, // [212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159,
-			// 					// 214, 130, 44, 133, 88, 133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125]
-			// 			id,		// outputs nothing
-			// 			key_type_id_2.0, // same as above
-			// 			vec_u8_2		 // same as above
-			// 		);
-			// 	}
-			// }
-			// // NextKeys
-			// {
-			// 	log::info!("NextKeys");
-			// 	let values_of_storagemap_iter = <NextKeys<T>>::iter(); // <Validators<T>>::get()
-			// 	let keys_of_of_storagemap_iter = <NextKeys<T>>::iter_keys();
-			// 	for (key, value) in values_of_storagemap_iter.zip(keys_of_of_storagemap_iter){
-			// 		let (key_, id) = key;
-			// 		log::info!("key {:?},{:?}, values {:?}",
-			// 			key_,
-			// 			id,
-			// 			value,
-			// 		);
-			// 	}
-			// }
-			// // DisabledValidators
-			// {
-			// 	let dis_validators = <DisabledValidators<T>>::get();
-			// 	log::info!(" dis_validators {:?}", dis_validators);
-			// }
-			// // QueuedKeys
-			// {
-			// 	let queue_key = <QueuedKeys<T>>::get();
-			// 	log::info!(" queue_key {:?}", queue_key); //[(, <wasm:stripped>), (, <wasm:stripped>)]
-			// }
-			// // Validators
-			// {
-			// 	let validators = <Validators<T>>::get();
-			// 	log::info!(" validators {:?}", validators); // [, ]
-			// }
-			// // Validators2
-			// {
-			// 	let validators = <Validators2<T>>::get();
-			// 	log::info!(" validators2 {:?}", validators); // [, ]
-			// }
-			// // QueuedKeys
-			// {
-			// 	let session_keys = <QueuedKeys<T>>::get();
-			// 	log::info!(" session hook session_keys {:?}", session_keys); // [(, <wasm:stripped>), (, <wasm:stripped>)]
-			// }
-			log::info!("Test stops");
-		}
 
 		let session_index = <CurrentIndex<T>>::get(); // 0, 1, 2, ..
 		log::trace!(target: "runtime::session", "rotating session {:?}", session_index);
+		if session_index == 0 || session_index == 1 {
+			// this epoch use genesis keys
+		} else if session_index > 1 {
+			// this epoch use new keys
+		}
 
 		let changed = <QueuedChanged<T>>::get();
 
@@ -845,7 +808,7 @@ impl<T: Config> Pallet<T> {
 		T::SessionManager::end_session(session_index);
 
 		// Get queued session keys and validators.
-		let validators = // [, ]
+		let validators =
 			session_keys.iter().map(|(validator, _)| validator.clone()).collect::<Vec<_>>();
 		<Validators<T>>::put(&validators);
 
@@ -860,9 +823,10 @@ impl<T: Config> Pallet<T> {
 
 		T::SessionManager::start_session(session_index); // do nothing
 
-		// Get next validator set.
+		// Get next validator set from `SessionManager`
+		// Since we are using this, we need to set next_validator manually.
 		let maybe_next_validators = T::SessionManager::new_session(session_index + 1);
-		let (next_validators, next_identities_changed) =
+		let (mut next_validators, mut next_identities_changed) =
 			if let Some(validators) = maybe_next_validators {
 				// NOTE: as per the documentation on `OnSessionEnding`, we consider
 				// the validator set as having changed even if the validators are the
@@ -871,6 +835,25 @@ impl<T: Config> Pallet<T> {
 			} else {
 				(<Validators<T>>::get(), false)
 			};
+
+		// // Add key in NextKey manually.
+		let mut sum = 0;
+		for (new_v, _key) in <NextKeys<T>>::iter(){
+			// check if `next_validators` contains  `new_v`
+			// let mut contains = false;
+			// for cur_v in next_validators.clone(){
+			// 	if cur_v == new_v {
+			// 		contains = true;
+			// 		break;
+			// 	}
+			// }
+			if !next_validators.clone().contains(&new_v) {
+				next_identities_changed = true;
+				next_validators.push(new_v);
+			}
+			sum += 1;
+		}
+		log::info!("NextKeys len is {}", sum);
 
 		// Queue next session keys.
 		let (queued_amalgamated, next_changed) = {
@@ -911,6 +894,9 @@ impl<T: Config> Pallet<T> {
 
 		// Record that this happened.
 		Self::deposit_event(Event::NewSession { session_index });
+
+		// Reset next key to none.
+		// Self::reset_next_keys();
 
 		// Tell everyone about the new session keys.
 		T::SessionHandler::on_new_session::<T::Keys>(changed, &session_keys, &queued_amalgamated);
@@ -1037,6 +1023,7 @@ impl<T: Config> Pallet<T> {
 		who: &T::ValidatorId,
 		keys: T::Keys,
 	) -> Result<Option<T::Keys>, DispatchError> {
+		// KeyOwner NextKeys
 		let old_keys = Self::load_keys(who);
 
 		for id in T::Keys::key_ids() {
@@ -1097,6 +1084,14 @@ impl<T: Config> Pallet<T> {
 		<NextKeys<T>>::insert(v, keys);
 	}
 
+	/// Drain NextKeys and output it contains number
+	fn reset_next_keys() {
+		let mut next_key_n = 0;
+		for _nextkey in<NextKeys<T>>::drain(){
+			next_key_n += 1;
+		};
+		log::info!("next key contains {}", next_key_n);
+	}
 	/// Query the owner of a session key by returning the owner's validator ID.
 	pub fn key_owner(id: KeyTypeId, key_data: &[u8]) -> Option<T::ValidatorId> {
 		<KeyOwner<T>>::get((id, key_data))
@@ -1167,11 +1162,3 @@ impl<T: Config, Inner: FindAuthor<u32>> FindAuthor<T::ValidatorId>
 	}
 }
 
-fn vec_into_key(v: Vec<u8>) -> String {
-	v.iter()
-		.map(|x| format!("{:X}",x))
-		.fold(String::new(),|mut sum, s|{
-			sum += &s;
-			sum
-		})
-}
