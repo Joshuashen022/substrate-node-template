@@ -10,6 +10,7 @@ function make_a_transfer(api) {
     console.log(`${test_account.meta.name}: has address ${test_account.address}`);// with publicKey [${alice.publicKey}]
     console.log(`now we have ${keyring.getPairs().length} keys`);
 
+    const auth_keyring = new Keyring()
     const CHARLIE = '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y';
     console.log(`make a transfer to ${CHARLIE}`);
 

@@ -2,8 +2,9 @@
 # Get id, e.g.: 12D3...kj
 #cat logdev | grep -E ' Local node identity is' | awk  '{print $8}'
 get_id=$(cat log_alice | grep -E ' Local node identity is' | awk  '{print $8}')
-nohup ../target/release/node-template --chain=local \
-	--bob \
+nohup ../../target/release/node-template --chain=local \
+	--name bob \
+	--validator \
 	--no-grandpa \
 	-d /tmp/bob \
 	--port 30334 \

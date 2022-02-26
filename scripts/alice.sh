@@ -1,6 +1,6 @@
 nohup ../target/release/node-template --chain=local \
 	--alice \
-	--validator \
+	--no-grandpa \
 	-d /tmp/alice \
 	--ws-port 9944\
 	2>&1 >log_alice &
