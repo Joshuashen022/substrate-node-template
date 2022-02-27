@@ -131,7 +131,8 @@ async function main() {
     const content = await read_keys();
     const lines = content.toString().split("\n");
     const keyring = add_to_keyring(lines);
-    console.log(keyring);
+    console.log(keyring.length);
+    
 }
 
 main();

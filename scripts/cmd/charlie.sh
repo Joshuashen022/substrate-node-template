@@ -8,5 +8,4 @@ nohup ../../target/release/node-template --chain=local \
 	--port 30335 \
 	--bootnodes '/ip4/127.0.0.1/tcp/30333/p2p/'"$get_id" \
 	--ws-port 9946 \
-	2>&1 > log_charlie &
-tail -f log_charlie
+	2>&1 > log_charlie 

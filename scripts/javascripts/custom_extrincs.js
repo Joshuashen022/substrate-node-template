@@ -1,18 +1,105 @@
 import { Keyring } from '@polkadot/api';
+import fs from 'fs';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 // const { ApiPromise, WsProvider } = require('@polkadot/api');
-import { stringToU8a, u8aToHex } from '@polkadot/util';
+// import { stringToU8a, u8aToHex } from '@polkadot/util';
+
+function Key(){
+    this.secret_phrase = '';
+    this.secret_seed = '';
+    this.public_key_hex = '';
+    this.account_id = '';
+    this.public_key_ss58 = '';
+    this.ss58_address = '';
+
+    this.generate = function(phrase, seed, pkh, id, pks, address){
+        this.secret_phrase = phrase;
+        this.secret_seed = seed;
+        this.public_key_hex = pkh;
+        this.account_id = id;
+        this.public_key_ss58 = pks;
+        this.ss58_address = address;
+    }
+    this.is_empty = function(){
+        if (this.secret_phrase == '') {
+            return true 
+        }
+        if (this.secret_seed == '') {
+            return true 
+        }
+        if (this.public_key_hex == '') {
+            return true 
+        }
+        if (this.account_id == '') {
+            return true 
+        }
+        if (this.public_key_ss58 == '') {
+            return true 
+        }
+        if (this.ss58_address == '') {
+            return true 
+        }
+        return false
+    }
+}
+
+function read_keys(){
+    const promist = new Promise(function(resolve, reject){
+        fs.readFile('keys', (err, data) =>{
+            if (err) { reject(err)}
+            else {
+                // console.log(data.toString());
+                resolve(data)
+            };
+        })
+    })
+    return promist
+}
+
+function chunk (array, chunk_size) {
+    const chunks = [];
+    const items = [].concat(...array);
+
+    while (items.length){
+        chunks.push(
+            items.splice(0, chunk_size)
+        )
+    }
+    return chunks;
+}
+
+function get_local_keyring() {
+
+    const content = await read_keys();
+    const lines = content.toString().split("\n");
+
+    const keys_lines = chunk(lines, 6);
+    var keyring = [];
+    for (const key_line of keys_lines){
+        if (key_line.length == 6){
+            var key = new Key();
+            
+            const phrase = key_line[0].substr(21);
+            const seed = key_line[1].substr(21);
+            const pkh = key_line[2].substr(21);
+            const id = key_line[3].substr(21);
+            const pks = key_line[4].substr(21);
+            const address = key_line[5].substr(21);
+            key.generate(phrase, seed, pkh, id, pks, address);
+            keyring.push(key);
+        }
+    }
+    return keyring;
+}
 
 function make_a_transfer(api) {
-
+    // get keys from local file
+    const local_keyring = get_local_keyring();
+    
     const keyring = new Keyring({typr: 'sr25519'}); // default ed25519
     const test_account = keyring.addFromMnemonic('//Test', { name: 'Test Account' }); //5EzVqQhKPeKyM4UkbERjZ7AQBsE8Aiag155r9dMVnovDNvW8
     console.log(`${test_account.meta.name}: has address ${test_account.address}`);// with publicKey [${alice.publicKey}]
     console.log(`now we have ${keyring.getPairs().length} keys`);
-
-    const auth_keyring = new Keyring()
-    const CHARLIE = '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y';
-    console.log(`make a transfer to ${CHARLIE}`);
 
     const promise = new Promise(function(resolve, reject){
         // do something cost time
@@ -41,6 +128,7 @@ function make_a_transfer(api) {
 
 async function main() {
     // Initialise the provider to connect to the local node
+
     const provider = new WsProvider('ws://127.0.0.1:9944');
 
     // Create the API and wait until ready
