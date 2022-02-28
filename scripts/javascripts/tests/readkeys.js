@@ -41,7 +41,7 @@ function Key(){
 
 function read_keys(){
     const promist = new Promise(function(resolve, reject){
-        fs.readFile('keys', (err, data) =>{
+        fs.readFile('keys.data', (err, data) =>{
             if (err) { reject(err)}
             else {
                 // console.log(data.toString());

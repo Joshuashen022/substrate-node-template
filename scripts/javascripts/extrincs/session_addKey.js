@@ -44,8 +44,8 @@ function Key(){
 }
 
 function read_keys(){
-    const promist = new Promise(function(resolve, reject){
-        fs.readFile('keys', (err, data) =>{
+    const promise = new Promise(function(resolve, reject){
+        fs.readFile('keys.data', (err, data) =>{
             if (err) { reject(err)}
             else {
                 // console.log(data.toString());
@@ -53,7 +53,7 @@ function read_keys(){
             };
         })
     })
-    return promist
+    return promise
 }
 
 function chunk (array, chunk_size) {
@@ -68,7 +68,7 @@ function chunk (array, chunk_size) {
     return chunks;
 }
 
-function get_local_keyring() {
+async function get_local_keyring() {
 
     const content = await read_keys();
     const lines = content.toString().split("\n");
@@ -92,21 +92,24 @@ function get_local_keyring() {
     return keyring;
 }
 
-function make_a_transfer(api) {
-    // get keys from local file
-    const local_keyring = get_local_keyring();
+function add_a_validator(api, local_key) {
     
-    const keyring = new Keyring({typr: 'sr25519'}); // default ed25519
-    const test_account = keyring.addFromMnemonic('//Test', { name: 'Test Account' }); //5EzVqQhKPeKyM4UkbERjZ7AQBsE8Aiag155r9dMVnovDNvW8
-    console.log(`${test_account.meta.name}: has address ${test_account.address}`);// with publicKey [${alice.publicKey}]
-    console.log(`now we have ${keyring.getPairs().length} keys`);
+    console.log(local_key);
+    // const phrase = local_key.secret_phrase;
+    const seed = local_key.secret_seed;
+    const id = local_key.account_id;
+    const address = local_key.ss58_address;
 
+    const keyring = new Keyring( {type: 'sr25519'});
+    const alice = keyring.createFromUri('//Alice');
+    console.log(`Sign address ${alice.address}`);
+    
     const promise = new Promise(function(resolve, reject){
         // do something cost time
 
         const status = api.tx.session
-        .helloWorld()
-        .signAndSend(test_account, (result) => {
+        .addKey(address, id, seed)
+        .signAndSend(alice, (result) => {
             // console.log(`Current status is ${result.status}`);
 
             if (result.status.isReady){
@@ -118,8 +121,6 @@ function make_a_transfer(api) {
             }
         });
 
-
-
     })
 
     return promise
@@ -127,8 +128,14 @@ function make_a_transfer(api) {
 }
 
 async function main() {
-    // Initialise the provider to connect to the local node
+    console.log('Add a babe validator from local by Alice');
 
+    console.log('Getting keys from local file');
+    const local_keys = await get_local_keyring();
+    console.log('Succeed in getting keys');
+    console.log(`we have ${local_keys.length} local keys`);
+    
+    // Initialise the provider to connect to the local node
     const provider = new WsProvider('ws://127.0.0.1:9944');
 
     // Create the API and wait until ready
@@ -141,11 +148,13 @@ async function main() {
         api.rpc.system.version()
     ]);
 
-    console.log(`You are connected to chain  -${chain} using -${nodeName} v-${nodeVersion}`);
-
-    const result = await make_a_transfer(api);
+    console.log(`Successfully connected to chain  -${chain} using -${nodeName} v-${nodeVersion}`);
+    
+    console.log('Trying to add a validator');
+    const result = await add_a_validator(api, local_keys[1]);
     if (result.isInBlock){
-        console.log('Test success'); // {"inBlock":"0xc84e9..."}
+        console.log('Add a validator success!'); // {"inBlock":"0xc84e9..."}
+        console.log('Check node-template logs for detail information');
     }
 
     console.log('program exit');

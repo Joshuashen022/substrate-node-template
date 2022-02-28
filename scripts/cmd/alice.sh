@@ -1,8 +1,7 @@
-echo "Start alice"
 nohup ../../target/release/node-template --chain=local \
-	--name alice \
-	--validator \
-	-d /tmp/alice \
+	--alice \
 	--no-grandpa \
+	-d /tmp/alice \
 	--ws-port 9944\
-	2>&1 >log_alice 
+	2>&1 >log_alice &
+tail -f log_alice
