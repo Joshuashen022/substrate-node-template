@@ -119,6 +119,41 @@ where
 	T::Api: SessionKeys<Block>,
 {
 	let runtime_api = client.runtime_api();
+	if seeds.len() == 0{
+		log::info!("🗝️  No seed generate no key");
+	} else {
+		// log::info!("🔑 🔐  Generate keys for dev node");
+	}
+
+	for seed in seeds {
+		// log::info!("seed {}", seed);
+		runtime_api.generate_session_keys(at, Some(seed.as_bytes().to_vec()))?;
+	}
+
+	Ok(())
+}
+
+
+/// Generate the local session keys with the given seeds, at the given block and store them in
+/// the client's keystore.
+#[cfg(feature = "std")]
+pub fn generate_local_session_keys<Block, T>(
+	client: std::sync::Arc<T>,
+	at: &BlockId<Block>,
+	seeds: Vec<String>,
+) -> Result<(), sp_api::ApiError>
+	where
+		Block: BlockT,
+		T: ProvideRuntimeApi<Block>,
+		T::Api: SessionKeys<Block>,
+{
+	let runtime_api = client.runtime_api();
+
+	if seeds.len() == 0{
+		log::info!("🔑️ No seed generate no key");
+	} else {
+		// log::info!("🔑 🔐 🗝️ Generate keys for local node");
+	}
 
 	for seed in seeds {
 		runtime_api.generate_session_keys(at, Some(seed.as_bytes().to_vec()))?;

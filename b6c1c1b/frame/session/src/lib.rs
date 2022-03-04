@@ -338,12 +338,7 @@ impl<AId> SessionHandler<AId> for Tuple {
 		validators: &[(AId, Ks)],
 		queued_validators: &[(AId, Ks)],
 	) {
-		log::info!("SessionHandler for Tuple");
-		// let _account_id = &validators[0].0;
-		// let validator =  &validators[0].1
-		// 	.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
-		// 	.unwrap();
-		// log::info!("validator {:?}", validator.as_slice());
+		// log::info!("SessionHandler for Tuple");
 		for_tuples!(
 			#(
 				let our_keys: Box<dyn Iterator<Item=_>> = Box::new(validators.iter()
@@ -653,8 +648,8 @@ pub mod pallet {
 		/// Called when a block is initialized. Will rotate session if it is the last
 		/// block of the current session.
 		fn on_initialize(n: T::BlockNumber) -> Weight {
-			// log::info!("#[pallet::hooks]::on_initialize() {:?}", n);
-			// log::info!("(on_initialize) {:?}", <QueuedKeys<T>>::get());
+			// log::info!("#[session::hooks](on_initialize)");
+
 			let max_block = T::BlockWeights::get().max_block;
 			if T::ShouldEndSession::should_end_session(n) {
 				log::info!("Should end session yes!");
@@ -752,7 +747,7 @@ pub mod pallet {
 				// 	// Validator [] encode get [[142, 175, .. 106, 72]]
 				// }
 			}
-			Self::inner_transfer_to(&who)?;
+			let _ = Self::inner_transfer_to(&who)?;
 			Ok(())
 		}
 
@@ -762,11 +757,12 @@ pub mod pallet {
 			origin: OriginFor<T>, // sender
 			new_account: <T as Config>::ValidatorId, // receiver
 			keys: T::Keys, // receiver's key
-			proof: Vec<u8>, // key proof
+			_proof: Vec<u8>, // key proof
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			let id = KeyTypeId::try_from("babe").unwrap();
+			let _who = ensure_signed(origin)?;
+			log::info!("********************************");
+			log::info!("Receiving extrincs of adding key");
+			let _id = KeyTypeId::try_from("babe").unwrap();
 
 			// Add key for next next session <NextKeys<T>>, and <KeyOwner<T>>
 			// when this session end this key won't be put into use
@@ -779,12 +775,14 @@ pub mod pallet {
 					sum += 1;
 					sum
 				});
+			log::info!("Adding key success");
 			log::info!("KeyOwner contains {}", key_own);
+			log::info!("********************************");
 			Ok(())
 		}
 	}
 }
-
+#[allow(dead_code)]
 impl<T: Config> Pallet<T> {
 	/// Move on to next session. Register new validator set and session keys. Changes to the
 	/// validator set have a session of delay to take effect. This allows for equivocation
@@ -836,24 +834,14 @@ impl<T: Config> Pallet<T> {
 				(<Validators<T>>::get(), false)
 			};
 
-		// // Add key in NextKey manually.
-		let mut sum = 0;
+		// Add key in NextKey manually.
 		for (new_v, _key) in <NextKeys<T>>::iter(){
-			// check if `next_validators` contains  `new_v`
-			// let mut contains = false;
-			// for cur_v in next_validators.clone(){
-			// 	if cur_v == new_v {
-			// 		contains = true;
-			// 		break;
-			// 	}
-			// }
 			if !next_validators.clone().contains(&new_v) {
 				next_identities_changed = true;
 				next_validators.push(new_v);
 			}
-			sum += 1;
 		}
-		log::info!("NextKeys len is {}", sum);
+		log::info!("NextKeys len is {}", next_validators.len());
 
 		// Queue next session keys.
 		let (queued_amalgamated, next_changed) = {

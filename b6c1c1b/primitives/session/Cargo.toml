@@ -20,7 +20,7 @@ sp-core = { version = "4.0.0-dev", default-features = false, path = "../core" }
 sp-std = { version = "4.0.0-dev", default-features = false, path = "../std" }
 sp-staking = { version = "4.0.0-dev", default-features = false, path = "../staking" }
 sp-runtime = { version = "4.0.0-dev", optional = true, path = "../runtime" }
-
+log = "0.4.8"
 [features]
 default = [ "std" ]
 std = [

@@ -201,6 +201,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		Self: Sync,
 	{
 		let (timestamp, slot) = (slot_info.timestamp, slot_info.slot);
+		log::info!("Slot[{:?}]", u64::from(slot));
 		let telemetry = self.telemetry();
 		let logging_target = self.logging_target();
 
@@ -304,7 +305,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		// deadline our production to 98% of the total time left for proposing. As we deadline
 		// the proposing below to the same total time left, the 2% margin should be enough for
 		// the result to be returned.
-		let proposing = proposer
+		let proposing = proposer // client>basic_authorship>src>basic_authorship.rs line 291
 			.propose(
 				slot_info.inherent_data,
 				sp_runtime::generic::Digest { logs },

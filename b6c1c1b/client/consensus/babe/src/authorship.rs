@@ -145,15 +145,16 @@ fn claim_secondary_slot(
 	author_secondary_vrf: bool,
 ) -> Option<(PreDigest, AuthorityId)> {
 	let Epoch { authorities, randomness, epoch_index, .. } = epoch;
-
+	log::info!("claim II slot");
 	if authorities.is_empty() {
 		return None
 	}
 
 	let expected_author = secondary_slot_author(slot, authorities, *randomness)?;
-
+	log::info!("of {} expected_author {:?}", authorities.len(), expected_author);
 	for (authority_id, authority_index) in keys {
 		if authority_id == expected_author {
+
 			let pre_digest = if author_secondary_vrf {
 				let transcript_data = make_transcript_data(randomness, slot, *epoch_index);
 				let result = SyncCryptoStore::sr25519_vrf_sign(
@@ -176,11 +177,13 @@ fn claim_secondary_slot(
 				&**keystore,
 				&[(authority_id.to_raw_vec(), AuthorityId::ID)],
 			) {
+				log::info!("SyncCryptoStore::has_keys true");
 				Some(PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
 					slot,
 					authority_index: *authority_index as u32,
 				}))
 			} else {
+				log::info!("SyncCryptoStore::has_keys false");
 				None
 			};
 
@@ -219,10 +222,11 @@ pub fn claim_slot_using_keys(
 	keystore: &SyncCryptoStorePtr,
 	keys: &[(AuthorityId, usize)],
 ) -> Option<(PreDigest, AuthorityId)> {
+	let _second_claim = epoch.config.allowed_slots.is_secondary_plain_slots_allowed() ||
+		epoch.config.allowed_slots.is_secondary_vrf_slots_allowed() ;
+	let second_claim = false;
 	claim_primary_slot(slot, epoch, epoch.config.c, keystore, &keys).or_else(|| {
-		if epoch.config.allowed_slots.is_secondary_plain_slots_allowed() ||
-			epoch.config.allowed_slots.is_secondary_vrf_slots_allowed()
-		{
+		if second_claim {
 			claim_secondary_slot(
 				slot,
 				&epoch,
@@ -250,7 +254,9 @@ fn claim_primary_slot(
 	let Epoch { authorities, randomness, epoch_index, .. } = epoch;
 	log::trace!("(claim_primary_slot)");
 	log::trace!("epoch {:#?}", epoch);
+	let mut get_sig = false;
 	for (authority_id, authority_index) in keys {
+		// log::info!("for {:?}", &authority_id);
 		let transcript = make_transcript(randomness, slot, *epoch_index);
 		let transcript_data = make_transcript_data(randomness, slot, *epoch_index);
 		// Compute the threshold we will use.
@@ -265,11 +271,18 @@ fn claim_primary_slot(
 			authority_id.as_ref(),
 			transcript_data,
 		);
+
 		if let Ok(Some(signature)) = result {
+			get_sig = true;
 			let public = PublicKey::from_bytes(&authority_id.to_raw_vec()).ok()?;
 			let inout = match signature.output.attach_input_hash(&public, transcript) {
-				Ok(inout) => inout,
-				Err(_) => continue,
+				Ok(inout) => {
+					inout
+				},
+				Err(e) => {
+					log::info!("attach_input_hash error {:?}", e);
+					continue
+				},
 			};
 			if check_primary_threshold(&inout, threshold) {
 				let pre_digest = PreDigest::Primary(PrimaryPreDigest {
@@ -278,10 +291,15 @@ fn claim_primary_slot(
 					vrf_proof: VRFProof(signature.proof),
 					authority_index: *authority_index as u32,
 				});
-
+				// log::info!("claim I slot Success");
 				return Some((pre_digest, authority_id.clone()))
 			}
 		}
+	}
+	if get_sig{
+		log::trace!("claim I slot Fail with bad luck");
+	} else {
+		log::info!("claim I slot Fail with no sig");
 	}
 
 	None

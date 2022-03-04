@@ -633,10 +633,12 @@ pub trait Crypto {
 	///
 	/// Returns the public key.
 	fn sr25519_generate(&mut self, id: KeyTypeId, seed: Option<Vec<u8>>) -> sr25519::Public {
+
 		let seed = seed.as_ref().map(|s| std::str::from_utf8(&s).expect("Seed is valid utf8!"));
 		let keystore = &***self
 			.extension::<KeystoreExt>()
 			.expect("No `keystore` associated for the current context!");
+		log::info!("(fn sr25519_generate()) seed [{:?}]", seed);
 		SyncCryptoStore::sr25519_generate_new(keystore, id, seed)
 			.expect("`sr25519_generate` failed")
 	}

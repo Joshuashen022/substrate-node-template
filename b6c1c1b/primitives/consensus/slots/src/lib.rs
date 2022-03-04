@@ -73,6 +73,10 @@ impl Slot {
 	pub fn saturating_sub<T: Into<u64>>(self, rhs: T) -> Self {
 		Self(self.0.saturating_sub(rhs.into()))
 	}
+
+	// pub fn get(self) -> u64{
+	// 	self.0
+	// }
 }
 
 #[cfg(feature = "std")]

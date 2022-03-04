@@ -282,6 +282,8 @@ pub trait SyncCryptoStore: CryptoStore + Send + Sync {
 		block_on(CryptoStore::keys(self, id))
 	}
 
+	fn gets_keys(&self, id: KeyTypeId) -> Result<Vec<CryptoTypePublicPair>, Error>;
+
 	/// Checks if the private keys for the given public key and key type combinations exist.
 	///
 	/// Returns `true` iff all private keys could be found.

@@ -173,6 +173,21 @@ impl SyncCryptoStore for KeyStore {
 			.unwrap_or_else(|| Ok(vec![]))
 	}
 
+	fn gets_keys(&self, id: KeyTypeId) -> Result<Vec<CryptoTypePublicPair>, Error> {
+		self.keys
+			.read()
+			.get(&id)
+			.map(|map| {
+				Ok(map.keys().fold(Vec::new(), |mut v, k| {
+					v.push(CryptoTypePublicPair(sr25519::CRYPTO_ID, k.clone()));
+					v.push(CryptoTypePublicPair(ed25519::CRYPTO_ID, k.clone()));
+					v.push(CryptoTypePublicPair(ecdsa::CRYPTO_ID, k.clone()));
+					v
+				}))
+			})
+			.unwrap_or_else(|| Ok(vec![]))
+	}
+
 	fn sr25519_public_keys(&self, id: KeyTypeId) -> Vec<sr25519::Public> {
 		self.keys
 			.read()

@@ -49,6 +49,12 @@ impl LocalKeystore {
 		Ok(Self(RwLock::new(inner)))
 	}
 
+	/// Check if there's keys
+	pub fn check_keys(&self) -> bool {
+		let inner = self.0.read();
+		inner.read_hash_map();
+		true
+	}
 	/// Create a local keystore in memory.
 	pub fn in_memory() -> Self {
 		let inner = KeystoreInner::new_in_memory();
@@ -172,6 +178,16 @@ impl SyncCryptoStore for LocalKeystore {
 		}))
 	}
 
+	fn gets_keys(&self, id: KeyTypeId) -> std::result::Result<Vec<CryptoTypePublicPair>, TraitError> {
+		let raw_keys = self.0.read().raw_public_keys(id)?;
+		Ok(raw_keys.into_iter().fold(Vec::new(), |mut v, k| {
+			v.push(CryptoTypePublicPair(sr25519::CRYPTO_ID, k.clone()));
+			v.push(CryptoTypePublicPair(ed25519::CRYPTO_ID, k.clone()));
+			v.push(CryptoTypePublicPair(ecdsa::CRYPTO_ID, k));
+			v
+		}))
+	}
+
 	fn supported_keys(
 		&self,
 		id: KeyTypeId,
@@ -232,6 +248,7 @@ impl SyncCryptoStore for LocalKeystore {
 		id: KeyTypeId,
 		seed: Option<&str>,
 	) -> std::result::Result<sr25519::Public, TraitError> {
+		log::info!("(sr25519_generate_new) {:?}", seed);
 		let pair = match seed {
 			Some(seed) =>
 				self.0.write().insert_ephemeral_from_seed_by_type::<sr25519::Pair>(seed, id),
@@ -298,9 +315,13 @@ impl SyncCryptoStore for LocalKeystore {
 	}
 
 	fn has_keys(&self, public_keys: &[(Vec<u8>, KeyTypeId)]) -> bool {
+		log::info!("public_keys len {:?}", public_keys.len());
 		public_keys
 			.iter()
-			.all(|(p, t)| self.0.read().key_phrase_by_type(&p, *t).ok().flatten().is_some())
+			.all(|(p, t)| {
+				log::info!("local key {:?}", p);
+				self.0.read().key_phrase_by_type(&p, *t).ok().flatten().is_some()
+			})
 	}
 
 	fn sr25519_vrf_sign(
@@ -316,6 +337,7 @@ impl SyncCryptoStore for LocalKeystore {
 			let (inout, proof, _) = pair.as_ref().vrf_sign(transcript);
 			Ok(Some(VRFSignature { output: inout.to_output(), proof }))
 		} else {
+			// log::info!("public {:?}", public);
 			Ok(None)
 		}
 	}
@@ -365,6 +387,17 @@ impl KeystoreInner {
 		fs::create_dir_all(&path)?;
 
 		Ok(Self { path: Some(path), additional: HashMap::new(), password })
+	}
+
+	/// Get all value of additional
+	pub(crate) fn read_hash_map(&self){
+		log::info!("(read_hash_map) BEFORE ");
+
+		for ((_id,_raw_key), val) in &self.additional{
+			log::info!("value {}", val);
+		}
+
+		log::info!("(read_hash_map) AFTER");
 	}
 
 	/// Get the password for this store.
@@ -447,11 +480,14 @@ impl KeystoreInner {
 
 	/// Get the key phrase for a given public key and key type.
 	fn key_phrase_by_type(&self, public: &[u8], key_type: KeyTypeId) -> Result<Option<String>> {
+
 		if let Some(phrase) = self.get_additional_pair(public, key_type) {
+			log::info!("(key_phrase_by_type) get_additional_pair {}", phrase);
 			return Ok(Some(phrase.clone()))
 		}
 
 		let path = if let Some(path) = self.key_file_path(public, key_type) {
+			log::info!("(key_phrase_by_type) key_file_path {:?}", path);
 			path
 		} else {
 			return Ok(None)
@@ -462,6 +498,7 @@ impl KeystoreInner {
 
 			serde_json::from_reader(&file).map_err(Into::into).map(Some)
 		} else {
+			// log::info!("(key_phrase_by_type) Ok(None)");
 			Ok(None)
 		}
 	}

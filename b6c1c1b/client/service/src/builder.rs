@@ -15,7 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
-
+use sp_core::crypto:: KeyTypeId;
 use crate::{
 	build_network_future,
 	client::{Client, ClientConfig},
@@ -158,17 +158,22 @@ where
 
 /// Construct and hold different layers of Keystore wrappers
 pub struct KeystoreContainer {
-	remote: Option<Box<dyn AsCryptoStoreRef>>,
+	remote: Option<Box<dyn AsCryptoStoreRef>>, // not supported yet
 	local: Arc<LocalKeystore>,
 }
 
 impl KeystoreContainer {
 	/// Construct KeystoreContainer
 	pub fn new(config: &KeystoreConfig) -> Result<Self, Error> {
+		println!("{:?}", config);
 		let keystore = Arc::new(match config {
 			KeystoreConfig::Path { path, password } =>
 				LocalKeystore::open(path.clone(), password.clone())?,
-			KeystoreConfig::InMemory => LocalKeystore::in_memory(),
+			// create an empty hashmap of key
+			KeystoreConfig::InMemory => {
+
+				LocalKeystore::in_memory()
+			},
 		});
 
 		Ok(Self { remote: Default::default(), local: keystore })
@@ -200,7 +205,8 @@ impl KeystoreContainer {
 		if let Some(c) = self.remote.as_ref() {
 			c.sync_keystore_ref()
 		} else {
-			self.local.clone() as SyncCryptoStorePtr
+			let v = self.local.clone() as SyncCryptoStorePtr;
+			v
 		}
 	}
 
@@ -243,7 +249,7 @@ where
 	TExec: CodeExecutor + RuntimeVersionOf + Clone,
 	TBl::Hash: FromStr,
 {
-
+	// create an empty container
 	let keystore_container = KeystoreContainer::new(&config.keystore)?;
 
 	let task_manager = {
@@ -482,9 +488,9 @@ where
 		system_rpc_tx,
 		telemetry,
 	} = params;
-
 	let chain_info = client.usage_info().chain;
 
+	// check_keys(&keystore); // Empty
 	sp_session::generate_initial_session_keys(
 		client.clone(),
 		&BlockId::Hash(chain_info.best_hash),
@@ -492,6 +498,20 @@ where
 	)
 	.map_err(|e| Error::Application(Box::new(e)))?;
 
+	// Generate Local keys
+	{
+		let _seed_config_info = &config;
+
+		// TODO:: generate local seed;
+		let seeds:Vec<String> = vec!(); // use seed_config_info
+
+		sp_session::generate_local_session_keys(
+			client.clone(),
+			&BlockId::Hash(chain_info.best_hash),
+			seeds,
+		).map_err(|e| Error::Application(Box::new(e)))?;
+	}
+	// check_keys(&keystore);// Has value
 	let telemetry = telemetry
 		.map(|telemetry| init_telemetry(&mut config, network.clone(), client.clone(), telemetry))
 		.transpose()?;
@@ -933,6 +953,21 @@ where
 	});
 
 	Ok((network, system_rpc_tx, NetworkStarter(network_start_tx)))
+}
+
+fn check_keys(keystore: &SyncCryptoStorePtr){
+	let id = KeyTypeId::try_from("babe").unwrap();
+	let keys = keystore.gets_keys(id);
+	// let keys = <LocalKeystore as SyncCryptoStore>::keys(keystore, id);// ::<SyncCryptoStore>
+	match keys {
+		Ok(keys) => {
+			log::info!("Got some key");
+			for key in keys {
+				log::info!("{:?}", key);
+			}
+		},
+		Err(e) => {log::info!("Err with {:?}", e)}
+	}
 }
 
 /// Object used to start the network.

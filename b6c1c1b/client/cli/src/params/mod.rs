@@ -123,7 +123,7 @@ pub struct CryptoSchemeFlag {
 		value_name = "SCHEME",
 		possible_values = &CryptoScheme::variants(),
 		case_insensitive = true,
-		default_value = "Sr25519"
+		default_value = "Ed25519"
 	)]
 	pub scheme: CryptoScheme,
 }

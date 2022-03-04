@@ -348,6 +348,7 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		/// Initialization
 		fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+			// log::info!("#[babe::hooks](on_initialize) ");
 			Self::do_initialize(now);
 			0
 		}
@@ -360,8 +361,8 @@ pub mod pallet {
 			// already occurred at this point, so the under-construction randomness
 			// will only contain outputs from the right epoch.<Validators<T>>::put(initial_validators_0);
 
-			log::info!("slot[{:?}]", sl);
-			log::trace!("#[pallet_babe::hooks] (on_finalize)");
+			log::info!("Block[{:?}]", sl);
+			log::trace!("#[babe::hooks] (on_finalize)");
 			if let Some(Some(randomness)) = Initialized::<T>::take() {
 				Self::deposit_randomness(&randomness);
 			}
@@ -474,6 +475,7 @@ impl<T: Config> pallet_session::ShouldEndSession<T::BlockNumber> for Pallet<T> {
 		// should_end_session() from it's own on_initialize() handler
 		// => because pallet_session on_initialize() is called earlier than ours, let's ensure
 		// that we have synced with digest before checking if session should be ended.
+
 		// log::info!("(should_end_session)");
 		Self::do_initialize(now);
 		// log::info!("(should_end_session) should_epoch_change");
@@ -481,17 +483,6 @@ impl<T: Config> pallet_session::ShouldEndSession<T::BlockNumber> for Pallet<T> {
 		// log::info!("(should_end_session) result");
 		if result {
 			// do something
-			// log::info!("SomeAuth");
-			let mut new_auth = Vec::new();
-			let old_auth = <SomeAuthorities<T>>::get();
-			for (id, weight) in old_auth {
-				let auth = (id, weight.checked_add(1).unwrap());
-				new_auth.push(auth);
-				// log::info!("some id has weight {:?}", weight);
-			}
-			let input = WeakBoundedVec::<_, T::MaxAuthorities>::try_from(new_auth.to_vec())
-				.expect("Initial number of authorities should be lower than T::MaxAuthorities");
-			SomeAuthorities::<T>::put(&input);
 		}
 		result
 	}
@@ -516,9 +507,15 @@ impl<T: Config> Pallet<T> {
 		// epoch 0 as having started at the slot of block 1. We want to use
 		// the same randomness and validator set as signalled in the genesis,
 		// so we don't rotate the epoch.
-		// log::trace!("#[pallet::babe] (should_epoch_change)");
+		let slot = CurrentSlot::<T>::get();
+
 		now != One::one() && {
 			let diff = CurrentSlot::<T>::get().saturating_sub(Self::current_epoch_start());
+			log::info!("Last Block slot[{}]. Total difference [{}]. Epoch Duration [{}]",
+				u64::from(slot),
+				u64::from(diff),
+				u64::from(T::EpochDuration::get())
+			);
 			*diff >= T::EpochDuration::get()
 		}
 	}
@@ -557,7 +554,7 @@ impl<T: Config> Pallet<T> {
 		authorities: WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>,
 		next_authorities: WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>,
 	) {
-		log::info!("#[pallet::babe] (enact_epoch_change)");
+		// log::info!("#[pallet::babe] (enact_epoch_change)");
 		// PRECONDITION: caller has done initialization and is guaranteed
 		// by the session module to be called before this.
 		debug_assert!(Self::initialized().is_some());
@@ -694,7 +691,7 @@ impl<T: Config> Pallet<T> {
 	fn do_initialize(now: T::BlockNumber) {
 		// since do_initialize can be called twice (if session module is present)
 		// => let's ensure that we only modify the storage once per block
-		log::trace!("fn do_initialize(now: T::BlockNumber) ");
+		// log::info!("(do_initialize) ");
 		let initialized = Self::initialized().is_some();
 		if initialized {
 			return
@@ -734,12 +731,15 @@ impl<T: Config> Pallet<T> {
 
 				Self::deposit_consensus(ConsensusLog::NextEpochData(next))
 			}
-
+			// log::info!("(do_initialize) Pallet babe current_slot {:?}", current_slot);
 			// the slot number of the current block being initialized
 			let current_slot = digest.slot();
-
+			// log::info!("(do_initialize) Pallet babe digest slot {:?}", current_slot);
+			// log::info!("(do_initialize) Pallet babe CurrentSlot {:?}", CurrentSlot::<T>::get());
 			// how many slots were skipped between current and last block
 			let lateness = current_slot.saturating_sub(CurrentSlot::<T>::get() + 1);
+			// log::info!("(do_initialize) Pallet babe lateness {:?}", lateness);
+
 			let lateness = T::BlockNumber::from(*lateness as u32);
 
 			Lateness::<T>::put(lateness);
@@ -943,9 +943,9 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	where
 		I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
 	{
-		log::info!("#[pallet::babe] (on_new_session)");
+		// log::info!("#[pallet::babe] (on_new_session)");
 		let authorities = validators.map(|(_account, k)|{
-			log::info!("AuthorityId {:?}",k.as_slice() ); // [..28, 97, 20..]
+			// log::info!("AuthorityId {:?}",k.as_slice() ); // [..28, 97, 20..]
 			(k, 1)
 		}).collect::<Vec<_>>();
 		let bounded_authorities = WeakBoundedVec::<_, T::MaxAuthorities>::force_from(

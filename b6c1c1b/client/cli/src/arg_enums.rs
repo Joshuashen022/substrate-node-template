@@ -106,7 +106,7 @@ arg_enum! {
 	#[allow(missing_docs)]
 	#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 	pub enum NodeKeyType {
-		Ed25519
+		Ed25519,
 	}
 }
 
