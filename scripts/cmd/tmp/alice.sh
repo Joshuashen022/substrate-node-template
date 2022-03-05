@@ -1,8 +1,8 @@
-#export RUST_LOG=trace
+echo "Start alice"
 nohup ../../target/release/node-template --chain=local \
-	--alice \
-	--no-grandpa \
+	--name alice \
+	--validator \
 	-d /tmp/alice \
+	--no-grandpa \
 	--ws-port 9944\
-	2>&1 >log_alice & 
-tail -f log_alice
+	2>&1 >log_alice 

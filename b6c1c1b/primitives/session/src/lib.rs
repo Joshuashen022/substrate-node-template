@@ -122,7 +122,7 @@ where
 	if seeds.len() == 0{
 		log::info!("🗝️  No seed generate no key");
 	} else {
-		// log::info!("🔑 🔐  Generate keys for dev node");
+		log::info!("🗝️  Generate keys for genesis node");
 	}
 
 	for seed in seeds {
@@ -151,11 +151,10 @@ pub fn generate_local_session_keys<Block, T>(
 
 	if seeds.len() == 0{
 		log::info!("🔑️ No seed generate no key");
-	} else {
-		// log::info!("🔑 🔐 🗝️ Generate keys for local node");
 	}
 
 	for seed in seeds {
+		log::info!("🔑 Generate keys for local node with seed {}", seed);
 		runtime_api.generate_session_keys(at, Some(seed.as_bytes().to_vec()))?;
 	}
 

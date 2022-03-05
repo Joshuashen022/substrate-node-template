@@ -160,8 +160,8 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 		transaction_pool,
 		other: (block_import, _, mut telemetry, babe_link),
 	} = new_partial(&config)?;
-	println!("[new_full]");
-	if let Some(url) = &config.keystore_remote {
+
+	if let Some(url) = &config.keystore_remote { // None
 		match remote_keystore(url) {
 			Ok(k) => keystore_container.set_remote_keystore(k),
 			Err(e) =>
@@ -207,19 +207,22 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			Ok(crate::rpc::create_full(deps))
 		})
 	};
-
+	// check if keystore has anything
+	// keystore_container.local_keystore().unwrap().check_keys(); // No value
 	let _rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
 		client: client.clone(),
 		backend,
 		task_manager: &mut task_manager,
-		keystore: keystore_container.sync_keystore(),
+		keystore: keystore_container.sync_keystore(), // make local keystore contains value
 		transaction_pool: transaction_pool.clone(),
 		rpc_extensions_builder,
 		network: network.clone(),
 		system_rpc_tx,
 		telemetry: telemetry.as_mut(),
 	})?;
+	// check if keystore has anything
+	// keystore_container.local_keystore().unwrap().check_keys(); // Has value
 
 	if role.is_authority() {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
@@ -247,7 +250,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 		};
 		let backoff_authoring_blocks: Option<()> = None;
 		let babe_config = sc_consensus_babe::BabeParams {
-			keystore: keystore_container.sync_keystore(),
+			keystore: keystore_container.sync_keystore(),// this has no real effect, only return value
 			client: client.clone(),
 			select_chain,
 			env: proposer,

@@ -548,7 +548,7 @@ pub mod pallet {
 
 			//[(d4..7d (5GrwvaEF...), SessionKeys { babe: Public(d4..7d (5GrwvaEF...)) }),
 			// (8e..48 (5FHneW46...), SessionKeys { babe: Public(8e..48 (5FHneW46...)) })]
-			log::info!("(start_session) before {:?}", <QueuedKeys<T>>::get());
+			// log::info!("(start_session) before {:?}", <QueuedKeys<T>>::get());
 
 			// Reset next key to none.
 			// <Pallet<T>>::reset_next_keys();

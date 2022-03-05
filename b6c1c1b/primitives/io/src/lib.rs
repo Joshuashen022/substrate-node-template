@@ -638,7 +638,6 @@ pub trait Crypto {
 		let keystore = &***self
 			.extension::<KeystoreExt>()
 			.expect("No `keystore` associated for the current context!");
-		log::info!("(fn sr25519_generate()) seed [{:?}]", seed);
 		SyncCryptoStore::sr25519_generate_new(keystore, id, seed)
 			.expect("`sr25519_generate` failed")
 	}

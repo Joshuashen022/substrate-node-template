@@ -16,6 +16,10 @@ Using Babe without GRANDPA
 
 Epoch change fixed by adding `session` pallet
 
+Add function of validator change but without stake ratio change
+
+
+
 Add `transfer_async.js` to make a transfer by sctips.
 
 **P.S.** :
@@ -117,6 +121,39 @@ JS codes is used to interact with the local chain.
 ```shell
 node scripts/javascripts/ *.js
 ```
+
+### Add Validator from seed
+
+Start node with seed by
+```shell
+bash /scripts/cmd/unknown_node.sh
+```
+Add session key to the validator set by
+```shell
+node /scripts/javascripts/extrincs session_addKey.js
+```
+
+Wait for log to show keys has been successfully add to validator set
+
+```
+2022-03-05 15:30:30 ********************************
+2022-03-05 15:30:30 Receiving extrincs of adding key
+2022-03-05 15:30:30 Adding key success
+2022-03-05 15:30:30 KeyOwner contains 3
+2022-03-05 15:30:30 ********************************
+```
+
+And wait for the next session begin, and it could take a while
+
+When success, you can see log as
+```
+2022-03-05 15:46:06 🙌 Starting consensus session on top of parent 0x3ba5fa5704a0b8f6c3283fba9459b3cf6d3c8c522bd03e2391b3ac48b3a583d7
+2022-03-05 15:46:06 Last Block slot[274411061]. Total difference [16]. Epoch Duration [20]
+2022-03-05 15:46:06 Block[36]
+2022-03-05 15:46:06 🎁 Prepared block for proposing at 36 (0 ms) [hash: 0x85517be92e111f221b22b5dd7b6caa356439bdf3fce35fb75376c3f6e38350a2; parent_hash: 0x3ba5…83d7; extrinsics (1): [0x0e05…c60a]]
+2022-03-05 15:46:06 🔖 Pre-sealed block for proposal at 36. Hash now 0x0aa7da5f758fc97cc4503253baac248e9e9260218dc69cc08fc7dded27ebc6aa, previously 0x85517be92e111f221b22b5dd7b6caa356439bdf3fce35fb75376c3f6e38350a2.
+```
+
 More info at [polkadot.{js}](https://polkadot.js.org/docs/)
 ## Template Structure
 

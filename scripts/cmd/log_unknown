@@ -1,0 +1,39 @@
+using local_testnet 94
+Path { path: "/tmp/unknown/chains/local_testnet/keystore", password: None }
+2022-03-05 16:02:10 Substrate Node    
+2022-03-05 16:02:10 ✌️  version 4.0.0-dev-19a3520-x86_64-linux-gnu    
+2022-03-05 16:02:10 ❤️  by Substrate DevHub <https://github.com/substrate-developer-hub>, 2017-2022    
+2022-03-05 16:02:10 📋 Chain specification: Local Testnet    
+2022-03-05 16:02:10 🏷 Node name: unknown    
+2022-03-05 16:02:10 👤 Role: AUTHORITY    
+2022-03-05 16:02:10 💾 Database: RocksDb at /tmp/unknown/chains/local_testnet/db/full    
+2022-03-05 16:02:10 ⛓  Native runtime: node-template-100 (node-template-1.tx1.au1)    
+(new) finalized_state is none? true
+2022-03-05 16:02:10 🔨 Initializing Genesis block/state (state: 0xcfa3…201c, header-hash: 0xd5b3…7ae5)    
+2022-03-05 16:02:10 ⏱  Loaded block-time = 6s from block 0xd5b3e58e7ca3996bdd2a47b0ad8ea85b2233f60e878d207b303c1a8d05077ae5    
+2022-03-05 16:02:10 👶 Creating empty BABE epoch changes on what appears to be first startup.    
+2022-03-05 16:02:10 Using default protocol ID "sup" because none is configured in the chain specs    
+2022-03-05 16:02:10 🏷 Local node identity is: 12D3KooWCjHZDfSbZjNBV8s9jkXkniNY2uNt3chayM9v3cifMKcq    
+2022-03-05 16:02:10 🗝️  No seed generate no key    
+2022-03-05 16:02:10 🔑 Generate keys for local node with seed march shop hand success light satoshi game silver wait solid security gather    
+2022-03-05 16:02:10 📦 Highest known block at #0    
+2022-03-05 16:02:10 〽️ Prometheus exporter started at 127.0.0.1:9615    
+2022-03-05 16:02:10 Listening for new connections on 127.0.0.1:9949.    
+2022-03-05 16:02:10 👶 Starting BABE Authorship worker    
+2022-03-05 16:02:10     
+2022-03-05 16:02:10     
+2022-03-05 16:02:12 Slot[274411222]    
+2022-03-05 16:02:12 [Unknown] UnimportedGenesis     
+2022-03-05 16:02:12     
+2022-03-05 16:02:12     
+2022-03-05 16:02:15 💤 Idle (0 peers), best: #0 (0xd5b3…7ae5), finalized #0 (0xd5b3…7ae5), ⬇ 0 ⬆ 0    
+2022-03-05 16:02:18 Slot[274411223]    
+2022-03-05 16:02:18 [Unknown] UnimportedGenesis     
+2022-03-05 16:02:18     
+2022-03-05 16:02:18     
+2022-03-05 16:02:20 💤 Idle (0 peers), best: #0 (0xd5b3…7ae5), finalized #0 (0xd5b3…7ae5), ⬇ 0 ⬆ 0    
+2022-03-05 16:02:24 Slot[274411224]    
+2022-03-05 16:02:24 [Unknown] UnimportedGenesis     
+2022-03-05 16:02:24     
+2022-03-05 16:02:24     
+2022-03-05 16:02:25 💤 Idle (0 peers), best: #0 (0xd5b3…7ae5), finalized #0 (0xd5b3…7ae5), ⬇ 0 ⬆ 0    

@@ -6,3 +6,5 @@ rm -rf /tmp/bob
 echo rm -rf /tmp/bob
 rm -rf /tmp/charlie
 echo rm -rf /tmp/charlie
+rm -rf /tmp/unknown
+echo rm -rf /tmp/unknown

@@ -297,7 +297,7 @@ fn claim_primary_slot(
 		}
 	}
 	if get_sig{
-		log::trace!("claim I slot Fail with bad luck");
+		log::info!("claim I slot Fail with bad luck");
 	} else {
 		log::info!("claim I slot Fail with no sig");
 	}

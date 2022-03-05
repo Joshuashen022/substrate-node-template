@@ -1,0 +1,68 @@
+2022-02-28 17:21:35 Substrate Node    
+2022-02-28 17:21:35 ✌️  version 4.0.0-dev-e656243-x86_64-linux-gnu    
+2022-02-28 17:21:35 ❤️  by Substrate DevHub <https://github.com/substrate-developer-hub>, 2017-2022    
+2022-02-28 17:21:35 📋 Chain specification: Local Testnet    
+2022-02-28 17:21:35 🏷 Node name: Alice    
+2022-02-28 17:21:35 👤 Role: AUTHORITY    
+2022-02-28 17:21:35 💾 Database: RocksDb at /tmp/alice/chains/local_testnet/db/full    
+2022-02-28 17:21:35 ⛓  Native runtime: node-template-100 (node-template-1.tx1.au1)    
+2022-02-28 17:21:35 (start_session) before [(d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...), SessionKeys { babe: Public(d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...)) }), (8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...), SessionKeys { babe: Public(8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...)) })]    
+2022-02-28 17:21:35 🔨 Initializing Genesis block/state (state: 0x2e82…3a40, header-hash: 0xaf9a…07b4)    
+2022-02-28 17:21:35 👶 Creating empty BABE epoch changes on what appears to be first startup.    
+2022-02-28 17:21:35 Using default protocol ID "sup" because none is configured in the chain specs    
+2022-02-28 17:21:35 🏷 Local node identity is: 12D3KooWEWDhuYSQH1doEKLtyigLnCutdTPzajjLEq3FfxWrd26h    
+2022-02-28 17:21:35 📦 Highest known block at #0    
+2022-02-28 17:21:35 〽️ Prometheus exporter started at 127.0.0.1:9615    
+2022-02-28 17:21:35 Listening for new connections on 127.0.0.1:9944.    
+2022-02-28 17:21:35 👶 Starting BABE Authorship worker    
+2022-02-28 17:21:35     
+2022-02-28 17:21:35     
+2022-02-28 17:21:36 [Unknown] UnimportedGenesis     
+2022-02-28 17:21:36     
+2022-02-28 17:21:36     
+2022-02-28 17:21:40 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+2022-02-28 17:21:42 [Unknown] UnimportedGenesis     
+2022-02-28 17:21:42     
+2022-02-28 17:21:42     
+2022-02-28 17:21:45 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+2022-02-28 17:21:48 [Unknown] UnimportedGenesis     
+2022-02-28 17:21:48     
+2022-02-28 17:21:48     
+2022-02-28 17:21:50 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+2022-02-28 17:21:54 [Unknown] UnimportedGenesis     
+2022-02-28 17:21:54     
+2022-02-28 17:21:54     
+2022-02-28 17:21:55 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+2022-02-28 17:22:00 [Unknown] UnimportedGenesis     
+2022-02-28 17:22:00     
+2022-02-28 17:22:00     
+2022-02-28 17:22:00 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+2022-02-28 17:22:05 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+2022-02-28 17:22:06 [Unknown] UnimportedGenesis     
+2022-02-28 17:22:06     
+2022-02-28 17:22:06     
+2022-02-28 17:22:10 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+2022-02-28 17:22:12 [Unknown] UnimportedGenesis     
+2022-02-28 17:22:12     
+2022-02-28 17:22:12     
+2022-02-28 17:22:15 💤 Idle (0 peers), best: #0 (0xaf9a…07b4), finalized #0 (0xaf9a…07b4), ⬇ 0 ⬆ 0    
+error: Invalid value for '--bootnodes <ADDR>...': failed to parse: unexpected end of file
+(run) Cli { subcommand: None, run: RunCmd { validator: false, no_grandpa: false, light: false, rpc_external: false, unsafe_rpc_external: false, rpc_methods: Auto, ws_external: false, unsafe_ws_external: false, rpc_max_payload: None, prometheus_external: false, ipc_path: None, rpc_port: None, ws_port: None, ws_max_connections: None, ws_max_out_buffer_capacity: None, rpc_cors: None, prometheus_port: None, no_prometheus: false, name: None, no_telemetry: false, telemetry_endpoints: [], offchain_worker_params: OffchainWorkerParams { enabled: WhenValidating, indexing_enabled: false }, shared_params: SharedParams { chain: Some("local"), dev: false, base_path: None, log: [], detailed_log_output: false, disable_log_color: false, enable_log_reloading: false, tracing_targets: None, tracing_receiver: Log }, import_params: ImportParams { pruning_params: PruningParams { pruning: None, keep_blocks: None }, database_params: DatabaseParams { database: None, database_cache_size: None, storage_chain: false }, unsafe_pruning: false, wasm_method: Compiled, wasm_runtime_overrides: None, execution_strategies: ExecutionStrategiesParams { execution_syncing: None, execution_import_block: None, execution_block_construction: None, execution_offchain_worker: None, execution_other: None, execution: None }, state_cache_size: 67108864 }, network_params: NetworkParams { bootnodes: [], reserved_nodes: [], reserved_only: false, public_addr: [], listen_addr: [], port: None, no_private_ipv4: false, allow_private_ipv4: false, out_peers: 25, in_peers: 25, no_mdns: false, max_parallel_downloads: 5, node_key_params: NodeKeyParams { node_key: None, node_key_type: Ed25519, node_key_file: None }, discover_local: false, kademlia_disjoint_query_paths: false, ipfs_server: false, sync: Full }, pool_config: TransactionPoolParams { pool_limit: 8192, pool_kbytes: 20480 }, alice: false, bob: false, charlie: false, dave: false, eve: false, ferdie: false, one: false, two: false, force_authoring: false, keystore_params: KeystoreParams { keystore_uri: None, keystore_path: None, password_interactive: false, password: None, password_filename: None }, max_runtime_instances: None, tmp: false } }
+
+
+using local_testnet 94
+Path { path: "/home/joshua/.local/share/node-template/chains/local_testnet/keystore", password: None }
+(new) finalized_state is none? false
+account d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...)
+account 8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...)
+Error: Service(Client(StateDatabase("Trying to insert block with invalid number")))
+2022-03-03 11:16:11 Substrate Node    
+2022-03-03 11:16:11 ✌️  version 4.0.0-dev-e656243-x86_64-linux-gnu    
+2022-03-03 11:16:11 ❤️  by Substrate DevHub <https://github.com/substrate-developer-hub>, 2017-2022    
+2022-03-03 11:16:11 📋 Chain specification: Local Testnet    
+2022-03-03 11:16:11 🏷 Node name: abundant-eye-1030    
+2022-03-03 11:16:11 👤 Role: FULL    
+2022-03-03 11:16:11 💾 Database: RocksDb at /home/joshua/.local/share/node-template/chains/local_testnet/db/full    
+2022-03-03 11:16:11 ⛓  Native runtime: node-template-100 (node-template-1.tx1.au1)    
+2022-03-03 11:16:11 (start_session) before [(d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...), SessionKeys { babe: Public(d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...)) }), (8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...), SessionKeys { babe: Public(8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48 (5FHneW46...)) })]    
+2022-03-03 11:16:11 🔨 Initializing Genesis block/state (state: 0xd036…96f4, header-hash: 0x5c8f…9a4c)    

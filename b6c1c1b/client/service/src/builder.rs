@@ -500,10 +500,15 @@ where
 
 	// Generate Local keys
 	{
-		let _seed_config_info = &config;
+		// Seemingly `config.rpc_ipc` [String] is not used normally,
+		// so w e use it to pass `seed` [String] from input to
+		// local keystore
+		let seed_config_info = &config.rpc_ipc;
+		let mut seeds:Vec<String> = vec!(); // use seed_config_info
 
-		// TODO:: generate local seed;
-		let seeds:Vec<String> = vec!(); // use seed_config_info
+		if let Some(seed) = seed_config_info {
+			seeds.push(seed.clone());
+		}
 
 		sp_session::generate_local_session_keys(
 			client.clone(),

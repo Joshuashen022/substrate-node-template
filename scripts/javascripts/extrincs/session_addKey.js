@@ -151,7 +151,7 @@ async function main() {
     console.log(`Successfully connected to chain  -${chain} using -${nodeName} v-${nodeVersion}`);
     
     console.log('Trying to add a validator');
-    const result = await add_a_validator(api, local_keys[1]);
+    const result = await add_a_validator(api, local_keys[0]);
     if (result.isInBlock){
         console.log('Add a validator success!'); // {"inBlock":"0xc84e9..."}
         console.log('Check node-template logs for detail information');

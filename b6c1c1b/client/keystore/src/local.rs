@@ -248,7 +248,6 @@ impl SyncCryptoStore for LocalKeystore {
 		id: KeyTypeId,
 		seed: Option<&str>,
 	) -> std::result::Result<sr25519::Public, TraitError> {
-		log::info!("(sr25519_generate_new) {:?}", seed);
 		let pair = match seed {
 			Some(seed) =>
 				self.0.write().insert_ephemeral_from_seed_by_type::<sr25519::Pair>(seed, id),
@@ -393,8 +392,8 @@ impl KeystoreInner {
 	pub(crate) fn read_hash_map(&self){
 		log::info!("(read_hash_map) BEFORE ");
 
-		for ((_id,_raw_key), val) in &self.additional{
-			log::info!("value {}", val);
+		for ((_id,raw_key), val) in &self.additional{
+			log::info!("value {} key {:?}", val, raw_key);
 		}
 
 		log::info!("(read_hash_map) AFTER");

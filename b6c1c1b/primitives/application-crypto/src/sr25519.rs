@@ -45,7 +45,6 @@ impl RuntimePublic for Public {
 	}
 
 	fn generate_pair(key_type: KeyTypeId, seed: Option<Vec<u8>>) -> Self {
-		log::info!("(generate_pair) RuntimePublic");
 		sp_io::crypto::sr25519_generate(key_type, seed)
 	}
 
