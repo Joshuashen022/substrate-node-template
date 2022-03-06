@@ -925,11 +925,11 @@ fn find_next_epoch_digest<B: BlockT>(
 				return Err(babe_err(Error::MultipleEpochChangeDigests))
 			},
 			(Some(ConsensusLog::NextEpochData(epoch)), false) =>{
-				let mut s = String::new();
+				info!("[EPOCH] authorities: ");
 				for (id, stake) in epoch.clone().authorities{
-					s += &format!("({},{})", id, stake);
+					info!("	Id {}, Stake {}", id, stake);
 				}
-				info!("[EPOCH] authorities: {:?}", s);
+
 				epoch_digest = Some(epoch)
 			},
 			_ => trace!(target: "babe", "Ignoring digest not meant for us"),

@@ -21,7 +21,7 @@ use sp_core::H256;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
-use crate::{arg_enums::{NodeKeyType, CryptoScheme}, error};
+use crate::{arg_enums::NodeKeyType, error};
 
 /// The file name of the node's Ed25519 secret key inside the chain-specific
 /// network config directory, if neither `--node-key` nor `--node-key-file`

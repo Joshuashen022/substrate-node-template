@@ -263,7 +263,6 @@ fn claim_primary_slot(
 		//
 		// We already checked that authorities contains `key.public()`, so it can't
 		// be empty.  Therefore, this division in `calculate_threshold` is safe.
-		let threshold = calculate_primary_threshold(c, authorities, *authority_index);
 
 		let result = SyncCryptoStore::sr25519_vrf_sign(
 			&**keystore,
@@ -273,6 +272,7 @@ fn claim_primary_slot(
 		);
 
 		if let Ok(Some(signature)) = result {
+			let threshold = calculate_primary_threshold(c, authorities, *authority_index);
 			get_sig = true;
 			let public = PublicKey::from_bytes(&authority_id.to_raw_vec()).ok()?;
 			let inout = match signature.output.attach_input_hash(&public, transcript) {
@@ -297,9 +297,9 @@ fn claim_primary_slot(
 		}
 	}
 	if get_sig{
-		log::info!("claim I slot Fail with bad luck");
+		log::trace!("claim slot Leader Fail with bad luck");
 	} else {
-		log::info!("claim I slot Fail with no sig");
+		log::info!("claim slot Leader Fail with no signature");
 	}
 
 	None

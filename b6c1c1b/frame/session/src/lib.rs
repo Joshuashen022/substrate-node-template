@@ -767,7 +767,7 @@ pub mod pallet {
 			// Add key for next next session <NextKeys<T>>, and <KeyOwner<T>>
 			// when this session end this key won't be put into use
 			// but it will wait one more session.
-			Self::inner_set_keys(&new_account, keys);
+			let _ = Self::inner_set_keys(&new_account, keys);
 
 			let key_own = <KeyOwner<T>>::iter()
 				.map(|x|x)

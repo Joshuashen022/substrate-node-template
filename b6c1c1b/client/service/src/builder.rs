@@ -959,7 +959,10 @@ where
 
 	Ok((network, system_rpc_tx, NetworkStarter(network_start_tx)))
 }
-
+/// This function is used to check keys in local key store,
+/// for each key, it will be shown in three forms,
+/// encrypted by `sr25519`, `sr25519`, `ecdsa`.
+#[allow(dead_code)]
 fn check_keys(keystore: &SyncCryptoStorePtr){
 	let id = KeyTypeId::try_from("babe").unwrap();
 	let keys = keystore.gets_keys(id);

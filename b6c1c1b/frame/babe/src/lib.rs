@@ -507,15 +507,14 @@ impl<T: Config> Pallet<T> {
 		// epoch 0 as having started at the slot of block 1. We want to use
 		// the same randomness and validator set as signalled in the genesis,
 		// so we don't rotate the epoch.
-		let slot = CurrentSlot::<T>::get();
 
 		now != One::one() && {
 			let diff = CurrentSlot::<T>::get().saturating_sub(Self::current_epoch_start());
-			log::info!("Last Block slot[{}]. Total difference [{}]. Epoch Duration [{}]",
-				u64::from(slot),
-				u64::from(diff),
-				u64::from(T::EpochDuration::get())
-			);
+			// log::info!("Last Block slot[{}]. Total difference [{}]. Epoch Duration [{}]",
+			// 	u64::from(CurrentSlot::<T>::get()),
+			// 	u64::from(diff),
+			// 	u64::from(T::EpochDuration::get())
+			// );
 			*diff >= T::EpochDuration::get()
 		}
 	}

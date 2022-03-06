@@ -481,12 +481,10 @@ impl KeystoreInner {
 	fn key_phrase_by_type(&self, public: &[u8], key_type: KeyTypeId) -> Result<Option<String>> {
 
 		if let Some(phrase) = self.get_additional_pair(public, key_type) {
-			log::info!("(key_phrase_by_type) get_additional_pair {}", phrase);
 			return Ok(Some(phrase.clone()))
 		}
 
 		let path = if let Some(path) = self.key_file_path(public, key_type) {
-			log::info!("(key_phrase_by_type) key_file_path {:?}", path);
 			path
 		} else {
 			return Ok(None)
