@@ -5,6 +5,7 @@ https://zhuanlan.zhihu.com/p/261336716
 
 https://github.com/kaichaosun/tao
 
+https://polkadot.js.org/apps/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/
 
 **Branch**: origin/babe
 
@@ -18,7 +19,7 @@ Epoch change fixed by adding `session` pallet
 
 Add function of validator change but without stake ratio change
 
-
+Seemingly accomplished Praos
 
 Add `transfer_async.js` to make a transfer by sctips.
 
