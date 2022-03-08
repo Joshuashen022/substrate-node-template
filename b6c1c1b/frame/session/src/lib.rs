@@ -901,21 +901,29 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::NewSession { session_index });
 
 		// Adjust this session and next session stake
-		let mut this_stakes = Vec::new();
-		let mut next_stakes = Vec::new();
-		for (validator, key) in session_keys.clone(){
-			let this_stake = <StakeOwner<T>>::get(&validator).unwrap();
-			let stake_shift = <NextStake<T>>::get(&validator).unwrap_or(0);
-			let next_stake = this_stake as i128 + stake_shift;
-			this_stakes.push((key.clone(), this_stake));
-			next_stakes.push((key, next_stake));
+		let stake_validator = <StakeOwner<T>>::iter().collect::<Vec<_>>();
+		assert_eq!(stake_validator.len(), session_keys.len());
+
+		for (v, stake ) in stake_validator.clone(){
+			log::info!("{:?} stake is {}", v, stake);
 		}
 
-		// Adjust next session stake
-		let next_stake = queued_amalgamated.clone();
+		// Add stake shift from NextStake to StakeOwner
+		for (validator, shift ) in <NextStake<T>>::iter(){
+			log::info!("{:?} stake changes {}", validator, shift);
+			if let Some(stake) = <StakeOwner<T>>::get(&validator){
+				let next_stake = stake as i128 + shift;
+				<StakeOwner<T>>::remove(&validator);
+				<StakeOwner<T>>::insert(&validator, next_stake as u64);
+			} else {
+				assert!(shift > 0);
+				<StakeOwner<T>>::insert(&validator, shift as u64)
+			};
+		}
 
-		// Reset next key to none.
-		// Self::reset_next_keys();
+		// Reset next stake to none.
+		<NextStake<T>>::drain();
+		// This does not work
 
 		// Tell everyone about the new session keys.
 		T::SessionHandler::on_new_session::<T::Keys>(changed, &session_keys, &queued_amalgamated);
@@ -1118,7 +1126,13 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn put_changes(v: &T::ValidatorId, keys: i128) {
-		<NextStake<T>>::insert(v, keys);
+		if <NextStake<T>>::contains_key(v){
+			<NextStake<T>>::remove(v);
+			<NextStake<T>>::insert(v, keys);
+		} else {
+			<NextStake<T>>::insert(v, keys);
+		}
+
 	}
 
 	fn put_keys(v: &T::ValidatorId, keys: &T::Keys) {
@@ -1149,6 +1163,15 @@ impl<T: Config> Pallet<T> {
 	pub fn stake_owner(v: &T::ValidatorId) -> Option<u64> {
 		<StakeOwner<T>>::get(v)
 	}
+
+	// pub fn set_stake_owner(v: &T::ValidatorId) {
+	// 	if <StakeOwner<T>>::contains_key(v){
+	// 		<StakeOwner<T>>::remove(v);
+	// 		<StakeOwner<T>>::insert(v, keys);
+	// 	} else {
+	// 		<StakeOwner<T>>::insert(v, keys);
+	// 	}
+	// }
 
 	fn check_amount(v: &T::ValidatorId, amount: u64) -> bool{
 		if let Some(stake) = Self::stake_owner(&v){
