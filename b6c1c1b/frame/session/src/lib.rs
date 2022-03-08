@@ -139,15 +139,6 @@ use sp_std::{
 pub use pallet::*;
 pub use weights::WeightInfo;
 
-// use scale_info::prelude::string::String;
-// fn vec_into_key(v: Vec<u8>) -> String {
-// 	v.iter()
-// 		.map(|x| format!("{:X}",x))
-// 		.fold(String::new(),|mut sum, s|{
-// 			sum += &s;
-// 			sum
-// 		})
-// }
 /// Decides whether the session should be ended.
 pub trait ShouldEndSession<BlockNumber> {
 	/// Return `true` if the session should be ended.
@@ -268,12 +259,9 @@ pub trait SessionManager<ValidatorId> {
 
 impl<A> SessionManager<A> for () {
 	fn new_session(_n: SessionIndex) -> Option<Vec<A>> {
-		// log::info!("new_session {} for ()", _n);// calling this one
 		None
 	}
 	fn start_session(_: SessionIndex) {
-		log::trace!("Start session for ()");
-		// log::info!(" QueuedKeys at start_session for () {:?}", <QueuedKeys<T>>::get());
 	}
 	fn end_session(_: SessionIndex) {}
 }
@@ -303,6 +291,14 @@ pub trait SessionHandler<ValidatorId> {
 		validators: &[(ValidatorId, Ks)],
 		queued_validators: &[(ValidatorId, Ks)],
 	);
+
+	// fn on_new_session_with_stake<Ks: OpaqueKeys>(
+	// 	_changed: bool,
+	// 	_validators: &[(ValidatorId, Ks)],
+	// 	_this_stake:&[(Ks, u64)],
+	// 	_queued_validators: &[(ValidatorId, Ks)],
+	// 	_next_stake:&[(Ks, u64)],
+	// ) {}
 
 	/// A notification for end of the session.
 	///
@@ -338,22 +334,20 @@ impl<AId> SessionHandler<AId> for Tuple {
 		validators: &[(AId, Ks)],
 		queued_validators: &[(AId, Ks)],
 	) {
-		// log::info!("SessionHandler for Tuple");
 		for_tuples!(
 			#(
 				let our_keys: Box<dyn Iterator<Item=_>> = Box::new(validators.iter()
 					.map(|k| (&k.0, k.1.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
-						.unwrap()))); // .unwrap_or_default())));
+						.unwrap())));
 				let queued_keys: Box<dyn Iterator<Item=_>> = Box::new(queued_validators.iter()
 					.map(|k| (&k.0, k.1.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
-						.unwrap()))); // .unwrap_or_default())));
+						.unwrap())));
 				Tuple::on_new_session(changed, our_keys, queued_keys);
 			)*
 		)
 	}
 
 	fn on_before_session_ending() {
-		// log::info!("on_before_session_ending for_tuples");
 		for_tuples!( #( Tuple::on_before_session_ending(); )* )
 	}
 
@@ -437,6 +431,7 @@ pub mod pallet {
 		}
 	}
 
+	/// Genesis
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
@@ -542,9 +537,11 @@ pub mod pallet {
 
 			<Validators<T>>::put(initial_validators_0.clone());
 			<QueuedKeys<T>>::put(queued_keys);
-			<Validators2<T>>::put(initial_validators_0);
 
-
+			// StakeOwner Initialize
+			for v in initial_validators_0{
+				<StakeOwner<T>>::insert(v, 100);
+			}
 
 			//[(d4..7d (5GrwvaEF...), SessionKeys { babe: Public(d4..7d (5GrwvaEF...)) }),
 			// (8e..48 (5FHneW46...), SessionKeys { babe: Public(8e..48 (5FHneW46...)) })]
@@ -607,14 +604,24 @@ pub mod pallet {
 
 	/// The next session keys for a validator.
 	#[pallet::storage]
-	pub type NextKeys<T: Config> = // not using since session manager is ()
+	pub type NextKeys<T: Config> =
 		StorageMap<_, Twox64Concat, T::ValidatorId, T::Keys, OptionQuery>;
+
+	/// The next session stake change for a validator.[add]
+	#[pallet::storage]
+	pub type NextStake<T: Config> =
+	StorageMap<_, Twox64Concat, T::ValidatorId, i128, OptionQuery>;
 
 	/// The owner of a key. The key is the `KeyTypeId` + the encoded key.
 	#[pallet::storage]
 	pub type KeyOwner<T: Config> =
 		StorageMap<_, Twox64Concat, (KeyTypeId, Vec<u8>), T::ValidatorId, OptionQuery>;
 	// pub struct KeyTypeId(pub [u8; 4]); //[98, 97, 98, 101] =  b"babe";
+
+	/// The stake of each validator next session's stake. [add]
+	#[pallet::storage]
+	pub type StakeOwner<T: Config> =
+	StorageMap<_, Twox64Concat, T::ValidatorId, u64, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -641,6 +648,8 @@ pub mod pallet {
 		NoKeys,
 		/// Key setting account is not live, so it's impossible to associate keys.
 		NoAccount,
+		/// Stake remains less than transfer amount, or initial amount is zero (Less likely).
+		NotEnoughStake,
 	}
 
 	#[pallet::hooks]
@@ -648,7 +657,6 @@ pub mod pallet {
 		/// Called when a block is initialized. Will rotate session if it is the last
 		/// block of the current session.
 		fn on_initialize(n: T::BlockNumber) -> Weight {
-			// log::info!("#[session::hooks](on_initialize)");
 
 			let max_block = T::BlockWeights::get().max_block;
 			if T::ShouldEndSession::should_end_session(n) {
@@ -715,39 +723,48 @@ pub mod pallet {
 
 		/// Test pallet::call
 		#[pallet::weight(100)]
-		pub fn hello_world(origin: OriginFor<T>) -> DispatchResult {// keys: T::Keys, proof: Vec<u8>
+		pub fn transfer_stake_to(
+			origin: OriginFor<T>, // sender
+			receiver: <T as Config>::ValidatorId, // receiver
+			keys: T::Keys, // receiver's key
+			_proof: Vec<u8>, // key proof
+			amount: u64,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let enc_who = who.encode();
-			// [190, 93, .. , 210, 95]
-			log::info!("[{:?}] says hello world with",enc_who);
+			log::info!("********************************");
+			log::info!("Receiving extrincs of Transfer Stake");
 			{
-				// for v in <Validators<T>>::get(){
-				// 	let res = <Pallet<T>>::load_keys(&v);
-				// 	log::info!("Validators {:?} => {:?}", v, res);
-				// 	for id in T::Keys::key_ids(){
-				// 		if let Some(key) = res.clone() {
-				// 			let key_raw = key.get_raw(*id);
-				// 			let owner = Self::key_owner(*id, key_raw);// Self::key_owner
-				// 			if let Some(value) = owner {
-				// 				log::info!("Owner {:?}", value); // print Owner
-				// 				// it's definately not empty but just can't see
+				// let valid = if let Ok(sender) = <T as Config>::ValidatorId::try_from(w&ho){
+				// 	if let Some(stake) = Self::stake_owner(&sender){
+				// 		let shift = Self::load_stake_changes(&sender).unwrap_or(0);
+				// 		log::info!("current stake {} shift {}", stake, shift); // it worked
 				//
-				// 				//<KeyOwner<T>>::get()  = [98, 97, 98, 101],[212, 53, 147, ..] ..
-				// 			}
+				// 		// When valid, check if `new_account` exists,
+				// 		// if exists, change old key to new key.
+				// 		if amount as i128 - stake as i128 + shift > 0 {
+				//
 				// 		}
-				// 	};
-				// }
+				// 		true
+				// 	} else {
+				// 		log::info!("not a validator"); // it worked
+				// 		false
+				// 	}
+				// } else {
+				// 	false
+				// };
 			}
-			{
-				// for v in <Validators<T>>::get(){
-				// 	// v.
-				// 	let s = v.encode();
-				// 	log::info!("Validator [{:?}] encode get [{:?}] ", v, s);
-				// 	// Validator [] encode get [[212, 53, ... 162, 125]]
-				// 	// Validator [] encode get [[142, 175, .. 106, 72]]
-				// }
-			}
-			let _ = Self::inner_transfer_to(&who)?;
+			let sender = <T as Config>::ValidatorId::try_from(who)
+				.or_else(|_|{Err(Error::<T>::NoAssociatedValidatorId)})?;
+
+			ensure!(Self::check_amount(&sender, amount), Error::<T>::NotEnoughStake);
+
+			let _ = Self::inner_set_keys(&receiver, keys)?;
+			log::info!("Adding key success");
+
+			let _ = Self::inner_transfer_to(&sender,&receiver, amount);
+			// log::info!("Adding key success");
+
+			log::info!("********************************");
 			Ok(())
 		}
 
@@ -883,12 +900,34 @@ impl<T: Config> Pallet<T> {
 		// Record that this happened.
 		Self::deposit_event(Event::NewSession { session_index });
 
+		// Adjust this session and next session stake
+		let mut this_stakes = Vec::new();
+		let mut next_stakes = Vec::new();
+		for (validator, key) in session_keys.clone(){
+			let this_stake = <StakeOwner<T>>::get(&validator).unwrap();
+			let stake_shift = <NextStake<T>>::get(&validator).unwrap_or(0);
+			let next_stake = this_stake as i128 + stake_shift;
+			this_stakes.push((key.clone(), this_stake));
+			next_stakes.push((key, next_stake));
+		}
+
+		// Adjust next session stake
+		let next_stake = queued_amalgamated.clone();
+
 		// Reset next key to none.
 		// Self::reset_next_keys();
 
 		// Tell everyone about the new session keys.
 		T::SessionHandler::on_new_session::<T::Keys>(changed, &session_keys, &queued_amalgamated);
+		// T::SessionHandler::on_new_session_with_stake::<T::Keys>(
+		// 	changed,
+		// 	&session_keys,
+		// 	&this_stakes,
+		// 	&queued_amalgamated,
+		// 	&next_stakes
+		// );
 	}
+
 
 	/// Disable the validator of index `i`, returns `false` if the validator was already disabled.
 	pub fn disable_index(i: u32) -> bool {
@@ -988,17 +1027,23 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Transfer stake to the according owner of Key,
-	/// if Key owner not exist, report error
-	/// if stake ratio not enough, report error
-	fn inner_transfer_to(account: &T::AccountId) -> DispatchResult {
-		let who = T::ValidatorIdOf::convert(account.clone())
-			.or_else(|| T::ValidatorId::try_from(account.clone()).ok())
-			.ok_or(Error::<T>::NoAssociatedValidatorId)?;
-		log::info!("ValidatorId {:?} ",who);
-		ensure!(frame_system::Pallet::<T>::can_inc_consumer(&account), Error::<T>::NoAccount);
+	/// Transfer stake without checking
+	/// Make sure use `check_amount` before use this function
+	fn inner_transfer_to(
+		from: &T::ValidatorId,
+		to: &T::ValidatorId, // receiver Id
+		amount: u64,
+	) {
+		// Owner minus
+		let shift = Self::load_stake_changes(&from).unwrap_or(0);
+		let changes = shift - amount as i128;
+		Self::put_changes(&from, changes);
 
-		Ok(())
+		// Receiver gains
+		let shift = Self::load_stake_changes(&to).unwrap_or(0);
+		let changes = shift + amount as i128;
+		Self::put_changes(&to, changes);
+
 	}
 
 	/// Perform the set_key operation, checking for duplicates. Does not set `Changed`.
@@ -1060,12 +1105,20 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	fn load_stake_changes(v: &T::ValidatorId) -> Option<i128>{
+		<NextStake<T>>::get(v)
+	}
+
 	fn load_keys(v: &T::ValidatorId) -> Option<T::Keys> {
 		<NextKeys<T>>::get(v)
 	}
 
 	fn take_keys(v: &T::ValidatorId) -> Option<T::Keys> {
 		<NextKeys<T>>::take(v)
+	}
+
+	fn put_changes(v: &T::ValidatorId, keys: i128) {
+		<NextStake<T>>::insert(v, keys);
 	}
 
 	fn put_keys(v: &T::ValidatorId, keys: &T::Keys) {
@@ -1091,6 +1144,19 @@ impl<T: Config> Pallet<T> {
 
 	fn clear_key_owner(id: KeyTypeId, key_data: &[u8]) {
 		<KeyOwner<T>>::remove((id, key_data));
+	}
+
+	pub fn stake_owner(v: &T::ValidatorId) -> Option<u64> {
+		<StakeOwner<T>>::get(v)
+	}
+
+	fn check_amount(v: &T::ValidatorId, amount: u64) -> bool{
+		if let Some(stake) = Self::stake_owner(&v){
+			log::info!("I am checking");
+			let shift = Self::load_stake_changes(&v).unwrap_or(0);
+			return stake as i128 + shift > amount as i128
+		}
+		false
 	}
 }
 
