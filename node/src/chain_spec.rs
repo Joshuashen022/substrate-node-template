@@ -149,7 +149,7 @@ fn testnet_genesis(
 	// println!("(testnet_genesis)");
 	let mut authorities:Vec<(BabeId,BabeAuthorityWeight)> = Vec::new();
 	for auth in initial_authorities.clone(){
-		let stake:BabeAuthorityWeight = 1;
+		let stake:BabeAuthorityWeight = 100;
 		authorities.push((auth,stake));
 	}
 
@@ -168,7 +168,7 @@ fn testnet_genesis(
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
 		babe: BabeConfig {
-			authorities: Default::default(), // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
+			authorities, // pub authorities: Vec<(AuthorityId, BabeAuthorityWeight)>,
 			epoch_config: Some(babe_genesis::BABE_GENESIS_EPOCH_CONFIG),
 		},
 		session: SessionConfig {

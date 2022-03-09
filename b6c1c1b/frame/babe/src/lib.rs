@@ -335,7 +335,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
-
+			println!("GenesisBuild");
 			SegmentIndex::<T>::put(0);
 			Pallet::<T>::initialize_authorities(&self.authorities);
 			EpochConfig::<T>::put(
@@ -805,8 +805,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn initialize_authorities(authorities: &[(AuthorityId, BabeAuthorityWeight)]) {
-		if !authorities.is_empty() {
-			assert!(Authorities::<T>::get().is_empty(), "Authorities are already initialized!");
+		if !authorities.is_empty() && Authorities::<T>::get().is_empty() {
+			// assert!(Authorities::<T>::get().is_empty(), "Authorities are already initialized!");
 			let bounded_authorities =
 				WeakBoundedVec::<_, T::MaxAuthorities>::try_from(authorities.to_vec())
 					.expect("Initial number of authorities should be lower than T::MaxAuthorities");
@@ -935,7 +935,7 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	where
 		I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
 	{
-		let authorities = validators.map(|(_, k)| (k, 100)).collect::<Vec<_>>();
+		let authorities = validators.map(|(_, k)| (k, 1)).collect::<Vec<_>>();
 		Self::initialize_authorities(&authorities);
 	}
 

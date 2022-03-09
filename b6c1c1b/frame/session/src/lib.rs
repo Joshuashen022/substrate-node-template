@@ -497,22 +497,6 @@ pub mod pallet {
 				}
 			}
 
-			// test NextKeys value in Genesis build.
-			{
-				// info!("Genesis NextKeys test start");
-				// let next_keys_maps_value = <NextKeys<T>>::iter();
-				// let next_keys_maps_key = <NextKeys<T>>::iter_keys();
-				// for (key, value) in next_keys_maps_key.zip(next_keys_maps_value){
-				// 	info!("key {:?} value {:?}", key, value);
-				// 	// key 	ValidatorId d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...)
-				// 	// value (
-				// 	// 		ValidatorId d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...),
-				// 	// 		SessionKeys { babe: Public(d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d (5GrwvaEF...))
-				// 	// })
-				// }
-				// info!("Genesis NextKeys test end");
-			}
-
 			// [d435..da27d (5GrwvaEF...), 8eaf..6a48 (5FHneW46...)]
 			// log::info!("initial_validators {:?}", initial_validators_0);
 			let initial_validators_0 =
@@ -544,13 +528,6 @@ pub mod pallet {
 				.cloned()
 				.map(|v| (v.clone(), <Pallet<T>>::load_keys(&v).unwrap_or_default()))
 				.collect();
-
-			// See if above `unwrap_or_default()` using default it's not using
-			// for v in initial_validators_1 {
-			// 	let res = <Pallet<T>>::load_keys(&v);
-			// 	log::info!("{:?} => {:?}", v, res);
-			// 	// d4..7d (5GrwvaEF...) => Some(SessionKeys { babe: Public(d4..7d (5GrwvaEF...)) })
-			// }
 
 			// Tell everyone about the genesis session keys
 			T::SessionHandler::on_genesis_session::<T::Keys>(&queued_keys);
