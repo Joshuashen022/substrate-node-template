@@ -354,7 +354,6 @@ impl<AId> SessionHandler<AId> for Tuple {
 		this_stakes:&[u64],
 		next_stakes:&[u64],
 	) {
-		log::info!("(on_new_session_with_stake) Tuple");
 		for_tuples!(
 			#(
 				let our_keys: Box<dyn Iterator<Item=_>> = Box::new(validators.iter()

@@ -88,6 +88,12 @@ pub trait OneSessionHandler<ValidatorId>: BoundToRuntimeAppPublic {
 		I: Iterator<Item = (&'a ValidatorId, Self::Key)>,
 		ValidatorId: 'a;
 
+	fn on_genesis_session_with_stake<'a, I: 'a>(_validators: I, _stake: &[u64])
+		where
+			I: Iterator<Item = (&'a ValidatorId, Self::Key)>,
+			ValidatorId: 'a
+	{}
+
 	/// Session set has changed; act appropriately. Note that this can be called
 	/// before initialization of your module.
 	///

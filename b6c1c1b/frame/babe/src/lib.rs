@@ -930,13 +930,33 @@ impl<T: Config> sp_runtime::BoundToRuntimeAppPublic for Pallet<T> {
 impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	type Key = AuthorityId;
 
+	// TODO: Set initial stake from genesis input, rather than here.
 	fn on_genesis_session<'a, I: 'a>(validators: I)
 	where
 		I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
 	{
-		let authorities = validators.map(|(_, k)| (k, 1)).collect::<Vec<_>>();
+		let authorities = validators.map(|(_, k)| (k, 100)).collect::<Vec<_>>();
 		Self::initialize_authorities(&authorities);
 	}
+
+	// fn on_genesis_session_with_stake<'a, I: 'a>(validators: I, stakes: &[u64])
+	// 	where
+	// 		I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
+	// {
+	// 	// Make sure length match
+	//
+	// 	let validators = validators.collect::<Vec<_>>();
+	// 	assert_eq!(validators.len(), stakes.len());
+	//
+	// 	let authorities = validators
+	// 		.iter()
+	// 		.zip(stakes.into_iter())
+	// 		.map(|((_account, k), &stake)| {
+	// 			(k, stake)
+	// 		}).collect::<Vec<_>>();
+	//
+	// 	Self::initialize_authorities(authorities.as_slice());
+	// }
 
 	fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, queued_validators: I)
 	where
@@ -977,9 +997,8 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 		where
 			I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
 	{
-		log::info!("(on_new_session_with_stake) for babe");
-
 		// Make sure length match
+		// TODO: Optimize speed by directly using `Iterator`
 		let validators = validators.collect::<Vec<_>>();
 		let queued_validators = queued_validators.collect::<Vec<_>>();
 		assert_eq!(validators.len(), this_stakes.len());
