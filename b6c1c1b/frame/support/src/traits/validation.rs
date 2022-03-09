@@ -97,10 +97,26 @@ pub trait OneSessionHandler<ValidatorId>: BoundToRuntimeAppPublic {
 	///
 	/// The `validators` are the validators of the incoming session, and `queued_validators`
 	/// will follow.
-	fn on_new_session<'a, I: 'a>(changed: bool, validators: I, queued_validators: I)
+	fn on_new_session<'a, I: 'a>(
+		changed: bool,
+		validators: I,
+		queued_validators: I
+	)
 	where
 		I: Iterator<Item = (&'a ValidatorId, Self::Key)>,
 		ValidatorId: 'a;
+
+	fn on_new_session_with_stake<'a, I: 'a>(
+		_changed: bool,
+		_validators: I,
+		_queued_validators: I,
+		_this_stakes: &[u64],
+		_next_stakes: &[u64],
+	)
+		where
+			I: Iterator<Item = (&'a ValidatorId, Self::Key)>,
+			ValidatorId: 'a
+	{}
 
 	/// A notification for end of the session.
 	///

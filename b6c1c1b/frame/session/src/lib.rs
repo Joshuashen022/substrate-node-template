@@ -292,13 +292,13 @@ pub trait SessionHandler<ValidatorId> {
 		queued_validators: &[(ValidatorId, Ks)],
 	);
 
-	// fn on_new_session_with_stake<Ks: OpaqueKeys>(
-	// 	_changed: bool,
-	// 	_validators: &[(ValidatorId, Ks)],
-	// 	_this_stake:&[(Ks, u64)],
-	// 	_queued_validators: &[(ValidatorId, Ks)],
-	// 	_next_stake:&[(Ks, u64)],
-	// ) {}
+	fn on_new_session_with_stake<Ks: OpaqueKeys>(
+		_changed: bool,
+		_validators: &[(ValidatorId, Ks)],
+		_queued_validators: &[(ValidatorId, Ks)],
+		_this_stakes:&[u64],
+		_next_stakes:&[u64],
+	) {}
 
 	/// A notification for end of the session.
 	///
@@ -343,6 +343,27 @@ impl<AId> SessionHandler<AId> for Tuple {
 					.map(|k| (&k.0, k.1.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
 						.unwrap())));
 				Tuple::on_new_session(changed, our_keys, queued_keys);
+			)*
+		)
+	}
+
+	fn on_new_session_with_stake<Ks: OpaqueKeys>(
+		changed: bool,
+		validators: &[(AId, Ks)],
+		queued_validators: &[(AId, Ks)],
+		this_stakes:&[u64],
+		next_stakes:&[u64],
+	) {
+		log::info!("(on_new_session_with_stake) Tuple");
+		for_tuples!(
+			#(
+				let our_keys: Box<dyn Iterator<Item=_>> = Box::new(validators.iter()
+					.map(|k| (&k.0, k.1.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
+						.unwrap())));
+				let queued_keys: Box<dyn Iterator<Item=_>> = Box::new(queued_validators.iter()
+					.map(|k| (&k.0, k.1.get::<Tuple::Key>(<Tuple::Key as RuntimeAppPublic>::ID)
+						.unwrap())));
+				Tuple::on_new_session_with_stake(changed, our_keys, queued_keys, this_stakes, next_stakes);
 			)*
 		)
 	}
@@ -900,12 +921,16 @@ impl<T: Config> Pallet<T> {
 		// Record that this happened.
 		Self::deposit_event(Event::NewSession { session_index });
 
-		// Adjust this session and next session stake
-		let stake_validator = <StakeOwner<T>>::iter().collect::<Vec<_>>();
-		assert_eq!(stake_validator.len(), session_keys.len());
+		// Make sure this session validator number is the same as
+		// those in `session_keys`
+		assert_eq!(<StakeOwner<T>>::iter().count(), session_keys.len());
 
-		for (v, stake ) in stake_validator.clone(){
-			log::info!("{:?} stake is {}", v, stake);
+		// Adjust this session and next session stake
+		let mut this_stakes = Vec::new();
+		for (v, _ ) in session_keys.clone(){
+			let stake = Self::stake_owner(&v).unwrap_or(0);
+			this_stakes.push(stake);
+			log::info!("Someone stake is {}", stake);
 		}
 
 		// Add stake shift from NextStake to StakeOwner
@@ -921,18 +946,28 @@ impl<T: Config> Pallet<T> {
 			};
 		}
 
+		// Make sure next session validator number is the same as
+		// those in `queued_amalgamated`
+		assert_eq!(<StakeOwner<T>>::iter().count(), queued_amalgamated.len());
+
+		let mut next_stakes = Vec::new();
+		for (v, _ ) in queued_amalgamated.clone(){
+			let stake = Self::stake_owner(&v).unwrap_or(0);
+			next_stakes.push(stake);
+		}
+
 		// Reset next stake to none.
 		let _ = <NextStake<T>>::remove_all(None);
 
 		// Tell everyone about the new session keys.
-		T::SessionHandler::on_new_session::<T::Keys>(changed, &session_keys, &queued_amalgamated);
-		// T::SessionHandler::on_new_session_with_stake::<T::Keys>(
-		// 	changed,
-		// 	&session_keys,
-		// 	&this_stakes,
-		// 	&queued_amalgamated,
-		// 	&next_stakes
-		// );
+		// T::SessionHandler::on_new_session::<T::Keys>(changed, &session_keys, &queued_amalgamated);
+		T::SessionHandler::on_new_session_with_stake::<T::Keys>(
+			changed,
+			&session_keys,
+			&queued_amalgamated,
+		 	&this_stakes,
+			&next_stakes
+		);
 	}
 
 

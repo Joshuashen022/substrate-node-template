@@ -967,6 +967,56 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 		Self::enact_epoch_change(bounded_authorities, next_bounded_authorities)
 	}
 
+	fn on_new_session_with_stake<'a, I: 'a>(
+		_changed: bool,
+		validators: I,
+		queued_validators: I,
+		this_stakes: &[u64],
+		next_stakes: &[u64]
+	)
+		where
+			I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
+	{
+		log::info!("(on_new_session_with_stake) for babe");
+
+		// Make sure length match
+		let validators = validators.collect::<Vec<_>>();
+		let queued_validators = queued_validators.collect::<Vec<_>>();
+		assert_eq!(validators.len(), this_stakes.len());
+		assert_eq!(queued_validators.len(), next_stakes.len());
+
+		let authorities = validators
+			.iter()
+			.zip(this_stakes.into_iter())
+			.map(|((_account, k), &stake)|{
+			(k.clone(), stake)
+		}).collect::<Vec<_>>();
+
+		let bounded_authorities = WeakBoundedVec::<_, T::MaxAuthorities>::force_from(
+			authorities,
+			Some(
+				"Warning: The session has more validators than expected. \
+				A runtime configuration adjustment may be needed.",
+			),
+		);
+
+		let next_authorities = queued_validators
+			.iter()
+			.zip(next_stakes.into_iter())
+			.map(|((_account, k),&stake)| {
+				(k.clone(), stake)}
+			).collect::<Vec<_>>();
+		let next_bounded_authorities = WeakBoundedVec::<_, T::MaxAuthorities>::force_from(
+			next_authorities,
+			Some(
+				"Warning: The session has more queued validators than expected. \
+				A runtime configuration adjustment may be needed.",
+			),
+		);
+
+		Self::enact_epoch_change(bounded_authorities, next_bounded_authorities)
+	}
+
 	fn on_disabled(i: u32) {
 		Self::deposit_consensus(ConsensusLog::OnDisabled(i))
 	}
