@@ -762,7 +762,7 @@ pub mod pallet {
 			log::info!("Adding key success");
 
 			let _ = Self::inner_transfer_to(&sender,&receiver, amount);
-			// log::info!("Adding key success");
+			log::info!("Record stake transfer success");
 
 			log::info!("********************************");
 			Ok(())
@@ -922,8 +922,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// Reset next stake to none.
-		<NextStake<T>>::drain();
-		// This does not work
+		let _ = <NextStake<T>>::remove_all(None);
 
 		// Tell everyone about the new session keys.
 		T::SessionHandler::on_new_session::<T::Keys>(changed, &session_keys, &queued_amalgamated);
@@ -1175,7 +1174,6 @@ impl<T: Config> Pallet<T> {
 
 	fn check_amount(v: &T::ValidatorId, amount: u64) -> bool{
 		if let Some(stake) = Self::stake_owner(&v){
-			log::info!("I am checking");
 			let shift = Self::load_stake_changes(&v).unwrap_or(0);
 			return stake as i128 + shift > amount as i128
 		}
