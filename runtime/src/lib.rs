@@ -132,7 +132,7 @@ pub const EPOCH_DURATION_IN_SLOTS: u64 = {
 };
 
 // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
-pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
+pub const PRIMARY_PROBABILITY: (u64, u64) = (9, 10);
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]

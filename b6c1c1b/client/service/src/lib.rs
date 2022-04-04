@@ -173,10 +173,12 @@ async fn build_network_future<
 		.fuse()
 	};
 
+	// Network Receiver
 	loop {
 		futures::select! {
 			// List of blocks that the client has imported.
 			notification = imported_blocks_stream.next() => {
+				log::info!("[Network] imported blocks stream");
 				let notification = match notification {
 					Some(n) => n,
 					// If this stream is shut down, that means the client has shut down, and the
@@ -198,11 +200,13 @@ async fn build_network_future<
 
 			// List of blocks that the client has finalized.
 			notification = finality_notification_stream.select_next_some() => {
+				log::info!("[Network] finality notification stream");
 				network.on_block_finalized(notification.hash, notification.header);
 			}
 
 			// Answer incoming RPC requests.
 			request = rpc_rx.select_next_some() => {
+				log::info!("[Network] rpc rx");
 				match request {
 					sc_rpc::system::Request::Health(sender) => {
 						let _ = sender.send(sc_rpc::system::Health {
@@ -287,7 +291,9 @@ async fn build_network_future<
 			// The network worker has done something. Nothing special to do, but could be
 			// used in the future to perform actions in response of things that happened on
 			// the network.
-			_ = (&mut network).fuse() => {}
+			_ = (&mut network).fuse() => {
+				log::info!("[Network] none");
+			}
 		}
 	}
 }

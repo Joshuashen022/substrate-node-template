@@ -912,6 +912,7 @@ where
 
 	let (system_rpc_tx, system_rpc_rx) = tracing_unbounded("mpsc_system_rpc");
 
+	// Message Sender
 	let future = build_network_future(
 		config.role.clone(),
 		network_mut,
