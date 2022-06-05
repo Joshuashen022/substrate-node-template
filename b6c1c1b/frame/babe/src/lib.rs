@@ -361,7 +361,7 @@ pub mod pallet {
 			// already occurred at this point, so the under-construction randomness
 			// will only contain outputs from the right epoch.<Validators<T>>::put(initial_validators_0);
 
-			log::info!("Block[{:?}]", sl);
+			log::debug!("Block[{:?}]", sl);
 			log::trace!("#[babe::hooks] (on_finalize)");
 			if let Some(Some(randomness)) = Initialized::<T>::take() {
 				Self::deposit_randomness(&randomness);

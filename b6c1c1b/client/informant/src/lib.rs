@@ -63,10 +63,12 @@ pub async fn build<B: BlockT, C, P>(
 	<C as HeaderMetadata<B>>::Error: Display,
 	P: TransactionPool + MallocSizeOf,
 {
+	// log::info!("pub async fn build");
 	let mut display = display::InformantDisplay::new(format.clone());
 
 	let client_1 = client.clone();
 
+	// Creates a stream that returns a new value every `duration`.
 	let display_notifications = interval(Duration::from_millis(5000))
 		.filter_map(|_| async {
 			let status = network.status().await;

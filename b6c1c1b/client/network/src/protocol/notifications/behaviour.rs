@@ -392,6 +392,11 @@ impl Notifications {
 		}
 	}
 
+	pub fn have_peers(&self){
+		let peers_number = &self.peers.len();
+		log::info!("{}", peers_number);
+	}
+
 	/// Modifies the handshake of the given notifications protocol.
 	pub fn set_notif_protocol_handshake(
 		&mut self,

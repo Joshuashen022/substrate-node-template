@@ -241,6 +241,7 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkWorker<B, H> {
 
 		// Build the swarm.
 		let client = params.chain.clone();
+
 		let (mut swarm, bandwidth): (Swarm<B>, _) = {
 			let user_agent = format!(
 				"{} ({})",
@@ -324,7 +325,14 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkWorker<B, H> {
 					yamux_maximum_buffer_size,
 				)
 			};
+			let mut count = 0;
+			for _ in protocol.open_peers(){
+				count += 1;
+			};
+			log::info!("we have peer {}", count);
 
+			// To understand the code read the following example, by build a proper `Behaviour` struct
+			// https://github.com/libp2p/rust-libp2p/blob/master/examples/chat.rs
 			let behaviour = {
 				let bitswap = params.network_config.ipfs_server.then(|| Bitswap::new(client));
 				let result = Behaviour::new(
@@ -978,6 +986,7 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkService<B, H> {
 	/// In chain-based consensus, we often need to make sure non-best forks are
 	/// at least temporarily synced. This function forces such an announcement.
 	pub fn announce_block(&self, hash: B::Hash, data: Option<Vec<u8>>) {
+		// log::info!("(announce_block)");
 		let _ = self.to_worker.unbounded_send(ServiceToWorkerMsg::AnnounceBlock(hash, data));
 	}
 
@@ -1265,6 +1274,11 @@ impl<B: BlockT + 'static, H: ExHashT> sp_consensus::SyncOracle for NetworkServic
 	fn is_offline(&mut self) -> bool {
 		self.num_connected.load(Ordering::Relaxed) == 0
 	}
+
+	fn send_message(&mut self){
+		// log::info!("Try to send something"); // Not this
+		let _ = self.to_worker.unbounded_send(ServiceToWorkerMsg::PropagateTransactions);
+	}
 }
 
 impl<'a, B: BlockT + 'static, H: ExHashT> sp_consensus::SyncOracle for &'a NetworkService<B, H> {
@@ -1274,6 +1288,11 @@ impl<'a, B: BlockT + 'static, H: ExHashT> sp_consensus::SyncOracle for &'a Netwo
 
 	fn is_offline(&mut self) -> bool {
 		self.num_connected.load(Ordering::Relaxed) == 0
+	}
+
+	fn send_message(&mut self){
+		// log::info!("Try to send something 'a ");
+		let _ = self.to_worker.unbounded_send(ServiceToWorkerMsg::PropagateTransactions);
 	}
 }
 
@@ -1423,12 +1442,99 @@ enum ServiceToWorkerMsg<B: BlockT, H: ExHashT> {
 	DisconnectPeer(PeerId, Cow<'static, str>),
 	NewBestBlockImported(B::Hash, NumberFor<B>),
 }
+impl<B: BlockT, H: ExHashT> ServiceToWorkerMsg<B, H>{
+	pub fn check_message_type(&self){
 
+		match self {
+			ServiceToWorkerMsg::AnnounceBlock(_hash, _data) => {
+				log::info!("[MSG] AnnounceBlock(_hash, _data)");
+			},
+			ServiceToWorkerMsg::RequestJustification(_hash, _number) => {
+				log::info!("[MSG] RequestJustification(_hash, _number)");
+			},
+			ServiceToWorkerMsg::ClearJustificationRequests => {
+				log::info!("[MSG] ClearJustificationRequests");
+			},
+			ServiceToWorkerMsg::PropagateTransaction(hash) =>{
+				log::info!("[MSG] PropagateTransaction(hash)");
+			},
+			ServiceToWorkerMsg::PropagateTransactions =>{
+				log::info!("[MSG] PropagateTransactions");
+			},
+			ServiceToWorkerMsg::GetValue(_key) =>{
+				log::info!("[MSG] GetValue(key)");
+			},
+			ServiceToWorkerMsg::PutValue(_key, _value) =>{
+				log::info!("[MSG] PutValue(_key, _value)");
+			},
+			ServiceToWorkerMsg::SetReservedOnly(_reserved_only) => {
+				log::info!("[MSG] SetReservedOnly(_reserved_only)");
+			},
+			ServiceToWorkerMsg::SetReserved(_peers) => {
+				log::info!("[MSG] SetReserved(_peers)");
+			},
+			ServiceToWorkerMsg::SetPeersetReserved(_protocol, _peers) => {
+				log::info!("[MSG] SetPeersetReserved(_protocol, _peers)");
+			}
+			ServiceToWorkerMsg::AddReserved(_peer_id) => {
+				log::info!("[MSG] AddReserved(_peer_id)");
+			},
+			ServiceToWorkerMsg::RemoveReserved(_peer_id) => {
+				log::info!("[MSG] RemoveReserved(peer_id)");
+			},
+			ServiceToWorkerMsg::AddSetReserved(_protocol, _peer_id) => {
+				log::info!("[MSG] AddSetReserved(_protocol, _peer_id)");
+			},
+			ServiceToWorkerMsg::RemoveSetReserved(_protocol, _peer_id) => {
+				log::info!("[MSG] RemoveSetReserved(_protocol, _peer_id)");
+			},
+			ServiceToWorkerMsg::AddKnownAddress(peer_id, addr) =>{
+				log::info!("[MSG] AddKnownAddress(peer_id, addr) ");
+			},
+			ServiceToWorkerMsg::AddToPeersSet(_protocol, _peer_id) => {
+				log::info!("[MSG] AddToPeersSet(_protocol, _peer_id)");
+			},
+			ServiceToWorkerMsg::RemoveFromPeersSet(_protocol, _peer_id) => {
+				log::info!("[MSG] RemoveFromPeersSet(_protocol, _peer_id)");
+			},
+			ServiceToWorkerMsg::SyncFork(peer_ids, hash, number) => {
+				log::info!("[MSG] SyncFork(_peer_ids, _hash, _number)");
+			},
+			ServiceToWorkerMsg::EventStream(_sender) => {
+				log::info!("[MSG] EventStream(_sender)");
+			},
+			ServiceToWorkerMsg::Request {
+				target,
+				protocol,
+				request,
+				pending_response,
+				connect,
+			} => {
+				log::info!("[MSG] Request");
+			},
+			ServiceToWorkerMsg::NetworkStatus { pending_response } => {
+				log::info!("[MSG] NetworkStatus");
+			},
+			ServiceToWorkerMsg::NetworkState { pending_response } => {
+				log::info!("[MSG] NetworkState");
+			},
+			ServiceToWorkerMsg::DisconnectPeer(who, protocol_name) => {
+				log::info!("[MSG] DisconnectPeer");
+			},
+			ServiceToWorkerMsg::NewBestBlockImported(hash, number) => {
+				log::info!("[MSG] NewBestBlockImported");
+			},
+		}
+
+	}
+}
 /// Main network worker. Must be polled in order for the network to advance.
 ///
 /// You are encouraged to poll this in a separate background thread or task.
 #[must_use = "The NetworkWorker must be polled in order for the network to advance"]
-pub struct NetworkWorker<B: BlockT + 'static, H: ExHashT> {
+pub
+struct
+NetworkWorker<B: BlockT + 'static, H: ExHashT> {
 	/// Updated by the `NetworkWorker` and loaded by the `NetworkService`.
 	external_addresses: Arc<Mutex<Vec<Multiaddr>>>,
 	/// Updated by the `NetworkWorker` and loaded by the `NetworkService`.
@@ -1484,8 +1590,15 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 
 			// Process the next message coming from the `NetworkService`.
 			let msg = match this.from_service.poll_next_unpin(cx) {
-				Poll::Ready(Some(msg)) => msg,
-				Poll::Ready(None) => return Poll::Ready(()),
+				Poll::Ready(Some(msg)) =>{
+					// log::info!("[MSG] Some msg");
+					msg.check_message_type();
+					msg
+				},
+				Poll::Ready(None) => {
+					log::info!("[MSG] Ready(Some None)");
+					return Poll::Ready(())
+				},
 				Poll::Pending => break,
 			};
 
@@ -1611,13 +1724,14 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 			}
 
 			// Process the next action coming from the network.
-			let next_event = this.network_service.select_next_some();
+			let next_event = this.network_service.select_next_some(); // This will call protocol.poll()
 			futures::pin_mut!(next_event);
 			let poll_value = next_event.poll_unpin(cx);
-
+			// NotificationsSinkMessage::Notification
 			match poll_value {
 				Poll::Pending => break,
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::BlockImport(origin, blocks))) => {
+					info!("[Behaviour] BlockImport");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.import_queue_blocks_submitted.inc();
 					}
@@ -1629,6 +1743,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					nb,
 					justifications,
 				))) => {
+					info!("[Behaviour] JustificationImport");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.import_queue_justifications_submitted.inc();
 					}
@@ -1639,6 +1754,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					result,
 					..
 				})) => {
+					info!("[Behaviour] InboundRequest");
 					if let Some(metrics) = this.metrics.as_ref() {
 						match result {
 							Ok(serve_time) => {
@@ -1679,6 +1795,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					..
 				})) =>
 					if let Some(metrics) = this.metrics.as_ref() {
+						info!("[Behaviour] RequestFinished");
 						match result {
 							Ok(_) => {
 								metrics
@@ -1713,6 +1830,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					protocol,
 				))) =>
 					if let Some(metrics) = this.metrics.as_ref() {
+						info!("[Behaviour] RandomKademliaStarted");
 						metrics
 							.kademlia_random_queries_total
 							.with_label_values(&[&protocol.as_ref()])
@@ -1725,6 +1843,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					notifications_sink,
 					role,
 				})) => {
+					info!("[Behaviour] NotificationStreamOpened");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics
 							.notifications_streams_opened_total
@@ -1749,6 +1868,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					protocol,
 					notifications_sink,
 				})) => {
+					info!("[Behaviour] NotificationStreamReplaced");
 					let mut peers_notifications_sinks = this.peers_notifications_sinks.lock();
 					if let Some(s) = peers_notifications_sinks.get_mut(&(remote, protocol)) {
 						*s = notifications_sink;
@@ -1785,6 +1905,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					remote,
 					protocol,
 				})) => {
+					info!("[Behaviour] NotificationStreamClosed");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics
 							.notifications_streams_closed_total
@@ -1806,6 +1927,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					remote,
 					messages,
 				})) => {
+					info!("[Behaviour] NotificationsReceived");
 					if let Some(metrics) = this.metrics.as_ref() {
 						for (protocol, message) in &messages {
 							metrics
@@ -1817,12 +1939,15 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					this.event_streams.send(Event::NotificationsReceived { remote, messages });
 				},
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::SyncConnected(remote))) => {
+					info!("[Behaviour] SyncConnected");
 					this.event_streams.send(Event::SyncConnected { remote });
 				},
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::SyncDisconnected(remote))) => {
+					info!("[Behaviour] SyncDisconnected");
 					this.event_streams.send(Event::SyncDisconnected { remote });
 				},
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::Dht(event, duration))) => {
+					info!("[Behaviour] Dht");
 					if let Some(metrics) = this.metrics.as_ref() {
 						let query_type = match event {
 							DhtEvent::ValueFound(_) => "value-found",
@@ -1845,9 +1970,9 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					concurrent_dial_errors,
 				}) => {
 					if let Some(errors) = concurrent_dial_errors {
-						debug!(target: "sub-libp2p", "Libp2p => Connected({:?}) with errors: {:?}", peer_id, errors);
+						error!(target: "sub-libp2p", "Libp2p => Connected({:?}) with errors: {:?}", peer_id, errors);
 					} else {
-						debug!(target: "sub-libp2p", "Libp2p => Connected({:?})", peer_id);
+						info!(target: "sub-libp2p", "Libp2p => Connected({:?})", peer_id);
 					}
 
 					if let Some(metrics) = this.metrics.as_ref() {
@@ -1905,7 +2030,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					}
 				},
 				Poll::Ready(SwarmEvent::NewListenAddr { address, .. }) => {
-					trace!(target: "sub-libp2p", "Libp2p => NewListenAddr({})", address);
+					info!(target: "sub-libp2p", "Libp2p => NewListenAddr({})", address);
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.listeners_local_addresses.inc();
 					}
@@ -1955,10 +2080,10 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					}
 				},
 				Poll::Ready(SwarmEvent::Dialing(peer_id)) => {
-					trace!(target: "sub-libp2p", "Libp2p => Dialing({:?})", peer_id)
+					info!(target: "sub-libp2p", "Libp2p => Dialing({:?})", peer_id)
 				},
 				Poll::Ready(SwarmEvent::IncomingConnection { local_addr, send_back_addr }) => {
-					trace!(target: "sub-libp2p", "Libp2p => IncomingConnection({},{}))",
+					info!(target: "sub-libp2p", "Libp2p => IncomingConnection({},{}))",
 						local_addr, send_back_addr);
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.incoming_connections_total.inc();
@@ -1969,7 +2094,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					send_back_addr,
 					error,
 				}) => {
-					debug!(
+					error!(
 						target: "sub-libp2p",
 						"Libp2p => IncomingConnectionError({},{}): {}",
 						local_addr, send_back_addr, error,
@@ -1992,7 +2117,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					}
 				},
 				Poll::Ready(SwarmEvent::BannedPeer { peer_id, endpoint }) => {
-					debug!(
+					info!(
 						target: "sub-libp2p",
 						"Libp2p => BannedPeer({}). Connected via {:?}.",
 						peer_id, endpoint,
@@ -2024,7 +2149,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					}
 				},
 				Poll::Ready(SwarmEvent::ListenerError { error, .. }) => {
-					debug!(target: "sub-libp2p", "Libp2p => ListenerError: {}", error);
+					error!(target: "sub-libp2p", "Libp2p => ListenerError: {}", error);
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.listeners_errors_total.inc();
 					}

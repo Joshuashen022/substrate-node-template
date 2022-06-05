@@ -62,6 +62,7 @@ where
 	C: AuxStore,
 	P: Clone + Encode + Decode + PartialEq,
 {
+	// log::info!("(check_equivocation)");
 	// We don't check equivocations for old headers out of our capacity.
 	if slot_now.saturating_sub(*slot) > Slot::from(MAX_SLOT_CAPACITY) {
 		return Ok(None)

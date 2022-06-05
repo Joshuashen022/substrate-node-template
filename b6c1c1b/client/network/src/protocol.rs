@@ -44,7 +44,7 @@ use libp2p::{
 use log::{debug, error, info, log, trace, warn, Level};
 use message::{
 	generic::{Message as GenericMessage, Roles},
-	BlockAnnounce, Message,
+	BlockAnnounce, Message, AdjustAnnounce
 };
 use notifications::{Notifications, NotificationsOut};
 use prometheus_endpoint::{register, Gauge, GaugeVec, Opts, PrometheusError, Registry, U64};
@@ -119,6 +119,15 @@ mod rep {
 	pub const BAD_ROLE: Rep = Rep::new_fatal("Unsupported role");
 	/// Peer send us a block announcement that failed at validation.
 	pub const BAD_BLOCK_ANNOUNCEMENT: Rep = Rep::new(-(1 << 12), "Bad block announcement");
+}
+
+/// Returns current duration since unix epoch.
+pub fn duration_now() -> std::time::Duration {
+	use std::time::SystemTime;
+	let now = SystemTime::now();
+	now.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_else(|e| {
+		panic!("Current time {:?} is before unix epoch. Something is wrong: {:?}", now, e)
+	})
 }
 
 struct Metrics {
@@ -417,6 +426,19 @@ impl<B: BlockT> Protocol<B> {
 			network_config.default_peers_set.in_peers as usize +
 				network_config.default_peers_set.out_peers as usize,
 		);
+		let notification_protocols = network_config
+			.extra_sets
+			.iter()
+			.map(|s| {
+				// I don't think the protocol name is useful.
+				// And to test that, I use a template Cow to check if I'm right.
+				// And the result shows that I am right.
+				let tmp = Cow::Owned("something".to_string());
+				let orgin = s.notifications_protocol.clone();
+				tmp
+			})
+			.collect();
+		log::info!("notification_protocols {:?}", notification_protocols);
 
 		let protocol = Self {
 			tick_timeout: Box::pin(interval(TICK_TIMEOUT)),
@@ -429,11 +451,7 @@ impl<B: BlockT> Protocol<B> {
 			important_peers,
 			peerset_handle: peerset_handle.clone(),
 			behaviour,
-			notification_protocols: network_config
-				.extra_sets
-				.iter()
-				.map(|s| s.notifications_protocol.clone())
-				.collect(),
+			notification_protocols,
 			bad_handshake_substreams: Default::default(),
 			metrics: if let Some(r) = metrics_registry {
 				Some(Metrics::register(r)?)
@@ -851,6 +869,7 @@ impl<B: BlockT> Protocol<B> {
 	/// In chain-based consensus, we often need to make sure non-best forks are
 	/// at least temporarily synced.
 	pub fn announce_block(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
+		self.announce_adjust(hash,data.clone());
 		let header = match self.chain.header(BlockId::Hash(hash)) {
 			Ok(Some(header)) => header,
 			Ok(None) => {
@@ -895,6 +914,51 @@ impl<B: BlockT> Protocol<B> {
 		}
 	}
 
+	pub fn announce_adjust(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
+		log::info!("[Adjust] announce_adjust");
+		let header = match self.chain.header(BlockId::Hash(hash)) {
+			Ok(Some(header)) => header,
+			Ok(None) => {
+				warn!("Trying to announce unknown block: {}", hash);
+				return
+			},
+			Err(e) => {
+				warn!("Error reading block header {}: {:?}", hash, e);
+				return
+			},
+		};
+
+		// don't announce genesis block since it will be ignored
+		if header.number().is_zero() {
+			return
+		}
+
+		let is_best = self.chain.info().best_hash == hash;
+		debug!(target: "sync", "Reannouncing block {:?} is_best: {}", hash, is_best);
+
+		let data = data
+			.or_else(|| self.block_announce_data_cache.get(&hash).cloned())
+			.unwrap_or_default();
+
+		for (who, ref mut peer) in self.peers.iter_mut() {
+			trace!(target: "sync", "Announcing Adjust {:?} to {}", hash, who);
+			let timestamp = duration_now().as_millis();
+			let message = message::AdjustAnnounce {
+				header: header.clone(),
+				timestamp,
+				state: if is_best {
+					Some(message::BlockState::Best)
+				} else {
+					Some(message::BlockState::Normal)
+				},
+				data: Some(data.clone()),
+			};
+			// log::info!("{:?}", message);
+			self.behaviour
+				.write_notification(who, HARDCODED_PEERSETS_SYNC, message.encode());
+		}
+	}
+
 	/// Push a block announce validation.
 	///
 	/// It is required that [`ChainSync::poll_block_announce_validation`] is
@@ -931,6 +995,12 @@ impl<B: BlockT> Protocol<B> {
 			self.sync.push_block_announce_validation(who, hash, announce, is_best);
 		}
 	}
+
+	/// Push an empty adjust announce validation.
+	fn push_adjust_announce_validation(&mut self, _who: PeerId, announce: AdjustAnnounce<B::Header>) {
+		let _hash = announce.header.hash();
+	}
+
 
 	/// Process the result of the block announce validation.
 	fn process_block_announce_validation_result(
@@ -1724,7 +1794,9 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 			},
 			NotificationsOut::Notification { peer_id, set_id, message } => match set_id {
 				HARDCODED_PEERSETS_SYNC if self.peers.contains_key(&peer_id) => {
+					log::info!("[Adjust] before decode");
 					if let Ok(announce) = message::BlockAnnounce::decode(&mut message.as_ref()) {
+						log::info!("[Adjust] decode at BlockAnnounce");
 						self.push_block_announce_validation(peer_id, announce);
 
 						// Make sure that the newly added block announce validation future was
@@ -1735,9 +1807,16 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 							CustomMessageOutcome::None
 						}
 					} else {
-						warn!(target: "sub-libp2p", "Failed to decode block announce");
+						log::info!("[Adjust] try decode at AdjustAnnounce");
+						if let Ok(announce) = message::AdjustAnnounce::decode(&mut message.as_ref()) {
+							log::info!("[Adjust] Receive AdjustAnnounce");
+							self.push_adjust_announce_validation(peer_id, announce);
+						} else {
+							warn!(target: "sub-libp2p", "Failed to decode block announce");
+						};
 						CustomMessageOutcome::None
 					}
+
 				},
 				HARDCODED_PEERSETS_SYNC => {
 					trace!(

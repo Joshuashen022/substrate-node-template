@@ -449,7 +449,7 @@ pub fn start_babe<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		select_chain,
 		env,
 		block_import,
-		sync_oracle,
+		sync_oracle, // network: NetworkService
 		justification_sync_link,
 		create_inherent_data_providers,
 		force_authoring,
@@ -925,9 +925,9 @@ fn find_next_epoch_digest<B: BlockT>(
 				return Err(babe_err(Error::MultipleEpochChangeDigests))
 			},
 			(Some(ConsensusLog::NextEpochData(epoch)), false) =>{
-				info!("[EPOCH] authorities: ");
+				debug!("[EPOCH] authorities: ");
 				for (id, stake) in epoch.clone().authorities{
-					info!("	Id {}, Stake {}", id, stake);
+					debug!("	Id {}, Stake {}", id, stake);
 				}
 
 				epoch_digest = Some(epoch)
@@ -1147,7 +1147,7 @@ where
 			block.justifications,
 			block.body,
 		);
-
+		// log::info!("(verify)");
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
 
@@ -1459,6 +1459,7 @@ where
 
 		// Use an extra scope to make the compiler happy, because otherwise he complains about the
 		// mutex, even if we dropped it...
+
 		let mut epoch_changes = {
 			let mut epoch_changes = self.epoch_changes.shared_data_locked();
 
@@ -1502,7 +1503,7 @@ where
 					// log::info!("[EPOCH] {:?} ({:?}-{:?}) {:?}", number, start_slot.0, end_slot.0, position);
 				}
 				_ => {
-					log::info!("[EPOCH] {:?}", &epoch_descriptor);
+					// log::info!("[EPOCH] {:?}", &epoch_descriptor);
 				}
 			}
 
@@ -1651,7 +1652,7 @@ where
 			// Release the mutex, but it stays locked
 			epoch_changes.release_mutex()
 		};
-
+		// self.inner() :: &Client
 		let import_result = self.inner.import_block(block, new_cache).await;
 
 		// revert to the original epoch changes in case there's an error
@@ -1661,8 +1662,9 @@ where
 				*epoch_changes.upgrade() = old_epoch_changes;
 			}
 		}
+		let s = import_result.map_err(Into::into);
 
-		import_result.map_err(Into::into)
+		s
 	}
 
 	async fn check_block(

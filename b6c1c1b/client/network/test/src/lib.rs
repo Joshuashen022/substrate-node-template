@@ -329,6 +329,7 @@ where
 			BlockBuilder<Block, PeersFullClient, substrate_test_runtime_client::Backend>,
 		) -> Block,
 	{
+		log::info!("(generate_blocks_at)");
 		let full_client = self.client.as_client();
 		let mut at = full_client.header(&at).unwrap().unwrap().hash();
 		for _ in 0..count {

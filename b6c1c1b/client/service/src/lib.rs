@@ -134,7 +134,7 @@ pub struct PartialComponents<Client, Backend, SelectChain, ImportQueue, Transact
 /// Builds a never-ending future that continuously polls the network.
 ///
 /// The `status_sink` contain a list of senders to send a periodic network status to.
-async fn build_network_future<
+async fn  build_network_future<
 	B: BlockT,
 	C: BlockchainEvents<B> + HeaderBackend<B>,
 	H: sc_network::ExHashT,
@@ -173,8 +173,33 @@ async fn build_network_future<
 		.fuse()
 	};
 
-	// Network Receiver
+	// Netswork Receiver
+	// `select!` will call `poll` function of `NetsworkWorker`
 	loop {
+		{
+			// BlockImportNotification {
+			// hash: 0xa422912f915566af947bb489bcd9cf8eda784c985dccbd66f8fcdf415baf171b,
+			// origin: Own,
+			// header: Header {
+			// 		parent_hash: 0xa15615a238cb76818213ff2a579e3884fa11ab108bdebf2024db4a2124efd0e9,
+			// 		number: 1,
+			// 		state_root: 0xaa58d623e2a52c69e7dbc6d5d3dce2eb5a1d65338c8c609a091de944fabf580b,
+			// 		extrinsics_root: 0x21962bfcb7837515db65c4bd96e0c9427a3b3d27824d4e2d7328f881481b8139,
+			// 		digest: Digest {
+			// 			logs: [DigestItem::PreRuntime(
+			// 					[66, 65, 66, 69],
+			// 					[1, 0, 0, 0, 0, 72, 198, 105, 16, 0, 0, 0, 0, 198, 169, 112, 147, 127, 213, 244, 56, 126, 254, 43, 71, 29, 205, 65, 209, 105, 130, 146, 65, 59, 119, 67, 232, 168, 163, 160, 108, 82, 25, 142, 8, 46, 123, 201, 191, 228, 181, 56, 3, 228, 93, 205, 62, 249, 105, 31, 19, 45, 218, 17, 149, 24, 124, 217, 186, 114, 10, 125, 160, 108, 11, 229, 14, 241, 100, 185, 82, 255, 137, 177, 99, 147, 211, 14, 243, 27, 147, 168, 91, 116, 109, 141, 68, 39, 223, 236, 42, 144, 243, 197, 195, 173, 80, 2, 3]), DigestItem::Consensus([66, 65, 66, 69], [1, 8, 212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214, 130, 44, 133, 88, 133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125, 100, 0, 0, 0, 0, 0, 0, 0, 142, 175, 4, 21, 22, 135, 115, 99, 38, 201, 254, 161, 126, 37, 252, 82, 135, 97, 54, 147, 201, 18, 144, 156, 178, 38, 170, 71, 148, 242, 106, 72, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			// 				),
+			// 				DigestItem::Seal(
+			// 					[66, 65, 66, 69],
+			// 					[208, 249, 86, 175, 104, 197, 43, 239, 97, 49, 23, 86, 169, 183, 141, 236, 53, 62, 41, 156, 45, 195, 185, 223, 171, 25, 220, 103, 24, 123, 218, 78, 131, 234, 243, 24, 104, 223, 26, 251, 174, 180, 163, 159, 212, 60, 119, 181, 5, 252, 84, 247, 24, 38, 115, 84, 196, 89, 27, 207, 72, 188, 80, 130]
+			// 				)
+			// 			] }
+			// 		},
+			// 		is_new_best: true,
+			// 		tree_route: None
+			// }
+		}
 		futures::select! {
 			// List of blocks that the client has imported.
 			notification = imported_blocks_stream.next() => {
@@ -185,12 +210,13 @@ async fn build_network_future<
 					// most appropriate thing to do for the network future is to shut down too.
 					None => return,
 				};
-
+				// log::info!("[Network] {:?}",notification.header);
 				if announce_imported_blocks {
 					network.service().announce_block(notification.hash, None);
 				}
 
 				if notification.is_new_best {
+					// to_worker (ServiceToWorkerMsg::NewBestBlockImported)
 					network.service().new_best_block_imported(
 						notification.hash,
 						notification.header.number().clone(),

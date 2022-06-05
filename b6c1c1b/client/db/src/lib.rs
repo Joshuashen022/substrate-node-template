@@ -1851,7 +1851,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 	fn begin_operation(&self) -> ClientResult<Self::BlockImportOperation> {
 		let mut old_state = self.empty_state()?;
 		old_state.disable_syncing();
-
+		log::trace!("api back end");
 		Ok(BlockImportOperation {
 			pending_block: None,
 			old_state,

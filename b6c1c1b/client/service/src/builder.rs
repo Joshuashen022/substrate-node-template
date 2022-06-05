@@ -907,7 +907,11 @@ where
 	}
 
 	let has_bootnodes = !network_params.network_config.boot_nodes.is_empty();
+
+	// the poll function of `NetworkWorker` can be used to send message;
 	let network_mut = sc_network::NetworkWorker::new(network_params)?;
+
+	// This contains sender (to_worker)
 	let network = network_mut.service().clone();
 
 	let (system_rpc_tx, system_rpc_rx) = tracing_unbounded("mpsc_system_rpc");
@@ -957,7 +961,7 @@ where
 
 		future.await
 	});
-
+	// log::info!("Is protocol polling? build_network_future done{}", line!());
 	Ok((network, system_rpc_tx, NetworkStarter(network_start_tx)))
 }
 /// This function is used to check keys in local key store,

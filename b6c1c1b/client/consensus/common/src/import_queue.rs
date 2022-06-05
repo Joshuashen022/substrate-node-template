@@ -204,7 +204,7 @@ pub(crate) async fn import_single_block_metered<
 	metrics: Option<Metrics>,
 ) -> BlockImportResult<B> {
 	let peer = block.origin;
-
+	// log::info!("(import_single_block_metered)");
 	let (header, justifications) = match (block.header, block.justifications) {
 		(Some(header), justifications) => (header, justifications),
 		(None, _) => {

@@ -244,6 +244,10 @@ pub trait SimpleSlotWorker<B: BlockT> {
 
 		let authorities_len = self.authorities_len(&epoch_data);
 
+		// Test send message
+		// log::info!("Test send message");
+		// self.sync_oracle().send_message();
+
 		if !self.force_authoring() &&
 			self.sync_oracle().is_offline() &&
 			authorities_len.map(|a| a > 1).unwrap_or(false)
@@ -386,9 +390,16 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		);
 
 		let header = block_import_params.post_header();
-		log::trace!("begin to [import block]");
-		match block_import.import_block(block_import_params, Default::default()).await {
+
+		// log::info!("begin to [import block]");
+		std::thread::sleep(Duration::from_millis(1000));
+		// Send block to other after this
+		// log::info!("before [import block]");
+		let _internal = block_import.import_block(block_import_params, Default::default()).await;
+		// log::info!("after [import block]");
+		match _internal {
 			Ok(res) => {
+				//  Send block before here
 				res.handle_justification(
 					&header.hash(),
 					*header.number(),
@@ -495,8 +506,7 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 		Slots::new(slot_duration.slot_duration(), create_inherent_data_providers, client);
 
 	loop {
-		info!("");
-		info!("");
+		info!("slots.next_slot()");
 		let slot_info = match slots.next_slot().await {
 			Ok(r) => r,
 			Err(e) => {
@@ -504,7 +514,8 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 				return
 			},
 		};
-
+		info!("");
+		info!("");
 		log::debug!("sync_oracle.is_major_syncing");
 		if sync_oracle.is_major_syncing() {
 			debug!(target: "slots", "Skipping proposal slot due to sync.");
@@ -524,6 +535,7 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 				err,
 			);
 		} else {
+			info!("worker.on_slot(slot_info).await");
 			let _ = worker.on_slot(slot_info).await;
 		}
 	}

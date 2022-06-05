@@ -132,14 +132,14 @@ where
 				},
 				Some(d) => Some(d),
 			};
-
+			// log::info!("slots.next_slot() {}", line!());
 			if let Some(inner_delay) = self.inner_delay.take() {
 				inner_delay.await;
 			}
 			// timeout has fired.
-
+			// During this time, other running task maintain block import
 			let ends_in = time_until_next_slot(self.slot_duration);
-
+			log::info!("slots.next_slot() {}", line!());
 			// reschedule delay for next slot.
 			self.inner_delay = Some(Delay::new(ends_in));
 
@@ -178,7 +178,7 @@ where
 			// never yield the same slot twice.
 			if slot > self.last_slot {
 				self.last_slot = slot;
-
+				// log::info!("slots.next_slot() return");
 				break Ok(SlotInfo::new(
 					slot,
 					timestamp,

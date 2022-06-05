@@ -405,7 +405,7 @@ impl NotificationsSink {
 
 		if let Some(tx) = lock.as_mut() {
 			let result =
-				tx.try_send(NotificationsSinkMessage::Notification { message: message.into() });
+				tx.try_send(NotificationsSinkMessage::Notification { message: message.into() }); // message: Vec<u8>
 
 			if result.is_err() {
 				// Cloning the `mpsc::Sender` guarantees the allocation of an extra spot in the

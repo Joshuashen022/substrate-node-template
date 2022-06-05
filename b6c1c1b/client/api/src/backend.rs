@@ -432,7 +432,7 @@ pub trait Backend<Block: BlockT>: AuxStore + Send + Sync {
 	/// Begin a new block insertion transaction with given parent block id.
 	///
 	/// When constructing the genesis, this is called with all-zero hash.
-	fn begin_operation(&self) -> sp_blockchain::Result<Self::BlockImportOperation>;
+	fn begin_operation(&self) -> sp_blockchain::Result<Self::BlockImportOperation>;// api back end
 
 	/// Note an operation to contain state transition.
 	fn begin_state_operation(

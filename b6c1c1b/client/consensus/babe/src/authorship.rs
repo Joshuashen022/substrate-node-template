@@ -57,7 +57,7 @@ pub(super) fn calculate_primary_threshold(
 		stake_all.pop();
 		stake_all.pop();
 		stake_all.push(')');
-		log::info!("[Staking]theta = si/S => {} = {}/{}", theta, stake_i, stake_all);
+		log::debug!("[Staking]theta = si/S => {} = {}/{}", theta, stake_i, stake_all);
 	}
 
 	assert!(theta > 0.0, "authority with weight 0.");
@@ -78,7 +78,7 @@ pub(super) fn calculate_primary_threshold(
 	);
 
 	// Output information of "p" at info log level
-	log::info!("[Staking]p = 1 - (1 - c)^theta => {}= 1 - (1 - {})^{}", p, c, theta  );
+	log::debug!("[Staking]p = 1 - (1 - c)^theta => {}= 1 - (1 - {})^{}", p, c, theta  );
 
 	let numer = p.numer().to_biguint().expect(
 		"returns None when the given value is negative; \

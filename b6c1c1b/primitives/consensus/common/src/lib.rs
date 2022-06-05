@@ -237,10 +237,13 @@ pub trait Proposer<B: BlockT> {
 pub trait SyncOracle {
 	/// Whether the synchronization service is undergoing major sync.
 	/// Returns true if so.
-	fn is_major_syncing(&mut self) -> bool;
+	fn is_major_syncing(&mut self) -> bool; // NetworkService
 	/// Whether the synchronization service is offline.
 	/// Returns true if so.
 	fn is_offline(&mut self) -> bool;
+	/// Send some test message.
+	/// To trigger message receiver.
+	fn send_message(&mut self){} // NetworkService
 }
 
 /// A synchronization oracle for when there is no network.
@@ -253,6 +256,9 @@ impl SyncOracle for NoNetwork {
 	}
 	fn is_offline(&mut self) -> bool {
 		false
+	}
+	fn send_message(&mut self){
+		log::info!("Try to send something NoNetwork ");
 	}
 }
 
@@ -267,6 +273,11 @@ where
 
 	fn is_offline(&mut self) -> bool {
 		<&T>::is_offline(&mut &**self)
+	}
+
+	fn send_message(&mut self){
+		// log::info!("Try to send something Arc ");
+		<&T>::send_message(&mut &**self);
 	}
 }
 

@@ -20,7 +20,7 @@
 //! payload.
 
 pub use self::generic::{
-	BlockAnnounce, FromBlock, RemoteCallRequest, RemoteChangesRequest, RemoteChangesResponse,
+	BlockAnnounce, AdjustAnnounce, FromBlock, RemoteCallRequest, RemoteChangesRequest, RemoteChangesResponse,
 	RemoteHeaderRequest, RemoteHeaderResponse, RemoteReadChildRequest, RemoteReadRequest, Roles,
 };
 use bitflags::bitflags;
@@ -439,6 +439,45 @@ pub mod generic {
 			let state = BlockState::decode(input).ok();
 			let data = Vec::decode(input).ok();
 			Ok(Self { header, state, data })
+		}
+	}
+
+	/// Announce a new complete relay chain block Adjust information on the network.
+	#[derive(Debug, PartialEq, Eq, Clone)]
+	pub struct AdjustAnnounce<H> {
+		/// New block header.
+		pub header: H,
+		/// Create time.
+		pub timestamp: u128,
+		/// Block state. TODO: Remove `Option` and custom encoding when v4 becomes common.
+		pub state: Option<BlockState>,
+		/// Data associated with this block announcement, e.g. a candidate message.
+		pub data: Option<Vec<u8>>,
+	}
+
+	// Custom Encode/Decode impl to maintain backwards compatibility with v3.
+	// This assumes that the packet contains nothing but the announcement message.
+	// TODO: Get rid of it once protocol v4 is common.
+	impl<H: Encode> Encode for AdjustAnnounce<H> {
+		fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+			self.header.encode_to(dest);
+			self.timestamp.encode_to(dest);
+			if let Some(state) = &self.state {
+				state.encode_to(dest);
+			}
+			if let Some(data) = &self.data {
+				data.encode_to(dest)
+			}
+		}
+	}
+
+	impl<H: Decode> Decode for AdjustAnnounce<H> {
+		fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+			let header = H::decode(input)?;
+			let timestamp = u128::decode(input)?;
+			let state = BlockState::decode(input).ok();
+			let data = Vec::decode(input).ok();
+			Ok(Self { header, timestamp, state, data })
 		}
 	}
 

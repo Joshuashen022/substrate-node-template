@@ -333,6 +333,7 @@ impl<B: BlockT> NetworkBehaviourEventProcess<void::Void> for Behaviour<B> {
 
 impl<B: BlockT> NetworkBehaviourEventProcess<CustomMessageOutcome<B>> for Behaviour<B> {
 	fn inject_event(&mut self, event: CustomMessageOutcome<B>) {
+		// log::info!("inject_event");
 		match event {
 			CustomMessageOutcome::BlockImport(origin, blocks) =>
 				self.events.push_back(BehaviourOut::BlockImport(origin, blocks)),

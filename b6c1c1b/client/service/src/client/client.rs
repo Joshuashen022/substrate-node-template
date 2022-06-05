@@ -269,10 +269,10 @@ where
 		F: FnOnce(&mut ClientImportOperation<Block, B>) -> Result<R, Err>,
 		Err: From<sp_blockchain::Error>,
 	{
-		log::trace!("(lock_import_and_run)");
+		// log::info!("(lock_import_and_run)");
 		let inner = || {
 			let _import_lock = self.backend.get_import_lock().write();
-
+			// log::info!("ClientImportOperation");
 			let mut op = ClientImportOperation {
 				op: self.backend.begin_operation()?,
 				notify_imported: None,
@@ -291,8 +291,8 @@ where
 		};
 
 		let result = inner();
+ 		trace!("happen before Import Block");
 		*self.importing_block.write() = None;
-
 		result
 	}
 }
@@ -894,6 +894,7 @@ where
 		&self,
 		notify_import: Option<ImportSummary<Block>>,
 	) -> sp_blockchain::Result<()> {
+		log::info!("(notify_imported)");
 		let notify_import = match notify_import {
 			Some(notify_import) => notify_import,
 			None => {
@@ -1656,7 +1657,7 @@ where
 	) -> Result<ImportResult, Self::Error> {
 		let span = tracing::span!(tracing::Level::DEBUG, "import_block");
 		let _enter = span.enter();
-		trace!("(import_block)");
+		info!("(import_block)");
 		let storage_changes =
 			match self.prepare_block_storage_changes(&mut import_block).map_err(|e| {
 				warn!("Block prepare storage changes error:\n{:?}", e);
@@ -1666,13 +1667,15 @@ where
 				PrepareStorageChangesResult::Import(storage_changes) => storage_changes,
 			};
 
-		self.lock_import_and_run(|operation| {
+		trace!("happen before  return {}", line!()); // should happen before
+		let s = self.lock_import_and_run(|operation| {
 			self.apply_block(operation, import_block, new_cache, storage_changes)
 		})
 		.map_err(|e| {
 			warn!("Block import error:\n{:?}", e);
 			ConsensusError::ClientImport(e.to_string()).into()
-		})
+		});
+		s
 	}
 
 	/// Check block preconditions.
@@ -1934,7 +1937,7 @@ where
 		// operations that tries to set aux data. Note that for consensus
 		// layer, one can always use atomic operations to make sure
 		// import is only locked once.
-		log::trace!("(insert_aux)");
+		// log::info!("(insert_aux)");
 		self.lock_import_and_run(|operation| apply_aux(operation, insert, delete))
 	}
 	/// Query auxiliary data from key-value store.
