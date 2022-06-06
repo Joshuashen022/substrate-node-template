@@ -20,7 +20,7 @@
 //! payload.
 
 pub use self::generic::{
-	BlockAnnounce, AdjustAnnounce, FromBlock, RemoteCallRequest, RemoteChangesRequest, RemoteChangesResponse,
+	AnnounceMessage, BlockAnnounce, AdjustAnnounce, FromBlock, RemoteCallRequest, RemoteChangesRequest, RemoteChangesResponse,
 	RemoteHeaderRequest, RemoteHeaderResponse, RemoteReadChildRequest, RemoteReadRequest, Roles,
 };
 use bitflags::bitflags;
@@ -405,6 +405,12 @@ pub mod generic {
 		pub id: RequestId,
 		/// Block data for the requested sequence.
 		pub blocks: Vec<BlockData<Header, Hash, Extrinsic>>,
+	}
+
+	#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+	pub enum AnnounceMessage<Hash>{
+		AdjustAnnounce(AdjustAnnounce<Hash>),
+		BlockAnnounce(BlockAnnounce<Hash>),
 	}
 
 	/// Announce a new complete relay chain block on the network.

@@ -392,6 +392,7 @@ impl Notifications {
 		}
 	}
 
+	#[allow(dead_code)]
 	pub fn have_peers(&self){
 		let peers_number = &self.peers.len();
 		log::info!("{}", peers_number);

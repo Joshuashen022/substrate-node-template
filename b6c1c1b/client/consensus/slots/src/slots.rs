@@ -139,7 +139,7 @@ where
 			// timeout has fired.
 			// During this time, other running task maintain block import
 			let ends_in = time_until_next_slot(self.slot_duration);
-			log::info!("slots.next_slot() {}", line!());
+			// log::info!("slots.next_slot() {}", line!());
 			// reschedule delay for next slot.
 			self.inner_delay = Some(Delay::new(ends_in));
 

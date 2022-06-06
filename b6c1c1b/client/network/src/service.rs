@@ -1455,7 +1455,7 @@ impl<B: BlockT, H: ExHashT> ServiceToWorkerMsg<B, H>{
 			ServiceToWorkerMsg::ClearJustificationRequests => {
 				log::info!("[MSG] ClearJustificationRequests");
 			},
-			ServiceToWorkerMsg::PropagateTransaction(hash) =>{
+			ServiceToWorkerMsg::PropagateTransaction(_hash) =>{
 				log::info!("[MSG] PropagateTransaction(hash)");
 			},
 			ServiceToWorkerMsg::PropagateTransactions =>{
@@ -1488,7 +1488,7 @@ impl<B: BlockT, H: ExHashT> ServiceToWorkerMsg<B, H>{
 			ServiceToWorkerMsg::RemoveSetReserved(_protocol, _peer_id) => {
 				log::info!("[MSG] RemoveSetReserved(_protocol, _peer_id)");
 			},
-			ServiceToWorkerMsg::AddKnownAddress(peer_id, addr) =>{
+			ServiceToWorkerMsg::AddKnownAddress(_peer_id, _addr) =>{
 				log::info!("[MSG] AddKnownAddress(peer_id, addr) ");
 			},
 			ServiceToWorkerMsg::AddToPeersSet(_protocol, _peer_id) => {
@@ -1497,7 +1497,7 @@ impl<B: BlockT, H: ExHashT> ServiceToWorkerMsg<B, H>{
 			ServiceToWorkerMsg::RemoveFromPeersSet(_protocol, _peer_id) => {
 				log::info!("[MSG] RemoveFromPeersSet(_protocol, _peer_id)");
 			},
-			ServiceToWorkerMsg::SyncFork(peer_ids, hash, number) => {
+			ServiceToWorkerMsg::SyncFork(_peer_ids, _hash, _number) => {
 				log::info!("[MSG] SyncFork(_peer_ids, _hash, _number)");
 			},
 			ServiceToWorkerMsg::EventStream(_sender) => {
@@ -1510,18 +1510,21 @@ impl<B: BlockT, H: ExHashT> ServiceToWorkerMsg<B, H>{
 				pending_response,
 				connect,
 			} => {
+				let _ = (target, protocol, request, pending_response, connect);
 				log::info!("[MSG] Request");
 			},
 			ServiceToWorkerMsg::NetworkStatus { pending_response } => {
+				let _ = pending_response;
 				log::info!("[MSG] NetworkStatus");
 			},
 			ServiceToWorkerMsg::NetworkState { pending_response } => {
+				let _ = pending_response;
 				log::info!("[MSG] NetworkState");
 			},
-			ServiceToWorkerMsg::DisconnectPeer(who, protocol_name) => {
+			ServiceToWorkerMsg::DisconnectPeer(_who, _protocol_name) => {
 				log::info!("[MSG] DisconnectPeer");
 			},
-			ServiceToWorkerMsg::NewBestBlockImported(hash, number) => {
+			ServiceToWorkerMsg::NewBestBlockImported(_hash, _number) => {
 				log::info!("[MSG] NewBestBlockImported");
 			},
 		}

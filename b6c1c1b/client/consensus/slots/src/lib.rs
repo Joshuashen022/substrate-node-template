@@ -535,7 +535,6 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 				err,
 			);
 		} else {
-			info!("worker.on_slot(slot_info).await");
 			let _ = worker.on_slot(slot_info).await;
 		}
 	}

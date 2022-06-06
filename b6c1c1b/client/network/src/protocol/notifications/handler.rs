@@ -404,8 +404,10 @@ impl NotificationsSink {
 		let mut lock = self.inner.sync_channel.lock();
 
 		if let Some(tx) = lock.as_mut() {
+			let vec = message.into();
+			// log::info!("(send_sync_notification) {:?}", vec);
 			let result =
-				tx.try_send(NotificationsSinkMessage::Notification { message: message.into() }); // message: Vec<u8>
+				tx.try_send(NotificationsSinkMessage::Notification { message: vec }); // message: Vec<u8>
 
 			if result.is_err() {
 				// Cloning the `mpsc::Sender` guarantees the allocation of an extra spot in the
@@ -767,7 +769,7 @@ impl ProtocolsHandler for NotifsHandler {
 							break
 						},
 					};
-
+					// log::info!("ProtocolsHandler::poll {:?}", message);
 					let _ = out_substream.start_send_unpin(message);
 					// Note that flushing is performed later down this function.
 				}

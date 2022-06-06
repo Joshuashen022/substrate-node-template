@@ -44,7 +44,7 @@ use libp2p::{
 use log::{debug, error, info, log, trace, warn, Level};
 use message::{
 	generic::{Message as GenericMessage, Roles},
-	BlockAnnounce, Message, AdjustAnnounce
+	BlockAnnounce, Message, AdjustAnnounce, AnnounceMessage
 };
 use notifications::{Notifications, NotificationsOut};
 use prometheus_endpoint::{register, Gauge, GaugeVec, Opts, PrometheusError, Registry, U64};
@@ -434,7 +434,7 @@ impl<B: BlockT> Protocol<B> {
 				// And to test that, I use a template Cow to check if I'm right.
 				// And the result shows that I am right.
 				let tmp = Cow::Owned("something".to_string());
-				let orgin = s.notifications_protocol.clone();
+				let _orgin = s.notifications_protocol.clone();
 				tmp
 			})
 			.collect();
@@ -898,7 +898,7 @@ impl<B: BlockT> Protocol<B> {
 			let inserted = peer.known_blocks.insert(hash);
 			if inserted {
 				trace!(target: "sync", "Announcing block {:?} to {}", hash, who);
-				let message = message::BlockAnnounce {
+				let ba = message::BlockAnnounce {
 					header: header.clone(),
 					state: if is_best {
 						Some(message::BlockState::Best)
@@ -907,7 +907,8 @@ impl<B: BlockT> Protocol<B> {
 					},
 					data: Some(data.clone()),
 				};
-
+				let message = AnnounceMessage::BlockAnnounce(ba);
+				// log::info!("AdjustAnnounce encode {:?}", message.encode());
 				self.behaviour
 					.write_notification(who, HARDCODED_PEERSETS_SYNC, message.encode());
 			}
@@ -940,10 +941,10 @@ impl<B: BlockT> Protocol<B> {
 			.or_else(|| self.block_announce_data_cache.get(&hash).cloned())
 			.unwrap_or_default();
 
-		for (who, ref mut peer) in self.peers.iter_mut() {
+		for (who, ref mut _peer) in self.peers.iter_mut() {
 			trace!(target: "sync", "Announcing Adjust {:?} to {}", hash, who);
 			let timestamp = duration_now().as_millis();
-			let message = message::AdjustAnnounce {
+			let aa = message::AdjustAnnounce {
 				header: header.clone(),
 				timestamp,
 				state: if is_best {
@@ -953,7 +954,8 @@ impl<B: BlockT> Protocol<B> {
 				},
 				data: Some(data.clone()),
 			};
-			// log::info!("{:?}", message);
+			let message = AnnounceMessage::AdjustAnnounce(aa);
+			// log::info!("AdjustAnnounce encode {:?}", message.encode());
 			self.behaviour
 				.write_notification(who, HARDCODED_PEERSETS_SYNC, message.encode());
 		}
@@ -998,6 +1000,7 @@ impl<B: BlockT> Protocol<B> {
 
 	/// Push an empty adjust announce validation.
 	fn push_adjust_announce_validation(&mut self, _who: PeerId, announce: AdjustAnnounce<B::Header>) {
+		// log::info!("Got {:?}", announce);
 		let _hash = announce.header.hash();
 	}
 
@@ -1794,26 +1797,28 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 			},
 			NotificationsOut::Notification { peer_id, set_id, message } => match set_id {
 				HARDCODED_PEERSETS_SYNC if self.peers.contains_key(&peer_id) => {
-					log::info!("[Adjust] before decode");
-					if let Ok(announce) = message::BlockAnnounce::decode(&mut message.as_ref()) {
-						log::info!("[Adjust] decode at BlockAnnounce");
-						self.push_block_announce_validation(peer_id, announce);
-
-						// Make sure that the newly added block announce validation future was
-						// polled once to be registered in the task.
-						if let Poll::Ready(res) = self.sync.poll_block_announce_validation(cx) {
-							self.process_block_announce_validation_result(res)
-						} else {
-							CustomMessageOutcome::None
+					// log::info!("[Adjust] before decode {:?}", message.as_ref());
+					if let Ok(announce_message) = message::AnnounceMessage::decode(&mut message.as_ref()) {
+						match announce_message {
+							AnnounceMessage::BlockAnnounce(ba) => {
+								log::info!("[Adjust] decode at BlockAnnounce");
+								self.push_block_announce_validation(peer_id, ba);
+								// Make sure that the newly added block announce validation future was
+								// polled once to be registered in the task.
+								if let Poll::Ready(res) = self.sync.poll_block_announce_validation(cx) {
+									self.process_block_announce_validation_result(res)
+								} else {
+									CustomMessageOutcome::None
+								}
+							}
+							AnnounceMessage::AdjustAnnounce(aa) => {
+								log::info!("[Adjust] try decode at AdjustAnnounce");
+								self.push_adjust_announce_validation(peer_id, aa);
+								CustomMessageOutcome::None
+							}
 						}
 					} else {
-						log::info!("[Adjust] try decode at AdjustAnnounce");
-						if let Ok(announce) = message::AdjustAnnounce::decode(&mut message.as_ref()) {
-							log::info!("[Adjust] Receive AdjustAnnounce");
-							self.push_adjust_announce_validation(peer_id, announce);
-						} else {
-							warn!(target: "sub-libp2p", "Failed to decode block announce");
-						};
+						warn!(target: "sub-libp2p", "Failed to decode block announce");
 						CustomMessageOutcome::None
 					}
 

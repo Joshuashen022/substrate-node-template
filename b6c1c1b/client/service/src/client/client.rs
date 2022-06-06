@@ -894,7 +894,7 @@ where
 		&self,
 		notify_import: Option<ImportSummary<Block>>,
 	) -> sp_blockchain::Result<()> {
-		log::info!("(notify_imported)");
+		// log::info!("(notify_imported)");
 		let notify_import = match notify_import {
 			Some(notify_import) => notify_import,
 			None => {
@@ -1657,7 +1657,7 @@ where
 	) -> Result<ImportResult, Self::Error> {
 		let span = tracing::span!(tracing::Level::DEBUG, "import_block");
 		let _enter = span.enter();
-		info!("(import_block)");
+		// info!("(import_block)");
 		let storage_changes =
 			match self.prepare_block_storage_changes(&mut import_block).map_err(|e| {
 				warn!("Block prepare storage changes error:\n{:?}", e);
@@ -1667,7 +1667,7 @@ where
 				PrepareStorageChangesResult::Import(storage_changes) => storage_changes,
 			};
 
-		trace!("happen before  return {}", line!()); // should happen before
+		// trace!("happen before  return {}", line!()); // should happen before
 		let s = self.lock_import_and_run(|operation| {
 			self.apply_block(operation, import_block, new_cache, storage_changes)
 		})
