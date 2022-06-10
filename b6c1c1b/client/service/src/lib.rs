@@ -172,9 +172,8 @@ async fn  build_network_future<
 		})
 		.fuse()
 	};
-
-	// Netswork Receiver
-	// `select!` will call `poll` function of `NetsworkWorker`
+	// Network Receiver
+	// `select!` will call `poll` function of `NetworkWorker`
 	loop {
 		{
 			// BlockImportNotification {
@@ -210,13 +209,14 @@ async fn  build_network_future<
 					// most appropriate thing to do for the network future is to shut down too.
 					None => return,
 				};
-				// log::info!("[Network] {:?}",notification.header);
+				// Announce block to all of the network peers
 				if announce_imported_blocks {
 					network.service().announce_block(notification.hash, None);
 				}
 
+				// Update NetworkWorker.ChainSync
+				// by (ServiceToWorkerMsg::NewBestBlockImported(hash, number))
 				if notification.is_new_best {
-					// to_worker (ServiceToWorkerMsg::NewBestBlockImported)
 					network.service().new_best_block_imported(
 						notification.hash,
 						notification.header.number().clone(),

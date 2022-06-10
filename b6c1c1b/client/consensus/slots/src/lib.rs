@@ -392,7 +392,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		let header = block_import_params.post_header();
 
 		// log::info!("begin to [import block]");
-		std::thread::sleep(Duration::from_millis(1000));
+		// std::thread::sleep(Duration::from_millis(1000));
 		// Send block to other after this
 		// log::info!("before [import block]");
 		let _internal = block_import.import_block(block_import_params, Default::default()).await;

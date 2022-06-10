@@ -40,7 +40,7 @@ pub fn open<H: Clone + AsRef<[u8]>>(
 	create: bool,
 ) -> parity_db::Result<std::sync::Arc<dyn Database<H>>> {
 	let mut config = parity_db::Options::with_columns(path, NUM_COLUMNS as u8);
-
+	// println!("path {:?}", path);
 	match db_type {
 		DatabaseType::Full => {
 			let indexes = [

@@ -1254,7 +1254,7 @@ impl<Block: BlockT> Backend<Block> {
 	}
 
 	fn try_commit_operation(&self, mut operation: BlockImportOperation<Block>) -> ClientResult<()> {
-		log::trace!("(try_commit_operation)");
+		log::info!("(try_commit_operation)");
 		let mut transaction = Transaction::new();
 		let mut finalization_displaced_leaves = None;
 

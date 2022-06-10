@@ -1535,9 +1535,7 @@ impl<B: BlockT, H: ExHashT> ServiceToWorkerMsg<B, H>{
 ///
 /// You are encouraged to poll this in a separate background thread or task.
 #[must_use = "The NetworkWorker must be polled in order for the network to advance"]
-pub
-struct
-NetworkWorker<B: BlockT + 'static, H: ExHashT> {
+pub struct NetworkWorker<B: BlockT + 'static, H: ExHashT> {
 	/// Updated by the `NetworkWorker` and loaded by the `NetworkService`.
 	external_addresses: Arc<Mutex<Vec<Multiaddr>>>,
 	/// Updated by the `NetworkWorker` and loaded by the `NetworkService`.

@@ -192,6 +192,29 @@ where
 	}
 }
 
+#[derive(Encode, Decode, PartialEq, Eq, Clone, sp_core::RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "std", serde(deny_unknown_fields))]
+pub struct HeaderAdjust<Number: Copy + Into<U256> + TryFrom<U256>, Hash: HashT> {
+	/// The parent hash.
+	pub parent_hash: Hash::Output,
+	/// The block number.
+	#[cfg_attr(
+	feature = "std",
+	serde(serialize_with = "serialize_number", deserialize_with = "deserialize_number")
+	)]
+	#[codec(compact)]
+	pub number: Number,
+	/// The state trie merkle root
+	pub state_root: Hash::Output,
+	/// The merkle root of the extrinsics.
+	pub extrinsics_root: Hash::Output,
+	/// A chain-specific digest of data useful for light clients or referencing auxiliary data.
+	pub digest: Digest,
+}
+
+
 #[cfg(all(test, feature = "std"))]
 mod tests {
 	use super::*;

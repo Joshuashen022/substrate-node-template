@@ -987,7 +987,7 @@ impl<B: BlockT> Protocol<B> {
 		};
 
 		peer.known_blocks.insert(hash.clone());
-
+		// log::info!("[Peer] {:?}", peer); peer.known_blocks only contains hash of the block
 		let is_best = match announce.state.unwrap_or(message::BlockState::Best) {
 			message::BlockState::Best => true,
 			message::BlockState::Normal => false,

@@ -99,6 +99,7 @@ pub(super) fn check_header<B: BlockT + Sized>(
 				primary.slot,
 			);
 
+			// Check if node if the node should be the leader
 			check_primary_header::<B>(pre_hash, primary, sig, &epoch, epoch.config.c)?;
 		},
 		PreDigest::SecondaryPlain(secondary)

@@ -204,7 +204,7 @@ pub(crate) async fn import_single_block_metered<
 	metrics: Option<Metrics>,
 ) -> BlockImportResult<B> {
 	let peer = block.origin;
-	// log::info!("(import_single_block_metered)");
+
 	let (header, justifications) = match (block.header, block.justifications) {
 		(Some(header), justifications) => (header, justifications),
 		(None, _) => {
@@ -283,7 +283,7 @@ pub(crate) async fn import_single_block_metered<
 	} else if block.allow_missing_state {
 		import_block.state_action = StateAction::ExecuteIfPossible;
 	}
-
+	// verifier:BabeVerifier
 	let (import_block, maybe_keys) = verifier.verify(import_block).await.map_err(|msg| {
 		if let Some(ref peer) = peer {
 			trace!(target: "sync", "Verifying {}({}) from {} failed: {}", number, hash, peer, msg);
@@ -302,6 +302,7 @@ pub(crate) async fn import_single_block_metered<
 
 	let cache = HashMap::from_iter(maybe_keys.unwrap_or_default());
 	let import_block = import_block.clear_storage_changes_and_mutate();
+	// log::info!("(import_block) for BabeBlockImport");
 	let imported = import_handle.import_block(import_block, cache).await;
 	if let Some(metrics) = metrics.as_ref() {
 		metrics.report_verification_and_import(started.elapsed());

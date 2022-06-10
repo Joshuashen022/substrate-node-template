@@ -79,6 +79,14 @@ pub trait EpochChangeTrigger {
 	fn trigger<T: Config>(now: T::BlockNumber);
 }
 
+pub struct SlotTime<T>(T);
+impl Get<u64> for SlotTime<u64>{
+	fn get() -> u64{ // epoch_index()
+		log::info!("Get for SlotTime");
+		8
+	}
+}
+
 /// A type signifying to BABE that an external trigger
 /// for epoch changes (e.g. pallet-session) is used.
 pub struct ExternalTrigger;
@@ -133,7 +141,7 @@ pub mod pallet {
 		/// what the expected average block time should be based on the slot
 		/// duration and the security parameter `c` (where `1 - c` represents
 		/// the probability of a slot being empty).
-		#[pallet::constant]
+		// #[pallet::constant]
 		type ExpectedBlockTime: Get<Self::Moment>;
 
 		/// BABE requires some logic to be triggered on every block to query for whether an epoch
@@ -493,7 +501,18 @@ impl<T: Config> Pallet<T> {
 	pub fn slot_duration() -> T::Moment {
 		// we double the minimum block-period so each author can always propose within
 		// the majority of their slot.
-		<T as pallet_timestamp::Config>::MinimumPeriod::get().saturating_mul(2u32.into())
+		let t = <T as pallet_timestamp::Config>::MinimumPeriod::get();
+		// let expected_test = T::ExpectedBlockTime::get();
+		// log::info!("ExpectedBlockTime {:?} ", expected_test);
+		let epoch = EpochIndex::<T>::get();
+		if epoch > 1 {
+			log::info!("epoch {:?} length should be 9", epoch);
+			t.saturating_mul(3u32.into())
+		} else {
+			log::info!("epoch {:?} length should be 6", epoch);
+			t.saturating_mul(2u32.into())
+		}
+
 	}
 
 	/// Determine whether an epoch change should take place at this block.
@@ -886,10 +905,8 @@ impl<T: Config> OnTimestampSet<T::Moment> for Pallet<T> {
 		let timestamp_slot = moment / slot_duration;
 		let timestamp_slot = Slot::from(timestamp_slot.saturated_into::<u64>());
 
-		assert!(
-			CurrentSlot::<T>::get() == timestamp_slot,
-			"Timestamp slot must match `CurrentSlot`"
-		);
+		// assert_eq!(CurrentSlot::<T>::get(), timestamp_slot,
+		// 		   "Timestamp slot must match `CurrentSlot`");
 	}
 }
 
