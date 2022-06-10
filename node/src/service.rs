@@ -114,7 +114,7 @@ pub fn new_partial(
 
 		Ok((timestamp, slot))
 	};
-
+	log::info!("(new_partial) {}", line!());
 	let import_queue = sc_consensus_babe::import_queue(
 		babe_link.clone(),
 		block_import.clone(),

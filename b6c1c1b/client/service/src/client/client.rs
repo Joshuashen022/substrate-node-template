@@ -364,7 +364,9 @@ where
 				None,
 				block_state,
 			)?;
+			// log::info!("(commit_operation) before");
 			backend.commit_operation(op)?;
+			log::info!("(commit_operation) after");
 		}
 
 		Ok(Client {

@@ -209,7 +209,7 @@ pub mod pallet {
 			);
 			Now::<T>::put(now);
 			DidUpdate::<T>::put(true);
-
+			// log::info!("#[pallet::timestamp] (on_timestamp_set) before");
 			<T::OnTimestampSet as OnTimestampSet<_>>::on_timestamp_set(now);
 
 			Ok(())
