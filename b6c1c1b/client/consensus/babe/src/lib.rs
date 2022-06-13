@@ -351,9 +351,9 @@ impl Config {
 
 			if has_api_v1 {
 				#[allow(deprecated)]
-				{
-					Ok(a.configuration_before_version_2(b)?.into())
-				}
+					{
+						Ok(a.configuration_before_version_2(b)?.into())
+					}
 			} else if has_api_v2 {
 				a.configuration(b).map_err(Into::into)
 			} else {
@@ -466,6 +466,8 @@ where
 	C: ProvideRuntimeApi<B>
 		+ ProvideUncles<B>
 		+ BlockchainEvents<B>
+		+ AuxStore
+		+ UsageProvider<B>
 		+ HeaderBackend<B>
 		+ HeaderMetadata<B, Error = ClientError>
 		+ Send
@@ -510,7 +512,8 @@ where
 	};
 
 	info!(target: "babe", "👶 Starting BABE Authorship worker");
-	let inner = sc_consensus_slots::start_slot_worker(
+	let inner = sc_consensus_slots::start_slot_worker_with_client(
+		client.clone(),
 		config.0.clone(),
 		select_chain,
 		worker,

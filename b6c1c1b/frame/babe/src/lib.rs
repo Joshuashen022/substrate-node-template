@@ -506,11 +506,11 @@ impl<T: Config> Pallet<T> {
 		// let expected_test = T::ExpectedBlockTime::get();
 		// log::info!("ExpectedBlockTime {:?} ", expected_test);
 		let epoch = EpochIndex::<T>::get();
-		if epoch > 1 {
-			log::info!("epoch {:?} length should be 9", epoch);
+		if epoch > 0 {
+			log::trace!("epoch {:?} length should be 9", epoch);
 			t.saturating_mul(3u32.into())
 		} else {
-			log::info!("epoch {:?} length should be 6", epoch);
+			log::trace!("epoch {:?} length should be 6", epoch);
 			t.saturating_mul(2u32.into())
 		}
 
@@ -900,12 +900,12 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config> OnTimestampSet<T::Moment> for Pallet<T> {
 	fn on_timestamp_set(moment: T::Moment) {
-		log::info!("#[pallet::babe] (on_timestamp_set)");
+		// log::info!("#[pallet::babe] (on_timestamp_set)");
 		let slot_duration = Self::slot_duration();
 		assert!(!slot_duration.is_zero(), "Babe slot duration cannot be zero.");
 
 		let timestamp_slot = moment / slot_duration;
-		let timestamp_slot = Slot::from(timestamp_slot.saturated_into::<u64>());
+		let _timestamp_slot = Slot::from(timestamp_slot.saturated_into::<u64>());
 
 		// assert_eq!(CurrentSlot::<T>::get(), timestamp_slot,
 		// 		   "Timestamp slot must match `CurrentSlot`");

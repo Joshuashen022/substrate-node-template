@@ -286,6 +286,7 @@ impl<B: BlockT> BlockAnnouncesHandshake<B> {
 	}
 }
 
+#[allow(dead_code)]
 impl<B: BlockT> Protocol<B> {
 	/// Create a new instance.
 	pub fn new(
@@ -869,7 +870,7 @@ impl<B: BlockT> Protocol<B> {
 	/// In chain-based consensus, we often need to make sure non-best forks are
 	/// at least temporarily synced.
 	pub fn announce_block(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
-		self.announce_adjust(hash,data.clone());
+		// self.announce_adjust(hash,data.clone());
 		let header = match self.chain.header(BlockId::Hash(hash)) {
 			Ok(Some(header)) => header,
 			Ok(None) => {
@@ -916,7 +917,7 @@ impl<B: BlockT> Protocol<B> {
 	}
 
 	pub fn announce_adjust(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
-		log::info!("[Adjust] announce_adjust");
+		// log::info!("[Adjust] announce_adjust");
 		let header = match self.chain.header(BlockId::Hash(hash)) {
 			Ok(Some(header)) => header,
 			Ok(None) => {

@@ -1442,6 +1442,8 @@ enum ServiceToWorkerMsg<B: BlockT, H: ExHashT> {
 	DisconnectPeer(PeerId, Cow<'static, str>),
 	NewBestBlockImported(B::Hash, NumberFor<B>),
 }
+
+#[allow(dead_code)]
 impl<B: BlockT, H: ExHashT> ServiceToWorkerMsg<B, H>{
 	pub fn check_message_type(&self){
 
@@ -1593,7 +1595,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 			let msg = match this.from_service.poll_next_unpin(cx) {
 				Poll::Ready(Some(msg)) =>{
 					// log::info!("[MSG] Some msg");
-					msg.check_message_type();
+					// msg.check_message_type();
 					msg
 				},
 				Poll::Ready(None) => {
@@ -1732,7 +1734,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 			match poll_value {
 				Poll::Pending => break,
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::BlockImport(origin, blocks))) => {
-					info!("[Behaviour] BlockImport");
+					// info!("[Behaviour] BlockImport");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.import_queue_blocks_submitted.inc();
 					}
@@ -1744,7 +1746,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					nb,
 					justifications,
 				))) => {
-					info!("[Behaviour] JustificationImport");
+					// info!("[Behaviour] JustificationImport");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.import_queue_justifications_submitted.inc();
 					}
@@ -1755,7 +1757,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					result,
 					..
 				})) => {
-					info!("[Behaviour] InboundRequest");
+					// info!("[Behaviour] InboundRequest");
 					if let Some(metrics) = this.metrics.as_ref() {
 						match result {
 							Ok(serve_time) => {
@@ -1796,7 +1798,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					..
 				})) =>
 					if let Some(metrics) = this.metrics.as_ref() {
-						info!("[Behaviour] RequestFinished");
+						// info!("[Behaviour] RequestFinished");
 						match result {
 							Ok(_) => {
 								metrics
@@ -1831,7 +1833,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					protocol,
 				))) =>
 					if let Some(metrics) = this.metrics.as_ref() {
-						info!("[Behaviour] RandomKademliaStarted");
+						// info!("[Behaviour] RandomKademliaStarted");
 						metrics
 							.kademlia_random_queries_total
 							.with_label_values(&[&protocol.as_ref()])
@@ -1844,7 +1846,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					notifications_sink,
 					role,
 				})) => {
-					info!("[Behaviour] NotificationStreamOpened");
+					// info!("[Behaviour] NotificationStreamOpened");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics
 							.notifications_streams_opened_total
@@ -1869,7 +1871,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					protocol,
 					notifications_sink,
 				})) => {
-					info!("[Behaviour] NotificationStreamReplaced");
+					// info!("[Behaviour] NotificationStreamReplaced");
 					let mut peers_notifications_sinks = this.peers_notifications_sinks.lock();
 					if let Some(s) = peers_notifications_sinks.get_mut(&(remote, protocol)) {
 						*s = notifications_sink;
@@ -1906,7 +1908,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					remote,
 					protocol,
 				})) => {
-					info!("[Behaviour] NotificationStreamClosed");
+					// info!("[Behaviour] NotificationStreamClosed");
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics
 							.notifications_streams_closed_total
@@ -1928,7 +1930,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					remote,
 					messages,
 				})) => {
-					info!("[Behaviour] NotificationsReceived");
+					// info!("[Behaviour] NotificationsReceived");
 					if let Some(metrics) = this.metrics.as_ref() {
 						for (protocol, message) in &messages {
 							metrics
@@ -1940,15 +1942,15 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					this.event_streams.send(Event::NotificationsReceived { remote, messages });
 				},
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::SyncConnected(remote))) => {
-					info!("[Behaviour] SyncConnected");
+					// info!("[Behaviour] SyncConnected");
 					this.event_streams.send(Event::SyncConnected { remote });
 				},
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::SyncDisconnected(remote))) => {
-					info!("[Behaviour] SyncDisconnected");
+					// info!("[Behaviour] SyncDisconnected");
 					this.event_streams.send(Event::SyncDisconnected { remote });
 				},
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::Dht(event, duration))) => {
-					info!("[Behaviour] Dht");
+					// info!("[Behaviour] Dht");
 					if let Some(metrics) = this.metrics.as_ref() {
 						let query_type = match event {
 							DhtEvent::ValueFound(_) => "value-found",
@@ -2031,13 +2033,13 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					}
 				},
 				Poll::Ready(SwarmEvent::NewListenAddr { address, .. }) => {
-					info!(target: "sub-libp2p", "Libp2p => NewListenAddr({})", address);
+					trace!(target: "sub-libp2p", "Libp2p => NewListenAddr({})", address);
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.listeners_local_addresses.inc();
 					}
 				},
 				Poll::Ready(SwarmEvent::ExpiredListenAddr { address, .. }) => {
-					info!(target: "sub-libp2p", "📪 No longer listening on {}", address);
+					trace!(target: "sub-libp2p", "📪 No longer listening on {}", address);
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.listeners_local_addresses.dec();
 					}
@@ -2081,10 +2083,10 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					}
 				},
 				Poll::Ready(SwarmEvent::Dialing(peer_id)) => {
-					info!(target: "sub-libp2p", "Libp2p => Dialing({:?})", peer_id)
+					trace!(target: "sub-libp2p", "Libp2p => Dialing({:?})", peer_id)
 				},
 				Poll::Ready(SwarmEvent::IncomingConnection { local_addr, send_back_addr }) => {
-					info!(target: "sub-libp2p", "Libp2p => IncomingConnection({},{}))",
+					trace!(target: "sub-libp2p", "Libp2p => IncomingConnection({},{}))",
 						local_addr, send_back_addr);
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.incoming_connections_total.inc();
@@ -2118,7 +2120,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					}
 				},
 				Poll::Ready(SwarmEvent::BannedPeer { peer_id, endpoint }) => {
-					info!(
+					trace!(
 						target: "sub-libp2p",
 						"Libp2p => BannedPeer({}). Connected via {:?}.",
 						peer_id, endpoint,

@@ -34,5 +34,9 @@ log = "0.4.11"
 thiserror = "1.0.30"
 async-trait = "0.1.50"
 
+[dependencies.sp-consensus-babe]
+path = "../../../primitives/consensus/babe"
+version = '0.10.0-dev'
+
 [dev-dependencies]
 substrate-test-runtime-client = { version = "2.0.0", path = "../../../test-utils/runtime/client" }

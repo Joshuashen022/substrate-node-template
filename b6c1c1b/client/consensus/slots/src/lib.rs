@@ -32,23 +32,84 @@ pub use aux_schema::{check_equivocation, MAX_SLOT_CAPACITY, PRUNING_BOUND};
 pub use slots::SlotInfo;
 use slots::Slots;
 
+// use sc_consensus_babe:: SlotProportion;
+use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsageProvider};
+use sp_blockchain::{Error as ClientError, HeaderBackend, HeaderMetadata, Result as ClientResult};
 use codec::{Decode, Encode};
 use futures::{future::Either, Future, TryFutureExt};
 use futures_timer::Delay;
-use log::{debug, error, info, warn};
+use log::{debug, error, info, warn, trace};
 use sc_consensus::{BlockImport, JustificationSyncLink};
 use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_INFO, CONSENSUS_WARN};
-use sp_api::{ApiRef, ProvideRuntimeApi};
+use sp_api::{ApiExt, ApiRef, ProvideRuntimeApi};
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_consensus::{CanAuthorWith, Proposer, SelectChain, SlotData, SyncOracle};
 use sp_consensus_slots::Slot;
+
 use sp_inherents::CreateInherentDataProviders;
 use sp_runtime::{
 	generic::BlockId,
 	traits::{Block as BlockT, HashFor, Header as HeaderT},
 };
 use sp_timestamp::Timestamp;
-use std::{fmt::Debug, ops::Deref, time::Duration};
+use std::{fmt::Debug, ops::Deref, time::Duration, sync::Arc};
+
+use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
+
+/// Used to pass slot length information to `start_slot_worker`.
+///
+/// Not used for other purpose currently.
+#[derive(Clone)]
+pub struct Config(SlotDuration<BabeGenesisConfiguration>);
+
+impl Config {
+	/// Either fetch the slot duration from disk or compute it from the genesis
+	/// state.
+	pub fn get_or_compute<B: BlockT, C>(client: &C) -> ClientResult<Self>
+		where
+			C: AuxStore + ProvideRuntimeApi<B> + UsageProvider<B>,
+			C::Api: BabeApi<B>,
+	{
+		match SlotDuration::get_or_compute(client, |a, b| {
+			let has_api_v1 = a.has_api_with::<dyn BabeApi<B>, _>(&b, |v| v == 1)?;
+			let has_api_v2 = a.has_api_with::<dyn BabeApi<B>, _>(&b, |v| v == 2)?;
+
+			if has_api_v1 {
+				#[allow(deprecated)]
+					{
+						Ok(a.configuration_before_version_2(b)?.into())
+					}
+			} else if has_api_v2 {
+				a.configuration(b).map_err(Into::into)
+			} else {
+				Err(sp_blockchain::Error::VersionInvalid(
+					"Unsupported or invalid BabeApi version".to_string(),
+				))
+			}
+		})
+			.map(Self)
+		{
+			Ok(s) => Ok(s),
+			Err(s) => {
+				warn!(target: "babe", "Failed to get slot duration");
+				Err(s)
+			},
+		}
+	}
+
+	/// Get the inner slot duration
+	pub fn slot_duration(&self) -> Duration {
+		self.0.slot_duration()
+	}
+}
+
+impl std::ops::Deref for Config {
+	type Target = BabeGenesisConfiguration;
+
+	fn deref(&self) -> &BabeGenesisConfiguration {
+		&*self.0
+	}
+}
 
 /// The changes that need to applied to the storage to create the state for a block.
 ///
@@ -480,6 +541,7 @@ impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F, G, H, I);
 impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F, G, H, I, J);
 
 /// Start a new slot worker.
+/// **Not using currently.**
 ///
 /// Every time a new slot is triggered, `worker.on_slot` is called and the future it returns is
 /// polled until completion, unless we are major syncing.
@@ -526,6 +588,88 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 		// sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 		if let Err(err) =
 			can_author_with.can_author_with(&BlockId::Hash(slot_info.chain_head.hash()))
+		{
+			warn!(
+				target: "slots",
+				"Unable to author block in slot {},. `can_author_with` returned: {} \
+				Probably a node update is required!",
+				slot_info.slot,
+				err,
+			);
+		} else {
+			let _ = worker.on_slot(slot_info).await;
+		}
+	}
+}
+
+/// Start a new slot worker with bonus functionality read slot_length.
+/// Slot length is adjusted by runtime and need to be set properly.
+///
+/// Every time a new slot is triggered, `worker.on_slot` is called and the future it returns is
+/// polled until completion, unless we are major syncing.
+pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Client>(
+	client: Arc<Client>,
+	slot_duration: SlotDuration<T>,
+	select_chain: C,
+	mut worker: W,
+	mut sync_oracle: SO,
+	create_inherent_data_providers: CIDP,
+	can_author_with: CAW,
+) where
+	Client: ProvideRuntimeApi<B>
+		+ ProvideUncles<B>
+		+ BlockchainEvents<B>
+		+ AuxStore
+		+ UsageProvider<B>
+		+ HeaderBackend<B>
+		+ HeaderMetadata<B, Error = ClientError>
+		+ Send
+		+ Sync
+		+ 'static,
+	Client::Api: BabeApi<B>,
+	B: BlockT,
+	C: SelectChain<B>,
+	W: SlotWorker<B, Proof>,
+	SO: SyncOracle + Send,
+	T: SlotData + Clone,
+	CIDP: CreateInherentDataProviders<B, ()> + Send,
+	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
+	CAW: CanAuthorWith<B> + Send,
+{
+	let SlotDuration(slot_duration) = slot_duration;
+
+	let mut slots =
+		Slots::new(slot_duration.slot_duration(), create_inherent_data_providers, select_chain);
+
+	loop {
+		info!("slots.next_slot()");
+
+		if let Ok(config) = Config::get_or_compute(&*client){
+			let duration = config.0.slot_duration();
+			info!("duration {:?}", duration );
+		} else {
+			info!("duration error");
+		};
+
+		let slot_info = match slots.next_slot().await {
+			Ok(r) => r,
+			Err(e) => {
+				warn!(target: "slots", "Error while polling for next slot: {:?}", e);
+				return
+			},
+		};
+		info!("");
+		info!("");
+		log::debug!("sync_oracle.is_major_syncing");
+		if sync_oracle.is_major_syncing() {
+			debug!(target: "slots", "Skipping proposal slot due to sync.");
+			continue
+		}
+
+		log::debug!("can_author_with.can_author_with");
+		// sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
+		if let Err(err) =
+		can_author_with.can_author_with(&BlockId::Hash(slot_info.chain_head.hash()))
 		{
 			warn!(
 				target: "slots",
@@ -596,29 +740,21 @@ impl<T: Clone + Send + Sync + 'static> SlotDuration<T> {
 		CB: FnOnce(ApiRef<C::Api>, &BlockId<B>) -> sp_blockchain::Result<T>,
 		T: SlotData + Encode + Decode + Debug,
 	{
-		let slot_duration = match client.get_aux(T::SLOT_KEY)? {
-			Some(v) => <T as codec::Decode>::decode(&mut &v[..]).map(SlotDuration).map_err(|_| {
-				sp_blockchain::Error::Backend({
-					error!(target: "slots", "slot duration kept in invalid format");
-					"slot duration kept in invalid format".to_string()
-				})
-			}),
-			None => {
-				let best_hash = client.usage_info().chain.best_hash;
-				let slot_duration = cb(client.runtime_api(), &BlockId::hash(best_hash))?;
+		let slot_duration = {
+			let best_hash = client.usage_info().chain.best_hash;
+			let slot_duration = cb(client.runtime_api(), &BlockId::hash(best_hash)).unwrap();
 
-				info!(
+			trace!(
 					"⏱  Loaded block-time = {:?} from block {:?}",
 					slot_duration.slot_duration(),
 					best_hash,
 				);
 
-				slot_duration
-					.using_encoded(|s| client.insert_aux(&[(T::SLOT_KEY, &s[..])], &[]))?;
+			slot_duration
+				.using_encoded(|s| client.insert_aux(&[(T::SLOT_KEY, &s[..])], &[])).unwrap();
 
-				Ok(SlotDuration(slot_duration))
-			},
-		}?;
+			SlotDuration(slot_duration)
+		};
 
 		if slot_duration.slot_duration() == Default::default() {
 			return Err(sp_blockchain::Error::Application(Box::new(Error::SlotDurationInvalid(
