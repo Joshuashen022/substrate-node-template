@@ -424,7 +424,6 @@ where
 	<TCl as ProvideRuntimeApi<TBl>>::Api: sc_offchain::OffchainWorkerApi<TBl>,
 {
 	let offchain_workers = Some(Arc::new(sc_offchain::OffchainWorkers::new(client.clone())));
-
 	// Inform the offchain worker about new imported blocks
 	if let Some(offchain) = offchain_workers.clone() {
 		spawn_handle.spawn(

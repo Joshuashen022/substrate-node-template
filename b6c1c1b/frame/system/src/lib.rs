@@ -1325,7 +1325,7 @@ impl<T: Config> Pallet<T> {
 	/// Remove temporary "environment" entries in storage, compute the storage root and return the
 	/// resulting header for this block.
 	pub fn finalize() -> T::Header {
-		log::trace!("(finalize)");
+		log::info!("(finalize)");
 		ExecutionPhase::<T>::kill();
 		AllExtrinsicsLen::<T>::kill();
 
@@ -1493,7 +1493,12 @@ impl<T: Config> Pallet<T> {
 	/// in [`Self::finalize`] to calculate the correct extrinsics root.
 	pub fn read_income(encoded_xt: Vec<u8>) {
 		log::info!("Got data {:?}", encoded_xt);
+		let key_before = ExtrinsicData::<T>::iter_keys().collect::<Vec<_>>().len();
+		log::info!("Key before {:?}", key_before);
 		ExtrinsicData::<T>::insert(Self::extrinsic_index().unwrap_or_default(), encoded_xt);
+		let key_after = ExtrinsicData::<T>::iter_keys().collect::<Vec<_>>().len();
+		log::info!("Key after {:?}", key_after);
+
 	}
 
 	/// To be called immediately after an extrinsic has been applied.

@@ -10,6 +10,9 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use std::sync::Arc;
 // Our native executor instance.
 pub struct ExecutorDispatch;
+use sc_client_api::UsageProvider;
+
+use sp_runtime::generic::BlockId;
 
 impl sc_executor::NativeExecutionDispatch for ExecutorDispatch {
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
@@ -191,6 +194,27 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			network.clone(),
 		);
 	}
+
+	let client_clone = client.clone();
+	let test_future = async move {
+		loop{
+			std::thread::sleep(std::time::Duration::from_millis(6000));
+			let best_hash = client_clone.usage_info().chain.best_hash;
+			if let Ok(extrincs) = client_clone.body(&BlockId::hash(best_hash)){
+				if let Some(exts) = extrincs{
+					let length = exts.len();
+					let mut show = Vec::new();
+					for e in exts{
+						show.push(e.get_inner());
+					}
+					log::info!("Test Future get extrinsic {:?}", show);
+				} else {
+					log::info!("Test Future get extrinsic None");
+				}
+			};
+		}
+	};
+	task_manager.spawn_handle().spawn("Test Block", None,test_future);
 
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;

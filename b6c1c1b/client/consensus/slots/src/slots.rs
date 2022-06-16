@@ -173,10 +173,11 @@ where
 
 			let timestamp = inherent_data_providers.timestamp();
 			let slot = inherent_data_providers.slot();
-			let mut inherent_data = inherent_data_providers.create_inherent_data()?;
+			let inherent_data = inherent_data_providers.create_inherent_data()?;
 
 			// Inherent Data
 			{
+
 				// log::info!("inherent_data len {}", inherent_data.len());
 				// let inherent_identifier = *b"testnets";// [u8;8]
 				// let inherent_0 = vec![1, 2, 3];
