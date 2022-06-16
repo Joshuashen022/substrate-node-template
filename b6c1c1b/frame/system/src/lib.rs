@@ -1487,6 +1487,15 @@ impl<T: Config> Pallet<T> {
 		ExtrinsicData::<T>::insert(Self::extrinsic_index().unwrap_or_default(), encoded_xt);
 	}
 
+	/// Note what the extrinsic data of the current extrinsic index is.
+	///
+	/// This is required to be called before applying an extrinsic. The data will used
+	/// in [`Self::finalize`] to calculate the correct extrinsics root.
+	pub fn read_income(encoded_xt: Vec<u8>) {
+		log::info!("Got data {:?}", encoded_xt);
+		ExtrinsicData::<T>::insert(Self::extrinsic_index().unwrap_or_default(), encoded_xt);
+	}
+
 	/// To be called immediately after an extrinsic has been applied.
 	pub fn note_applied_extrinsic(r: &DispatchResultWithPostInfo, mut info: DispatchInfo) {
 		info.weight = extract_actual_weight(r, &info);

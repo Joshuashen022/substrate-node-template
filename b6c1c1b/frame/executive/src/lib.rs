@@ -439,12 +439,21 @@ where
 		Self::apply_extrinsic_with_len(uxt, encoded_len, encoded)
 	}
 
+	/// Apply extrinsic outside of the block execution function.
+	///
+	/// This doesn't attempt to validate anything regarding the block, but it builds a list of uxt
+	/// hashes.
+	pub fn transfer_data(data: Vec<u8>) {
+		<frame_system::Pallet<System>>::read_income(data);
+	}
+
 	/// Actually apply an extrinsic given its `encoded_len`; this doesn't note its hash.
 	fn apply_extrinsic_with_len(
 		uxt: Block::Extrinsic,
 		encoded_len: usize,
 		to_note: Vec<u8>,
 	) -> ApplyExtrinsicResult {
+		log::info!("(apply_extrinsic_with_len)");
 		sp_tracing::enter_span!(sp_tracing::info_span!("apply_extrinsic",
 				ext=?sp_core::hexdisplay::HexDisplay::from(&uxt.encode())));
 		// Verify that the signature is good.

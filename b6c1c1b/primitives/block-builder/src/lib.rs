@@ -32,6 +32,12 @@ sp_api::decl_runtime_apis! {
 		/// this block or not.
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult;
 
+		/// Apply the given extrinsic.
+		///
+		/// Returns an inclusion outcome which specifies if this extrinsic is included in
+		/// this block or not.
+		fn transfer_data(data: sp_std::vec::Vec<u8>);
+
 		/// Finish the current block.
 		#[renamed("finalise_block", 3)]
 		fn finalize_block() -> <Block as BlockT>::Header;

@@ -738,6 +738,8 @@ cfg_if! {
 					system::execute_transaction(extrinsic)
 				}
 
+				fn transfer_data(_data: Vec<u8>) {}
+
 				fn finalize_block() -> <Block as BlockT>::Header {
 					system::finalize_block()
 				}
@@ -991,6 +993,8 @@ cfg_if! {
 				fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
 					system::execute_transaction(extrinsic)
 				}
+
+				fn transfer_data(_data: Vec<u8>) {}
 
 				fn finalize_block() -> <Block as BlockT>::Header {
 					system::finalize_block()

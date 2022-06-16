@@ -30,6 +30,8 @@ mod slots;
 
 pub use aux_schema::{check_equivocation, MAX_SLOT_CAPACITY, PRUNING_BOUND};
 pub use slots::SlotInfo;
+pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
+
 use slots::Slots;
 
 // use sc_consensus_babe:: SlotProportion;
@@ -54,6 +56,7 @@ use sp_runtime::{
 use sp_timestamp::Timestamp;
 use std::{fmt::Debug, ops::Deref, time::Duration, sync::Arc};
 
+use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
 
 /// Used to pass slot length information to `start_slot_worker`.
@@ -77,9 +80,11 @@ impl Config {
 			if has_api_v1 {
 				#[allow(deprecated)]
 					{
+						// log::info!("has_api_v1");
 						Ok(a.configuration_before_version_2(b)?.into())
 					}
 			} else if has_api_v2 {
+				// log::info!("has_api_v2");
 				a.configuration(b).map_err(Into::into)
 			} else {
 				Err(sp_blockchain::Error::VersionInvalid(
@@ -95,6 +100,34 @@ impl Config {
 				Err(s)
 			},
 		}
+	}
+
+	/// Get the Runtime Babe Configuration
+	pub fn get_config<B: BlockT, C, F, T>(client: &C, _fun: F) -> sp_blockchain::Result<BabeGenesisConfiguration>
+		where
+			C: AuxStore + ProvideRuntimeApi<B> + UsageProvider<B> ,
+			C::Api: BabeApi<B>,
+			F:,
+	{
+		let best_hash = client.usage_info().chain.best_hash;
+		let api = client.runtime_api();
+		let id = &BlockId::hash(best_hash);
+
+		api.configuration(id).map_err(Into::into)
+	}
+
+	/// Get the Runtime Api
+	pub fn get_api<B: BlockT, C, F, T>(client: &C, _fun: F) -> sp_blockchain::Result<BabeGenesisConfiguration>
+		where
+			C: AuxStore + ProvideRuntimeApi<B> + UsageProvider<B> ,
+			C::Api: BabeApi<B> + BlockBuilder<B>,
+			F:,
+	{
+		let best_hash = client.usage_info().chain.best_hash;
+		let api = client.runtime_api();
+		let id = &BlockId::hash(best_hash);
+
+		api.configuration(id).map_err(Into::into)
 	}
 
 	/// Get the inner slot duration
@@ -562,6 +595,7 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
 	CAW: CanAuthorWith<B> + Send,
 {
+
 	let SlotDuration(slot_duration) = slot_duration;
 
 	let mut slots =
@@ -626,7 +660,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 		+ Send
 		+ Sync
 		+ 'static,
-	Client::Api: BabeApi<B>,
+	Client::Api: BabeApi<B> + BlockBuilder<B>,
 	B: BlockT,
 	C: SelectChain<B>,
 	W: SlotWorker<B, Proof>,
@@ -636,6 +670,8 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
 	CAW: CanAuthorWith<B> + Send,
 {
+	// 			C: AuxStore + ProvideRuntimeApi<B> + UsageProvider<B> ,
+	// 			C::Api: BabeApi<B>,
 	let SlotDuration(slot_duration) = slot_duration;
 
 	let mut slots =
@@ -643,13 +679,21 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 
 	loop {
 		info!("slots.next_slot()");
+		{
+			if let Ok(config) = Config::get_or_compute(&*client){
+				let duration = config.0.slot_duration();
+				info!("duration {:?}", duration );
+			} else {
+				info!("duration error");
+			};
+			let api = (&*client).runtime_api();
+			let data = vec!(1,2,3,4);
+			let best_hash = client.usage_info().chain.best_hash;
+			if let Ok(_) = api.transfer_data(&BlockId::hash(best_hash), data){
+				log::info!("transfer_data OK")
+			};
+		}
 
-		if let Ok(config) = Config::get_or_compute(&*client){
-			let duration = config.0.slot_duration();
-			info!("duration {:?}", duration );
-		} else {
-			info!("duration error");
-		};
 
 		let slot_info = match slots.next_slot().await {
 			Ok(r) => r,
@@ -668,8 +712,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 
 		log::debug!("can_author_with.can_author_with");
 		// sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-		if let Err(err) =
-		can_author_with.can_author_with(&BlockId::Hash(slot_info.chain_head.hash()))
+		if let Err(err) = can_author_with.can_author_with(&BlockId::Hash(slot_info.chain_head.hash()))
 		{
 			warn!(
 				target: "slots",
@@ -742,8 +785,8 @@ impl<T: Clone + Send + Sync + 'static> SlotDuration<T> {
 	{
 		let slot_duration = {
 			let best_hash = client.usage_info().chain.best_hash;
+			//T: BabeGenesisConfiguration
 			let slot_duration = cb(client.runtime_api(), &BlockId::hash(best_hash)).unwrap();
-
 			trace!(
 					"⏱  Loaded block-time = {:?} from block {:?}",
 					slot_duration.slot_duration(),

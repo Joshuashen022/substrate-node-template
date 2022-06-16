@@ -515,7 +515,7 @@ where
 			metrics.number_of_transactions.set(block.extrinsics().len() as u64);
 			metrics.block_constructed.observe(block_timer.elapsed().as_secs_f64());
 		});
-
+		// info!("extrinsics {:?}", extrinsics()); // [0402000bc0cc4e658101]
 		info!(
 			"🎁 Prepared block for proposing at {} ({} ms) [hash: {:?}; parent_hash: {}; extrinsics ({}): [{}]]",
 			block.header().number(),

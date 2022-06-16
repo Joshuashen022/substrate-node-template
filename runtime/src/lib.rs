@@ -370,6 +370,10 @@ impl_runtime_apis! {
 			Executive::apply_extrinsic(extrinsic)
 		}
 
+		fn transfer_data(data: Vec<u8>)  {
+			Executive::transfer_data(data)
+		}
+
 		fn finalize_block() -> <Block as BlockT>::Header {
 			Executive::finalize_block()
 		}

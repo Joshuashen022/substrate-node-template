@@ -132,6 +132,7 @@ pub use sp_consensus_babe::{
 };
 
 pub use aux_schema::load_block_weight as block_weight;
+use sp_block_builder::BlockBuilder;
 
 mod migration;
 mod verification;
@@ -473,7 +474,7 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	C::Api: BabeApi<B>,
+	C::Api: BabeApi<B> + BlockBuilder<B>,
 	SC: SelectChain<B> + 'static,
 	E: Environment<B, Error = Error> + Send + Sync + 'static,
 	E::Proposer: Proposer<B, Error = Error, Transaction = sp_api::TransactionFor<C, B>>,

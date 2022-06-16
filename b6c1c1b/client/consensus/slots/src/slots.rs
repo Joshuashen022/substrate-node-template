@@ -173,7 +173,15 @@ where
 
 			let timestamp = inherent_data_providers.timestamp();
 			let slot = inherent_data_providers.slot();
-			let inherent_data = inherent_data_providers.create_inherent_data()?;
+			let mut inherent_data = inherent_data_providers.create_inherent_data()?;
+
+			// Inherent Data
+			{
+				// log::info!("inherent_data len {}", inherent_data.len());
+				// let inherent_identifier = *b"testnets";// [u8;8]
+				// let inherent_0 = vec![1, 2, 3];
+				// inherent_data.put_data(inherent_identifier,&inherent_0).unwrap();
+			}
 
 			// never yield the same slot twice.
 			if slot > self.last_slot {
