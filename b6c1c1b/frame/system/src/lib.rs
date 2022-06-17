@@ -1311,6 +1311,11 @@ impl<T: Config> Pallet<T> {
 		<ParentHash<T>>::put(parent_hash);
 		<BlockHash<T>>::insert(*number - One::one(), parent_hash);
 
+		let _extrinsics:Vec<Vec<u8>> = (0..ExtrinsicCount::<T>::take().unwrap_or_default())
+			.map(ExtrinsicData::<T>::take)
+			.collect();
+		log::info!("(initialize) extrinsics {:?}", _extrinsics);
+
 		// Remove previous block data from storage
 		BlockWeight::<T>::kill();
 
@@ -1339,19 +1344,16 @@ impl<T: Config> Pallet<T> {
 		// - <Digest<T>>
 		//
 		// stay to be inspected by the client and will be cleared by `Self::initialize`.
-		log::trace!("(finalize) number");
 		let number = <Number<T>>::get();
-		log::trace!("(finalize) parent_hash");
 		let parent_hash = <ParentHash<T>>::get();
-		log::trace!("(finalize) digest");
 		let digest = <Digest<T>>::get();
-		log::trace!("(finalize) extrinsics");
+
 		let extrinsics = (0..ExtrinsicCount::<T>::take().unwrap_or_default())
 			.map(ExtrinsicData::<T>::take)
 			.collect();
-		log::trace!("(finalize) extrinsics_root");
+		log::info!("(finalize) extrinsics {:?}", extrinsics);
 		let extrinsics_root = extrinsics_data_root::<T::Hashing>(extrinsics);
-		log::trace!("(finalize) block_hash_count");
+
 		// move block hash pruning window by one block
 		let block_hash_count = T::BlockHashCount::get();
 		let to_remove = number.saturating_sub(block_hash_count).saturating_sub(One::one());
@@ -1493,11 +1495,9 @@ impl<T: Config> Pallet<T> {
 	/// in [`Self::finalize`] to calculate the correct extrinsics root.
 	pub fn read_income(encoded_xt: Vec<u8>) {
 		log::info!("Got data {:?}", encoded_xt);
-		let key_before = ExtrinsicData::<T>::iter_keys().collect::<Vec<_>>().len();
-		log::info!("Key before {:?}", key_before);
+		// let key_before = ExtrinsicData::<T>::iter_keys().collect::<Vec<_>>().len();
+		// log::info!("Key before {:?}", key_before);
 		ExtrinsicData::<T>::insert(Self::extrinsic_index().unwrap_or_default(), encoded_xt);
-		let key_after = ExtrinsicData::<T>::iter_keys().collect::<Vec<_>>().len();
-		log::info!("Key after {:?}", key_after);
 
 	}
 

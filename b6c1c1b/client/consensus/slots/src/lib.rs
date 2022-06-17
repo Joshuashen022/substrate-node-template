@@ -679,6 +679,18 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 
 	loop {
 		info!("slots.next_slot()");
+
+
+
+		let slot_info = match slots.next_slot().await {
+			Ok(r) => r,
+			Err(e) => {
+				warn!(target: "slots", "Error while polling for next slot: {:?}", e);
+				return
+			},
+		};
+		info!("");
+		info!("");
 		{
 			if let Ok(config) = Config::get_or_compute(&*client){
 				let duration = config.0.slot_duration();
@@ -693,17 +705,6 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 				log::info!("transfer_data OK")
 			};
 		}
-
-
-		let slot_info = match slots.next_slot().await {
-			Ok(r) => r,
-			Err(e) => {
-				warn!(target: "slots", "Error while polling for next slot: {:?}", e);
-				return
-			},
-		};
-		info!("");
-		info!("");
 		log::debug!("sync_oracle.is_major_syncing");
 		if sync_oracle.is_major_syncing() {
 			debug!(target: "slots", "Skipping proposal slot due to sync.");
