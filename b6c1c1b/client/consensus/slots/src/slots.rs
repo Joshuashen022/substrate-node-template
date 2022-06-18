@@ -177,7 +177,6 @@ where
 
 			// Inherent Data
 			{
-
 				// log::info!("inherent_data len {}", inherent_data.len());
 				// let inherent_identifier = *b"testnets";// [u8;8]
 				// let inherent_0 = vec![1, 2, 3];

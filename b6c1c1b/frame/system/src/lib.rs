@@ -545,6 +545,11 @@ pub mod pallet {
 	pub(super) type ExtrinsicData<T: Config> =
 		StorageMap<_, Twox64Concat, u32, Vec<u8>, ValueQuery>;
 
+	/// The current weight for the block.
+	#[pallet::storage]
+	#[pallet::getter(fn temp_data)]
+	pub(super) type TempExtrinsicData<T: Config> = StorageValue<_, Vec<u8>, ValueQuery>;
+
 	/// The current block number being processed. Set by `execute_block`.
 	#[pallet::storage]
 	#[pallet::getter(fn block_number)]
@@ -1351,7 +1356,9 @@ impl<T: Config> Pallet<T> {
 		let extrinsics = (0..ExtrinsicCount::<T>::take().unwrap_or_default())
 			.map(ExtrinsicData::<T>::take)
 			.collect();
-		log::info!("(finalize) extrinsics {:?}", extrinsics);
+		// log::info!("(finalize) extrinsics {:?}", extrinsics);
+		let tmp = TempExtrinsicData::<T>::get();
+		log::info!("(finalize) TempExtrinsicData {:?}", tmp);
 		let extrinsics_root = extrinsics_data_root::<T::Hashing>(extrinsics);
 
 		// move block hash pruning window by one block
@@ -1497,7 +1504,7 @@ impl<T: Config> Pallet<T> {
 		log::info!("Got data {:?}", encoded_xt);
 		// let key_before = ExtrinsicData::<T>::iter_keys().collect::<Vec<_>>().len();
 		// log::info!("Key before {:?}", key_before);
-		ExtrinsicData::<T>::insert(Self::extrinsic_index().unwrap_or_default(), encoded_xt);
+		TempExtrinsicData::<T>::put(encoded_xt);
 
 	}
 

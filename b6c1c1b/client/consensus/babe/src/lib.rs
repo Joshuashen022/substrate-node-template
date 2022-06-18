@@ -99,7 +99,8 @@ use sc_consensus_slots::{
 	check_equivocation, BackoffAuthoringBlocksStrategy, CheckedHeader, InherentDataProviderExt,
 	SlotInfo, StorageChanges,
 };
-use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_TRACE};
+use futures_timer::Delay;
+use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_TRACE, CONSENSUS_INFO, CONSENSUS_WARN};
 use sp_api::{ApiExt, NumberFor, ProvideRuntimeApi};
 use sp_application_crypto::AppKey;
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
@@ -118,8 +119,8 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header, Zero},
 	DigestItem,
 };
-
-pub use sc_consensus_slots::SlotProportion;
+use futures::{future::Either, Future, TryFutureExt};
+pub use sc_consensus_slots::{SlotProportion, SlotResult};
 pub use sp_consensus::SyncOracle;
 pub use sp_consensus_babe::{
 	digests::{
@@ -673,19 +674,57 @@ struct BabeSlotWorker<B: BlockT, C, E, I, SO, L, BS> {
 	telemetry: Option<TelemetryHandle>,
 }
 
+impl<B, C, E, I, SO, L, BS> sc_consensus_slots::ClientApi<C, B>for BabeSlotWorker<B, C, E, I, SO, L, BS>
+where
+	B:BlockT,
+	C: ProvideRuntimeApi<B>
+	+ ProvideUncles<B>
+	+ BlockchainEvents<B>
+	+ AuxStore
+	+ UsageProvider<B>
+	+ HeaderBackend<B>
+	+ HeaderMetadata<B, Error = ClientError>
+	+ Send
+	+ Sync
+	+ 'static,
+	C::Api: BabeApi<B> + BlockBuilder<B>,
+{
+	fn client(&self) -> Arc<C>{
+		(&self.client).clone()
+	}
+
+	fn send_data_to_runtime(&self, data:Vec<u8>){
+		let client = &self.client;
+		let api = (&*client).runtime_api();
+		let best_hash = client.usage_info().chain.best_hash;
+		if let Ok(_) = api.transfer_data(&BlockId::hash(best_hash), data){
+			log::info!("transfer_data OK")
+		};
+	}
+}
+
 #[async_trait::async_trait]
 impl<B, C, E, I, Error, SO, L, BS> sc_consensus_slots::SimpleSlotWorker<B>
 	for BabeSlotWorker<B, C, E, I, SO, L, BS>
 where
 	B: BlockT,
-	C: ProvideRuntimeApi<B> + HeaderBackend<B> + HeaderMetadata<B, Error = ClientError>,
-	C::Api: BabeApi<B>,
-	E: Environment<B, Error = Error> + Sync,
+	C: ProvideRuntimeApi<B>
+	+ ProvideUncles<B>
+	+ BlockchainEvents<B>
+	+ AuxStore
+	+ UsageProvider<B>
+	+ HeaderBackend<B>
+	+ HeaderMetadata<B, Error = ClientError>
+	+ Send
+	+ Sync
+	+ 'static,
+	C::Api: BabeApi<B> + BlockBuilder<B>,
+	E: Environment<B, Error = Error> + Sync + std::marker::Send,
 	E::Proposer: Proposer<B, Error = Error, Transaction = sp_api::TransactionFor<C, B>>,
 	I: BlockImport<B, Transaction = sp_api::TransactionFor<C, B>> + Send + Sync + 'static,
 	SO: SyncOracle + Send + Clone + Sync,
 	L: sc_consensus::JustificationSyncLink<B>,
-	BS: BackoffAuthoringBlocksStrategy<NumberFor<B>> + Sync,
+	BS: BackoffAuthoringBlocksStrategy<NumberFor<B>> + Sync + std::marker::Send,
 	Error: std::error::Error + Send + From<ConsensusError> + From<I::Error> + 'static,
 {
 	type EpochData = ViableEpochDescriptor<B::Hash, NumberFor<B>, Epoch>;
@@ -884,6 +923,248 @@ where
 			sc_consensus_slots::SlotLenienceType::Exponential,
 			self.logging_target(),
 		)
+	}
+
+	async fn on_slot(
+		&mut self,
+		slot_info: SlotInfo<B>,
+	) -> Option<SlotResult<B, <Self::Proposer as Proposer<B>>::Proof>>
+		where
+			Self: Sync,
+	{
+		let (timestamp, slot) = (slot_info.timestamp, slot_info.slot);
+		log::info!("Slot[{:?}]", u64::from(slot));
+		{
+			let data = vec![1,2,3];
+			let client = &self.client;
+			let api = (&*client).runtime_api();
+			let best_hash = client.usage_info().chain.best_hash;
+			if let Ok(_) = api.transfer_data(&BlockId::hash(best_hash), data){
+				log::info!("transfer_data OK")
+			};
+		}
+
+		let telemetry = self.telemetry();
+		let logging_target = self.logging_target();
+
+		let proposing_remaining_duration = self.proposing_remaining_duration(&slot_info);
+
+		let proposing_remaining = if proposing_remaining_duration == Duration::default() {
+			debug!(
+				target: logging_target,
+				"Skipping proposal slot {} since there's no time left to propose", slot,
+			);
+
+			return None
+		} else {
+			Delay::new(proposing_remaining_duration)
+		};
+
+		let epoch_data = match self.epoch_data(&slot_info.chain_head, slot) {
+			Ok(epoch_data) => epoch_data,
+			Err(err) => {
+				warn!(
+					target: logging_target,
+					"Unable to fetch epoch data at block {:?}: {:?}",
+					slot_info.chain_head.hash(),
+					err,
+				);
+
+				telemetry!(
+					telemetry;
+					CONSENSUS_WARN;
+					"slots.unable_fetching_authorities";
+					"slot" => ?slot_info.chain_head.hash(),
+					"err" => ?err,
+				);
+
+				return None
+			},
+		};
+
+		self.notify_slot(&slot_info.chain_head, slot, &epoch_data);
+
+		let authorities_len = self.authorities_len(&epoch_data);
+
+		// Test send message
+		// log::info!("Test send message");
+		// self.sync_oracle().send_message();
+
+		if !self.force_authoring() &&
+			self.sync_oracle().is_offline() &&
+			authorities_len.map(|a| a > 1).unwrap_or(false)
+		{
+			debug!(target: logging_target, "Skipping proposal slot. Waiting for the network.");
+			telemetry!(
+				telemetry;
+				CONSENSUS_DEBUG;
+				"slots.skipping_proposal_slot";
+				"authorities_len" => authorities_len,
+			);
+
+			return None
+		}
+
+		let claim = self.claim_slot(&slot_info.chain_head, slot, &epoch_data).await?;
+		log::debug!("[Block Generation] after claiming the right to generate block, now we need to generate a block");
+		if self.should_backoff(slot, &slot_info.chain_head) {
+			return None
+		}
+
+		debug!(
+			target: self.logging_target(),
+			"Starting authorship at slot {}; timestamp = {}",
+			slot,
+			*timestamp,
+		);
+
+		telemetry!(
+			telemetry;
+			CONSENSUS_DEBUG;
+			"slots.starting_authorship";
+			"slot_num" => *slot,
+			"timestamp" => *timestamp,
+		);
+
+		let proposer = match self.proposer(&slot_info.chain_head).await {
+			Ok(p) => p,
+			Err(err) => {
+				warn!(
+					target: logging_target,
+					"Unable to author block in slot {:?}: {:?}", slot, err,
+				);
+
+				telemetry!(
+					telemetry;
+					CONSENSUS_WARN;
+					"slots.unable_authoring_block";
+					"slot" => *slot,
+					"err" => ?err
+				);
+
+				return None
+			},
+		};
+
+		let logs = self.pre_digest_data(slot, &claim);
+
+		// deadline our production to 98% of the total time left for proposing. As we deadline
+		// the proposing below to the same total time left, the 2% margin should be enough for
+		// the result to be returned.
+		let proposing = proposer // client>basic_authorship>src>basic_authorship.rs line 291
+			.propose(
+				slot_info.inherent_data,
+				sp_runtime::generic::Digest { logs },
+				proposing_remaining_duration.mul_f32(0.98),
+				None,
+			)
+			.map_err(|e| sp_consensus::Error::ClientImport(format!("{:?}", e)));
+
+		let proposal = match futures::future::select(proposing, proposing_remaining).await {
+			Either::Left((Ok(p), _)) => p,
+			Either::Left((Err(err), _)) => {
+				warn!(target: logging_target, "Proposing failed: {:?}", err);
+
+				return None
+			},
+			Either::Right(_) => {
+				info!(
+					target: logging_target,
+					"⌛️ Discarding proposal for slot {}; block production took too long", slot,
+				);
+				// If the node was compiled with debug, tell the user to use release optimizations.
+				#[cfg(build_type = "debug")]
+				info!(
+					target: logging_target,
+					"👉 Recompile your node in `--release` mode to mitigate this problem.",
+				);
+				telemetry!(
+					telemetry;
+					CONSENSUS_INFO;
+					"slots.discarding_proposal_took_too_long";
+					"slot" => *slot,
+				);
+
+				return None
+			},
+		};
+		log::debug!("[Block Generation] Block generation finished");
+		let block_import_params_maker = self.block_import_params();
+		let block_import = self.block_import();
+
+		let (block, storage_proof) = (proposal.block, proposal.proof);
+		let (header, body) = block.deconstruct();
+		let header_num = *header.number();
+		let header_hash = header.hash();
+		let parent_hash = *header.parent_hash();
+
+		let block_import_params = match block_import_params_maker(
+			header,
+			&header_hash,
+			body.clone(),
+			proposal.storage_changes,
+			claim,
+			epoch_data,
+		) {
+			Ok(bi) => bi,
+			Err(err) => {
+				warn!(target: logging_target, "Failed to create block import params: {:?}", err);
+
+				return None
+			},
+		};
+
+		info!(
+			target: logging_target,
+			"🔖 Pre-sealed block for proposal at {}. Hash now {:?}, previously {:?}.",
+			header_num,
+			block_import_params.post_hash(),
+			header_hash,
+		);
+
+		telemetry!(
+			telemetry;
+			CONSENSUS_INFO;
+			"slots.pre_sealed_block";
+			"header_num" => ?header_num,
+			"hash_now" => ?block_import_params.post_hash(),
+			"hash_previously" => ?header_hash,
+		);
+
+		let header = block_import_params.post_header();
+
+		// log::info!("begin to [import block]");
+		// std::thread::sleep(Duration::from_millis(1000));
+		// Send block to other after this
+		// log::info!("before [import block]");
+		let _internal = block_import.import_block(block_import_params, Default::default()).await;
+		// log::info!("after [import block]");
+		match _internal {
+			Ok(res) => {
+				//  Send block before here
+				res.handle_justification(
+					&header.hash(),
+					*header.number(),
+					self.justification_sync_link(),
+				);
+			},
+			Err(err) => {
+				warn!(
+					target: logging_target,
+					"Error with block built on {:?}: {:?}", parent_hash, err,
+				);
+
+				telemetry!(
+					telemetry;
+					CONSENSUS_WARN;
+					"slots.err_with_block_built_on";
+					"hash" => ?parent_hash,
+					"err" => ?err,
+				);
+			},
+		}
+
+		Some(SlotResult { block: B::new(header, body), storage_proof })
 	}
 }
 
