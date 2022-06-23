@@ -39,9 +39,10 @@ use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsagePro
 use sp_blockchain::{Error as ClientError, HeaderBackend, HeaderMetadata, Result as ClientResult};
 use codec::{Decode, Encode};
 use futures::{future::Either, Future, TryFutureExt};
-use futures_timer::Delay;
+
 use log::{debug, error, info, warn, trace};
 use sc_consensus::{BlockImport, JustificationSyncLink};
+use futures_timer::Delay;
 use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_INFO, CONSENSUS_WARN};
 use sp_api::{ApiExt, ApiRef, ProvideRuntimeApi};
 use sp_arithmetic::traits::BaseArithmetic;
@@ -636,6 +637,26 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 	}
 }
 
+pub trait ClientApi<Client, B>
+where
+	B: BlockT,
+	Client: ProvideRuntimeApi<B>
+	+ ProvideUncles<B>
+	+ BlockchainEvents<B>
+	+ AuxStore
+	+ UsageProvider<B>
+	+ HeaderBackend<B>
+	+ HeaderMetadata<B, Error = ClientError>
+	+ Send
+	+ Sync
+	+ 'static,
+	Client::Api: BabeApi<B> + BlockBuilder<B>,
+{
+	fn client(&self) -> Arc<Client>;
+
+	fn send_data_to_runtime(&self, data:Vec<u8>);
+}
+
 /// Start a new slot worker with bonus functionality read slot_length.
 /// Slot length is adjusted by runtime and need to be set properly.
 ///
@@ -663,7 +684,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	Client::Api: BabeApi<B> + BlockBuilder<B>,
 	B: BlockT,
 	C: SelectChain<B>,
-	W: SlotWorker<B, Proof>,
+	W: SlotWorker<B, Proof> + ClientApi<Client, B>,
 	SO: SyncOracle + Send,
 	T: SlotData + Clone,
 	CIDP: CreateInherentDataProviders<B, ()> + Send,
@@ -679,9 +700,6 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 
 	loop {
 		info!("slots.next_slot()");
-
-
-
 		let slot_info = match slots.next_slot().await {
 			Ok(r) => r,
 			Err(e) => {
@@ -691,20 +709,20 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 		};
 		info!("");
 		info!("");
+
+		// This works
 		{
-			if let Ok(config) = Config::get_or_compute(&*client){
-				let duration = config.0.slot_duration();
-				info!("duration {:?}", duration );
-			} else {
-				info!("duration error");
-			};
-			let api = (&*client).runtime_api();
-			let data = vec!(1,2,3,4);
-			let best_hash = client.usage_info().chain.best_hash;
-			if let Ok(_) = api.transfer_data(&BlockId::hash(best_hash), data){
-				log::info!("transfer_data OK")
-			};
+			// if let Ok(config) = Config::get_or_compute(&*client){
+			// 	let duration = config.0.slot_duration();
+			// 	info!("duration {:?}", duration );
+			// } else {
+			// 	info!("duration error");
+			// };
+			// let slot: u64 = slot_info.slot.into();
+			// let data = vec!(1,2,3, slot as u8);
+			// worker.send_data_to_runtime(data);
 		}
+
 		log::debug!("sync_oracle.is_major_syncing");
 		if sync_oracle.is_major_syncing() {
 			debug!(target: "slots", "Skipping proposal slot due to sync.");
