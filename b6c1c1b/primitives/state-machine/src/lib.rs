@@ -529,14 +529,19 @@ mod execution {
 				CallResult<R, Exec::Error>,
 			) -> CallResult<R, Exec::Error>,
 		{
-			log::trace!("(execute_using_consensus_failure_handler)");
+			log::info!("(execute_using_consensus_failure_handler)");
 			let result = {
 				match manager {
-					ExecutionManager::Both(on_consensus_failure) => self
-						.execute_call_with_both_strategy(native_call.take(), on_consensus_failure),
-					ExecutionManager::NativeElseWasm =>
-						self.execute_call_with_native_else_wasm_strategy(native_call.take()),
+					ExecutionManager::Both(on_consensus_failure) => {
+						log::trace!("ExecutionManager::Both");
+						self.execute_call_with_both_strategy(native_call.take(), on_consensus_failure)
+					},
+					ExecutionManager::NativeElseWasm =>{
+						log::trace!("ExecutionManager::NativeElseWasm");
+						self.execute_call_with_native_else_wasm_strategy(native_call.take())
+					},
 					ExecutionManager::AlwaysWasm(trust_level) => {
+						log::trace!("ExecutionManager::AlwaysWasm"); // This one
 						let _abort_guard = match trust_level {
 							BackendTrustLevel::Trusted => None,
 							BackendTrustLevel::Untrusted =>
@@ -544,7 +549,10 @@ mod execution {
 						};
 						self.execute_aux(false, native_call).0
 					},
-					ExecutionManager::NativeWhenPossible => self.execute_aux(true, native_call).0,
+					ExecutionManager::NativeWhenPossible => {
+						log::trace!("ExecutionManager::NativeWhenPossible");
+						self.execute_aux(true, native_call).0
+					},
 				}
 			};
 

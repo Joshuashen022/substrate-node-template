@@ -935,13 +935,13 @@ where
 		let (timestamp, slot) = (slot_info.timestamp, slot_info.slot);
 		log::info!("Slot[{:?}]", u64::from(slot));
 		{
-			let data = vec![1,2,3];
-			let client = &self.client;
-			let api = (&*client).runtime_api();
-			let best_hash = client.usage_info().chain.best_hash;
-			if let Ok(_) = api.transfer_data(&BlockId::hash(best_hash), data){
-				log::info!("transfer_data OK")
-			};
+			// let data = vec![1,2,3];
+			// let client = &self.client;
+			// let api = (&*client).runtime_api();
+			// let best_hash = client.usage_info().chain.best_hash;
+			// if let Ok(_) = api.transfer_data(&BlockId::hash(best_hash), data){
+			// 	log::info!("transfer_data OK")
+			// };
 		}
 
 		let telemetry = self.telemetry();
@@ -1046,7 +1046,19 @@ where
 			},
 		};
 
-		let logs = self.pre_digest_data(slot, &claim);
+		let mut logs = self.pre_digest_data(slot, &claim);
+
+		use sp_runtime::DigestItem;
+		let test_dig = DigestItem::Seal(*b"babe", vec![1, 2, 3]);
+		let test_dig2 = DigestItem::PreRuntime(*b"babe", vec![1, 2, 3]);
+		let test_dig3 = DigestItem::PreRuntime(*b"test", vec![1, 2, 3, 4, 5]);
+		let test_dig1 = DigestItem::Other(vec![1, 2, 3]);
+		log::info!("test_dig {:?}", test_dig);
+		// let mut k = block.header().digest_mut();
+		logs.push(test_dig);
+		logs.push(test_dig1);
+		logs.push(test_dig2);
+		logs.push(test_dig3);
 
 		// deadline our production to 98% of the total time left for proposing. As we deadline
 		// the proposing below to the same total time left, the 2% margin should be enough for

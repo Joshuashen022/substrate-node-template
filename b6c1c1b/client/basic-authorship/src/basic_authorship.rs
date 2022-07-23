@@ -516,6 +516,17 @@ where
 			metrics.block_constructed.observe(block_timer.elapsed().as_secs_f64());
 		});
 		// info!("extrinsics {:?}", extrinsics()); // [0402000bc0cc4e658101]
+
+		use sp_runtime::DigestItem;
+		let test_dig = DigestItem::Seal(*b"babe", vec![1, 2, 3]);
+		let mut header = block.header().clone();
+		header.digest_mut().push(test_dig);
+		let ext = block.extrinsics().clone().to_vec();
+		// k.push(test_dig);
+		let _block = <Block as BlockT>::new(header, ext);
+
+
+		info!("[Digest] {:?}", block.header().digest().logs);
 		info!(
 			"🎁 Prepared block for proposing at {} ({} ms) [hash: {:?}; parent_hash: {}; extrinsics ({}): [{}]]",
 			block.header().number(),

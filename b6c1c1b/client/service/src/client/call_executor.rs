@@ -204,7 +204,7 @@ where
 	where
 		ExecutionManager<EM>: Clone,
 	{
-		log::trace!("(contextual_call)");
+		log::trace!("(contextual_call) for {}", method);
 		let mut storage_transaction_cache = storage_transaction_cache.map(|c| c.borrow_mut());
 
 		let state = self.backend.state_at(*at)?;
