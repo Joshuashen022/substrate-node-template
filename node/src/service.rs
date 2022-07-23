@@ -8,6 +8,7 @@ use sc_keystore::LocalKeystore;
 use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use std::sync::Arc;
+use sp_api::HeaderT;
 // Our native executor instance.
 pub struct ExecutorDispatch;
 use sc_client_api::UsageProvider;
@@ -200,18 +201,29 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 		loop{
 			std::thread::sleep(std::time::Duration::from_millis(6000));
 			let best_hash = client_clone.usage_info().chain.best_hash;
-			if let Ok(extrincs) = client_clone.body(&BlockId::hash(best_hash)){
-				if let Some(exts) = extrincs{
-					let length = exts.len();
-					let mut show = Vec::new();
-					for e in exts{
-						show.push(e.get_inner());
-					}
-					log::info!("Test Future get extrinsic {:?}", show);
+			if let Ok(headers) = client_clone.header(&BlockId::hash(best_hash)){
+				if let Some(hd) = headers {
+					let digest = hd.digest();
+					log::info!("Test Future get digest {:?}", digest);
 				} else {
-					log::info!("Test Future get extrinsic None");
+					log::info!("Test Future get no digest");
 				}
-			};
+
+			} else {
+				log::info!("Test Future get no header");
+			}
+			// if let Ok(extrincs) = client_clone.body(&BlockId::hash(best_hash)){
+			// 	if let Some(exts) = extrincs{
+			// 		let length = exts.len();
+			// 		let mut show = Vec::new();
+			// 		for e in exts{
+			// 			show.push(e.get_inner());
+			// 		}
+			// 		log::trace!("Test Future get extrinsic {:?}", show);
+			// 	} else {
+			// 		log::trace!("Test Future get extrinsic None");
+			// 	}
+			// };
 		}
 	};
 	task_manager.spawn_handle().spawn("Test Block", None,test_future);
