@@ -46,6 +46,7 @@ use message::{
 	generic::{Message as GenericMessage, Roles},
 	BlockAnnounce, Message, AdjustAnnounce, AnnounceMessage
 };
+
 use notifications::{Notifications, NotificationsOut};
 use prometheus_endpoint::{register, Gauge, GaugeVec, Opts, PrometheusError, Registry, U64};
 use prost::Message as _;
@@ -77,7 +78,7 @@ pub mod message;
 pub mod sync;
 
 pub use notifications::{NotificationsSink, NotifsHandlerError, Ready};
-
+pub use message::AdjustTemplate;
 /// Interval at which we perform time based maintenance
 const TICK_TIMEOUT: time::Duration = time::Duration::from_millis(1100);
 
@@ -870,7 +871,7 @@ impl<B: BlockT> Protocol<B> {
 	/// In chain-based consensus, we often need to make sure non-best forks are
 	/// at least temporarily synced.
 	pub fn announce_block(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
-		// self.announce_adjust(hash,data.clone());
+		self.announce_adjust(hash,data.clone());
 		let header = match self.chain.header(BlockId::Hash(hash)) {
 			Ok(Some(header)) => header,
 			Ok(None) => {
@@ -976,6 +977,7 @@ impl<B: BlockT> Protocol<B> {
 	/// [`ChainSync::poll_block_announce_validation`] to ensure that the future is
 	/// registered properly and will wake up the task when being ready.
 	fn push_block_announce_validation(&mut self, who: PeerId, announce: BlockAnnounce<B::Header>) {
+		let _now = duration_now().as_millis();
 		let hash = announce.header.hash();
 
 		let peer = match self.peers.get_mut(&who) {
@@ -999,10 +1001,19 @@ impl<B: BlockT> Protocol<B> {
 		}
 	}
 
-	/// Push an empty adjust announce validation.
-	fn push_adjust_announce_validation(&mut self, _who: PeerId, announce: AdjustAnnounce<B::Header>) {
-		// log::info!("Got {:?}", announce);
-		let _hash = announce.header.hash();
+	/// send AnnounceAdjust with receiving time to local memory
+	fn push_adjust_announce_validation(&mut self, peer_id: PeerId, adjust: AdjustAnnounce<B::Header>) -> CustomMessageOutcome<B> {
+		let receive_time = duration_now().as_millis();
+		let protocol_name = self.notification_protocols[0].clone();
+
+		let adjust_template = AdjustTemplate::new(adjust, receive_time);
+		let tmp = adjust_template.encode();
+		let message = Bytes::copy_from_slice(tmp.as_slice());
+
+		CustomMessageOutcome::NotificationsReceived {
+			remote: peer_id,
+			messages: vec![(protocol_name, message)],
+		}
 	}
 
 
@@ -1814,8 +1825,7 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 							}
 							AnnounceMessage::AdjustAnnounce(aa) => {
 								log::info!("[Adjust] try decode at AdjustAnnounce");
-								self.push_adjust_announce_validation(peer_id, aa);
-								CustomMessageOutcome::None
+								self.push_adjust_announce_validation(peer_id, aa)
 							}
 						}
 					} else {

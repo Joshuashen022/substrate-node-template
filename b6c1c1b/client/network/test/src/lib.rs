@@ -965,7 +965,7 @@ where
 		self.mut_peers(|peers| {
 			for (i, peer) in peers.into_iter().enumerate() {
 				trace!(target: "sync", "-- Polling {}: {}", i, peer.id());
-				if let Poll::Ready(()) = peer.network.poll_unpin(cx) {
+				if let Poll::Ready(None) = peer.network.poll_unpin(cx) {
 					panic!("NetworkWorker has terminated unexpectedly.")
 				}
 				trace!(target: "sync", "-- Polling complete {}: {}", i, peer.id());

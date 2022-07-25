@@ -24,7 +24,8 @@ pub use self::generic::{
 	RemoteHeaderRequest, RemoteHeaderResponse, RemoteReadChildRequest, RemoteReadRequest, Roles,
 };
 use bitflags::bitflags;
-use codec::{Decode, Encode, Error, Input, Output};
+use codec::{Encode, Error, Input, Output};
+pub use codec::Decode;
 use sc_client_api::StorageProof;
 use sp_runtime::{
 	traits::{Block as BlockT, Header as HeaderT},
@@ -157,6 +158,34 @@ impl<H: HeaderT> generic::BlockAnnounce<H> {
 			parent_hash: self.header.parent_hash().clone(),
 			state: self.state,
 		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct AdjustTemplate<H>{
+	adjust: AdjustAnnounce<H>,
+	receive_time: u128,
+}
+
+impl<H> AdjustTemplate<H> {
+	pub fn new(adjust: AdjustAnnounce<H>, receive_time: u128) -> Self{
+		Self { adjust, receive_time}
+	}
+}
+
+
+impl<H: Encode> Encode for AdjustTemplate<H>{
+	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+		self.adjust.encode_to(dest);
+		self.receive_time.encode_to(dest);
+	}
+}
+
+impl<H: Decode> Decode for AdjustTemplate<H> {
+	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let adjust =  AdjustAnnounce::decode(input)?;
+		let receive_time = u128::decode(input)?;
+		Ok(Self { adjust, receive_time })
 	}
 }
 
@@ -463,7 +492,6 @@ pub mod generic {
 
 	// Custom Encode/Decode impl to maintain backwards compatibility with v3.
 	// This assumes that the packet contains nothing but the announcement message.
-	// TODO: Get rid of it once protocol v4 is common.
 	impl<H: Encode> Encode for AdjustAnnounce<H> {
 		fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
 			self.header.encode_to(dest);
@@ -486,6 +514,7 @@ pub mod generic {
 			Ok(Self { header, timestamp, state, data })
 		}
 	}
+
 
 	#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 	/// Remote call request.

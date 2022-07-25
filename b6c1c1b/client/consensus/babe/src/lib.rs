@@ -1052,11 +1052,7 @@ where
 		let test_dig = DigestItem::Seal(*b"babe", vec![1, 2, 3]);
 		let test_dig2 = DigestItem::PreRuntime(*b"babe", vec![1, 2, 3]);
 		let test_dig3 = DigestItem::PreRuntime(*b"test", vec![1, 2, 3, 4, 5]);
-		let test_dig1 = DigestItem::Other(vec![1, 2, 3]);
-		log::info!("test_dig {:?}", test_dig);
-		// let mut k = block.header().digest_mut();
 		logs.push(test_dig);
-		logs.push(test_dig1);
 		logs.push(test_dig2);
 		logs.push(test_dig3);
 

@@ -39,13 +39,14 @@ use crate::{
 	protocol::{
 		self,
 		event::Event,
-		message::generic::Roles,
+		message::{generic::Roles, AdjustTemplate},
 		sync::{Status as SyncStatus, SyncState},
 		NotificationsSink, NotifsHandlerError, PeerInfo, Protocol, Ready,
+
 	},
 	transactions, transport, DhtEvent, ExHashT, NetworkStateInfo, NetworkStatus, ReputationChange,
 };
-
+use codec::Decode;
 use codec::Encode as _;
 use futures::{channel::oneshot, prelude::*};
 use libp2p::{
@@ -1566,7 +1567,7 @@ pub struct NetworkWorker<B: BlockT + 'static, H: ExHashT> {
 }
 
 impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
-	type Output = ();
+	type Output = Option<AdjustTemplate<<B as BlockT>::Hash>>;
 
 	fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context) -> Poll<Self::Output> {
 		let this = &mut *self;
@@ -1600,7 +1601,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 				},
 				Poll::Ready(None) => {
 					log::info!("[MSG] Ready(Some None)");
-					return Poll::Ready(())
+					return Poll::Ready(None)
 				},
 				Poll::Pending => break,
 			};
@@ -1931,6 +1932,19 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					messages,
 				})) => {
 					// info!("[Behaviour] NotificationsReceived");
+					let messages_clone = messages.clone();
+					for(p, b) in messages_clone{
+						let a_result =
+							AdjustTemplate::<<B as BlockT>::Hash>::decode(&mut b.as_ref());
+						if let Ok(a) = a_result{
+							log::info!(
+								"[Behaviour] NotificationsReceived protocol {:?}, {:?}",
+								p, a
+							);
+							return Poll::Ready(Some(a))
+						}
+					}
+
 					if let Some(metrics) = this.metrics.as_ref() {
 						for (protocol, message) in &messages {
 							metrics

@@ -163,8 +163,8 @@ where
 		inherent_digests: Digest,
 		backend: &'a B,
 	) -> Result<Self, Error> {
-		log::info!("(new)");
-		log::info!("{:?}", inherent_digests.clone());
+		log::trace!("(new)");
+		log::trace!("{:?}", inherent_digests.clone());
 		let header = <<Block as BlockT>::Header as HeaderT>::new(
 			parent_number + One::one(),
 			Default::default(),
@@ -183,9 +183,9 @@ where
 
 		let block_id = BlockId::Hash(parent_hash);
 
-		log::info!("(initialize_block_with_context) before");
+		log::trace!("(initialize_block_with_context) before");
 		api.initialize_block_with_context(&block_id, ExecutionContext::BlockConstruction, &header)?;
-		log::info!("(initialize_block_with_context) after");
+		log::trace!("(initialize_block_with_context) after");
 
 
 		Ok(Self {
@@ -241,7 +241,7 @@ where
 			),
 		);
 		log::trace!("(build) header");
-		log::info!("{:#?}", header);
+		log::trace!("{:#?}", header);
 		log::trace!("(extract_proof) before ");
 		let proof = self.api.extract_proof();
 		log::trace!("(extract_proof) after ");
