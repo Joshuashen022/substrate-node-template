@@ -292,6 +292,9 @@ const MAX_CONNECTIONS_PER_PEER: usize = 2;
 /// The maximum number of concurrent established connections that were incoming.
 const MAX_CONNECTIONS_ESTABLISHED_INCOMING: u32 = 10_000;
 
+/// Used for passing timestamp of a received block.
+const TIMESTAMP_ENGINE: [u8;4] = *b"time";
+
 /// Minimum Requirements for a Hash within Networking
 pub trait ExHashT: std::hash::Hash + Eq + std::fmt::Debug + Clone + Send + Sync + 'static {}
 

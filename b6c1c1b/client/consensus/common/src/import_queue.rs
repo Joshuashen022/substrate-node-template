@@ -90,6 +90,36 @@ pub struct IncomingBlock<B: BlockT> {
 	pub state: Option<ImportedState<B>>,
 }
 
+impl<B: BlockT> IncomingBlock<B>{
+	pub fn add_timestamp(&mut self, engine: [u8; 4], message: Vec<u8>) -> Result<(), String>{
+		if let Some(mut just) = self.clone().justifications{
+			if just.append((engine, message)) {
+				self.justifications = Some(just);
+				Ok(())
+			} else{
+				Err(format!("engine {:?} exist", engine))
+			}
+		} else{
+			let just = Justifications::from((engine, message));
+			self.justifications = Some(just);
+			Ok(())
+		}
+	}
+
+	pub fn strip_timestamp(&mut self, engine: [u8; 4]) -> Result<Vec<u8>, String>{
+		if let Some(mut justification) = self.clone().justifications{
+			if let Some(encoded_justification) = justification.pop(engine){
+				Ok(encoded_justification)
+			} else{
+				Err(format!("engine {:?} does not exist", engine))
+			}
+		} else{
+			Err(format!("Empty justifications"))
+		}
+	}
+
+}
+
 /// Verify a justification of a block
 #[async_trait::async_trait]
 pub trait Verifier<B: BlockT>: Send + Sync {

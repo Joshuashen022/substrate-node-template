@@ -612,6 +612,7 @@ impl<B: BlockT> Protocol<B> {
 		request: message::BlockRequest<B>,
 		response: crate::schema::v1::BlockResponse,
 	) -> CustomMessageOutcome<B> {
+		log::info!("[Block Import] (on_block_response)");
 		let blocks = response
 			.blocks
 			.into_iter()
@@ -1022,9 +1023,14 @@ impl<B: BlockT> Protocol<B> {
 		&mut self,
 		validation_result: sync::PollBlockAnnounceValidation<B::Header>,
 	) -> CustomMessageOutcome<B> {
+		log::info!("[Adjust] (process_block_announce_validation_result) ");
 		let (header, is_best, who) = match validation_result {
-			sync::PollBlockAnnounceValidation::Skip => return CustomMessageOutcome::None,
+			sync::PollBlockAnnounceValidation::Skip => {
+				log::info!("[Adjust] PollBlockAnnounceValidation::Skip ");
+				return CustomMessageOutcome::None
+			},
 			sync::PollBlockAnnounceValidation::Nothing { is_best, who, announce } => {
+				log::info!("[Adjust] PollBlockAnnounceValidation::Nothing ");
 				self.update_peer_info(&who);
 
 				if let Some(data) = announce.data {
@@ -1033,19 +1039,23 @@ impl<B: BlockT> Protocol<B> {
 					}
 				}
 
+				if is_best {
+					log::info!("[Adjust] CustomMessageOutcome::PeerNewBest ");
+					return CustomMessageOutcome::PeerNewBest(who, *announce.header.number())
+				} else {
+					log::info!("[Adjust] CustomMessageOutcome::None ");
+					return CustomMessageOutcome::None
+				}
+			},
+			sync::PollBlockAnnounceValidation::ImportHeader { announce, is_best, who } => {
 				// `on_block_announce` returns `OnBlockAnnounce::ImportHeader`
 				// when we have all data required to import the block
 				// in the BlockAnnounce message. This is only when:
 				// 1) we're on light client;
 				// AND
 				// 2) parent block is already imported and not pruned.
-				if is_best {
-					return CustomMessageOutcome::PeerNewBest(who, *announce.header.number())
-				} else {
-					return CustomMessageOutcome::None
-				}
-			},
-			sync::PollBlockAnnounceValidation::ImportHeader { announce, is_best, who } => {
+				// Which would never happen
+				log::info!("[Adjust] PollBlockAnnounceValidation::ImportHeader ");
 				self.update_peer_info(&who);
 
 				if let Some(data) = announce.data {
@@ -1057,6 +1067,7 @@ impl<B: BlockT> Protocol<B> {
 				(announce.header, is_best, who)
 			},
 			sync::PollBlockAnnounceValidation::Failure { who, disconnect } => {
+				log::info!("[Adjust] PollBlockAnnounceValidation::Failure ");
 				if disconnect {
 					self.behaviour.disconnect_peer(&who, HARDCODED_PEERSETS_SYNC);
 				}
@@ -1818,8 +1829,10 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 								// Make sure that the newly added block announce validation future was
 								// polled once to be registered in the task.
 								if let Poll::Ready(res) = self.sync.poll_block_announce_validation(cx) {
+									log::info!("[Adjust] Poll::Ready");
 									self.process_block_announce_validation_result(res)
 								} else {
+									log::info!("[Adjust] Poll::Pending");
 									CustomMessageOutcome::None
 								}
 							}

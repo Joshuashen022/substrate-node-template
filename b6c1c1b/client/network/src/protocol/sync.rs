@@ -63,6 +63,8 @@ use std::{
 	sync::Arc,
 };
 use warp::{WarpProofRequest, WarpSync, WarpSyncProvider};
+use crate::protocol::duration_now;
+use crate::TIMESTAMP_ENGINE;
 
 mod blocks;
 mod extra_requests;
@@ -1071,9 +1073,10 @@ impl<B: BlockT> ChainSync<B> {
 		request: Option<BlockRequest<B>>,
 		response: BlockResponse<B>,
 	) -> Result<OnBlockData<B>, BadPeer> {
+		log::info!("[Block Import] (on_block_data) request.is_some? {}", request.is_some());
 		self.downloaded_blocks += response.blocks.len();
 		let mut gap = false;
-		let new_blocks: Vec<IncomingBlock<B>> = if let Some(peer) = self.peers.get_mut(who) {
+		let mut new_blocks: Vec<IncomingBlock<B>> = if let Some(peer) = self.peers.get_mut(who) {
 			let mut blocks = response.blocks;
 			if request
 				.as_ref()
@@ -1084,6 +1087,7 @@ impl<B: BlockT> ChainSync<B> {
 			}
 			self.pending_requests.add(who);
 			if let Some(request) = request {
+				log::info!("[Block Import] (on_block_data) peer state {:?}", peer.state);
 				match &mut peer.state {
 					PeerSyncState::DownloadingNew(_) => {
 						self.blocks.clear_peer_download(who);
@@ -1282,6 +1286,8 @@ impl<B: BlockT> ChainSync<B> {
 			// We don't know of this peer, so we also did not request anything from it.
 			return Err(BadPeer(*who, rep::NOT_REQUESTED))
 		};
+
+		add_timestamp(&mut new_blocks);
 
 		Ok(self.validate_and_queue_blocks(new_blocks, gap))
 	}
@@ -1929,8 +1935,10 @@ impl<B: BlockT> ChainSync<B> {
 				);
 				return PollBlockAnnounceValidation::Failure { who, disconnect }
 			},
-			PreValidateBlockAnnounce::Process { announce, is_new_best, who } =>
-				(announce, is_new_best, who),
+			PreValidateBlockAnnounce::Process { announce, is_new_best, who } =>{
+				trace!("[Adjust] PreValidateBlockAnnounce::Process ");
+				(announce, is_new_best, who)
+			},
 			PreValidateBlockAnnounce::Error { .. } | PreValidateBlockAnnounce::Skip => {
 				debug!(
 					target: "sync",
@@ -1945,7 +1953,7 @@ impl<B: BlockT> ChainSync<B> {
 			"Finished block announce validation: from {:?}: {:?}. local_best={}",
 			who,
 			announce.summary(),
-			is_best,
+			is_best, // true
 		);
 
 		let number = *announce.header.number();
@@ -1969,26 +1977,30 @@ impl<B: BlockT> ChainSync<B> {
 			peer.best_hash = hash;
 		}
 
-		if let PeerSyncState::AncestorSearch { .. } = peer.state {
+		if let PeerSyncState::AncestorSearch { .. } = peer.state { // nope
 			trace!(target: "sync", "Peer state is ancestor search.");
 			return PollBlockAnnounceValidation::Nothing { is_best, who, announce }
 		}
 
 		// If the announced block is the best they have and is not ahead of us, our common number
 		// is either one further ahead or it's the one they just announced, if we know about it.
-		if is_best {
+		if is_best { // true
 			if known && self.best_queued_number >= number {
+				trace!("[Adjust] is_best 1 ");
 				peer.update_common_number(number);
 			} else if announce.header.parent_hash() == &self.best_queued_hash ||
 				known_parent && self.best_queued_number >= number
 			{
+				trace!("[Adjust] is_best 2 ");
 				peer.update_common_number(number - One::one());
+			} else {
+				trace!("[Adjust] is_best 3 ");
 			}
 		}
 		self.pending_requests.add(&who);
 
 		// known block case
-		if known || self.is_already_downloading(&hash) {
+		if known || self.is_already_downloading(&hash) { // false
 			trace!(target: "sync", "Known block announce from {}: {}", who, hash);
 			if let Some(target) = self.fork_targets.get_mut(&hash) {
 				target.peers.insert(who.clone());
@@ -1996,7 +2008,7 @@ impl<B: BlockT> ChainSync<B> {
 			return PollBlockAnnounceValidation::Nothing { is_best, who, announce }
 		}
 
-		if ancient_parent {
+		if ancient_parent { // false
 			trace!(
 				target: "sync",
 				"Ignored ancient block announced from {}: {} {:?}",
@@ -2007,8 +2019,8 @@ impl<B: BlockT> ChainSync<B> {
 			return PollBlockAnnounceValidation::Nothing { is_best, who, announce }
 		}
 
-		let requires_additional_data = self.mode != SyncMode::Light || !known_parent;
-		if !requires_additional_data {
+		let requires_additional_data = self.mode != SyncMode::Light || !known_parent; // ture
+		if !requires_additional_data { // false
 			trace!(
 				target: "sync",
 				"Importing new header announced from {}: {} {:?}",
@@ -2019,7 +2031,7 @@ impl<B: BlockT> ChainSync<B> {
 			return PollBlockAnnounceValidation::ImportHeader { is_best, announce, who }
 		}
 
-		if self.status().state == SyncState::Idle {
+		if self.status().state == SyncState::Idle { // true
 			trace!(
 				target: "sync",
 				"Added sync target for block announced from {}: {} {:?}",
@@ -2205,6 +2217,41 @@ impl<B: BlockT> ChainSync<B> {
 			})
 			.collect()
 	}
+}
+
+/// Add timestamp to `incoming_block`.
+/// Only use for crate inner functions.
+pub(crate) fn add_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B>>){
+
+	let now_data = duration_now().as_millis().to_be_bytes().to_vec(); // [u8; 16]
+	let engine = TIMESTAMP_ENGINE;
+	let mut error = false;
+	for blocks in incoming_blocks{
+		if let Err(_) = blocks.add_timestamp(engine, now_data.clone()){
+			error = true;
+		};
+	}
+
+	if error {
+		log::error!("Add timestamp error");
+	}
+}
+
+/// Retrieve timestamp to `incoming_block`.
+/// Only use for crate inner functions.
+pub(crate) fn extract_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B>>) -> Vec<(<B as BlockT>::Header, u128)>{
+	let mut collect = Vec::new();
+	let engine = TIMESTAMP_ENGINE;
+	for block in incoming_blocks{
+		match (block.header.clone(), block.strip_timestamp(engine)){
+			(Some(head), Ok(t_data)) if t_data.len() == 16 => {
+				let time_stamp = u128::from_be_bytes(t_data.as_slice().try_into().unwrap());
+				collect.push((head.clone(), time_stamp));
+			}
+			_ => {}
+		}
+	}
+	collect
 }
 
 // This is purely during a backwards compatible transitionary period and should be removed

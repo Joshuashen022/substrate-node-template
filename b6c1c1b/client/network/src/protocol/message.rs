@@ -160,7 +160,15 @@ impl<H: HeaderT> generic::BlockAnnounce<H> {
 		}
 	}
 }
+/// Used for wrapping receiving time information of `block` or `adjust`
+///Currently only used at NetworkWorker::poll()
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ReceiveTimestamp<B:BlockT>{
+	AdjustTimestamp(AdjustTemplate<<B as BlockT>::Hash>),
+	BlockTimestamp(Vec<(<B as BlockT>::Header, u128)>),
+}
 
+///Wrapped information of `adjust` and it's receiving time.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AdjustTemplate<H>{
 	adjust: AdjustAnnounce<H>,

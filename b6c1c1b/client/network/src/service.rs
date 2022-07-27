@@ -39,12 +39,13 @@ use crate::{
 	protocol::{
 		self,
 		event::Event,
-		message::{generic::Roles, AdjustTemplate},
-		sync::{Status as SyncStatus, SyncState},
+		message::{generic::Roles, AdjustTemplate, ReceiveTimestamp},
+		sync::{Status as SyncStatus, SyncState, extract_timestamp},
 		NotificationsSink, NotifsHandlerError, PeerInfo, Protocol, Ready,
 
 	},
 	transactions, transport, DhtEvent, ExHashT, NetworkStateInfo, NetworkStatus, ReputationChange,
+	TIMESTAMP_ENGINE,
 };
 use codec::Decode;
 use codec::Encode as _;
@@ -1567,7 +1568,7 @@ pub struct NetworkWorker<B: BlockT + 'static, H: ExHashT> {
 }
 
 impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
-	type Output = Option<AdjustTemplate<<B as BlockT>::Hash>>;
+	type Output = Option<ReceiveTimestamp<B>>;
 
 	fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context) -> Poll<Self::Output> {
 		let this = &mut *self;
@@ -1734,12 +1735,15 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 			// NotificationsSinkMessage::Notification
 			match poll_value {
 				Poll::Pending => break,
-				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::BlockImport(origin, blocks))) => {
-					// info!("[Behaviour] BlockImport");
+				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::BlockImport(origin, mut blocks))) => {
+					info!("[Behaviour] BlockImport");
+					let time_stamp_vec = extract_timestamp(&mut blocks);
+
 					if let Some(metrics) = this.metrics.as_ref() {
 						metrics.import_queue_blocks_submitted.inc();
 					}
 					this.import_queue.import_blocks(origin, blocks);
+					return Poll::Ready(Some(ReceiveTimestamp::BlockTimestamp(time_stamp_vec)))
 				},
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::JustificationImport(
 					origin,
@@ -1938,10 +1942,11 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 							AdjustTemplate::<<B as BlockT>::Hash>::decode(&mut b.as_ref());
 						if let Ok(a) = a_result{
 							log::info!(
-								"[Behaviour] NotificationsReceived protocol {:?}, {:?}",
-								p, a
+								"[Behaviour] NotificationsReceived protocol {:?}",
+								p
 							);
-							return Poll::Ready(Some(a))
+
+							return Poll::Ready(Some(ReceiveTimestamp::AdjustTimestamp(a)))
 						}
 					}
 

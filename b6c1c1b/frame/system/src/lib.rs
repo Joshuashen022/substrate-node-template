@@ -1319,7 +1319,6 @@ impl<T: Config> Pallet<T> {
 		let _extrinsics:Vec<Vec<u8>> = (0..ExtrinsicCount::<T>::take().unwrap_or_default())
 			.map(ExtrinsicData::<T>::take)
 			.collect();
-		log::info!("(initialize) extrinsics {:?}", _extrinsics);
 
 		// Remove previous block data from storage
 		BlockWeight::<T>::kill();
@@ -1335,7 +1334,7 @@ impl<T: Config> Pallet<T> {
 	/// Remove temporary "environment" entries in storage, compute the storage root and return the
 	/// resulting header for this block.
 	pub fn finalize() -> T::Header {
-		log::info!("(finalize)");
+
 		ExecutionPhase::<T>::kill();
 		AllExtrinsicsLen::<T>::kill();
 
@@ -1357,8 +1356,6 @@ impl<T: Config> Pallet<T> {
 			.map(ExtrinsicData::<T>::take)
 			.collect();
 		// log::info!("(finalize) extrinsics {:?}", extrinsics);
-		let tmp = TempExtrinsicData::<T>::get();
-		log::info!("(finalize) TempExtrinsicData {:?}", tmp);
 		let extrinsics_root = extrinsics_data_root::<T::Hashing>(extrinsics);
 
 		// move block hash pruning window by one block

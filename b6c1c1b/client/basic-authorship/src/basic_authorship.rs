@@ -526,7 +526,7 @@ where
 		let _block = <Block as BlockT>::new(header, ext);
 
 
-		info!("[Digest] {:?}", block.header().digest().logs);
+		// info!("[Digest] {:?}", block.header().digest().logs);
 		info!(
 			"🎁 Prepared block for proposing at {} ({} ms) [hash: {:?}; parent_hash: {}; extrinsics ({}): [{}]]",
 			block.header().number(),

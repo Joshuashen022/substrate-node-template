@@ -529,7 +529,7 @@ mod execution {
 				CallResult<R, Exec::Error>,
 			) -> CallResult<R, Exec::Error>,
 		{
-			log::info!("(execute_using_consensus_failure_handler)");
+			log::trace!("(execute_using_consensus_failure_handler)");
 			let result = {
 				match manager {
 					ExecutionManager::Both(on_consensus_failure) => {

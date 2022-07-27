@@ -135,6 +135,17 @@ impl Justifications {
 		true
 	}
 
+	/// Pop the encoded justification for the given consensus engine, if it
+	/// exists.
+	pub fn pop(&mut self, engine_id: ConsensusEngineId) -> Option<EncodedJustification> {
+		let result = self
+			.iter()
+			.find(|j| j.0 == engine_id)
+			.map(|j| j.1.clone());
+		self.0.retain(|just| just.0 != engine_id);
+		result
+	}
+
 	/// Return the encoded justification for the given consensus engine, if it
 	/// exists.
 	pub fn get(&self, engine_id: ConsensusEngineId) -> Option<&EncodedJustification> {
