@@ -168,6 +168,28 @@ pub enum ReceiveTimestamp<B:BlockT>{
 	BlockTimestamp(Vec<(<B as BlockT>::Header, u128)>),
 }
 
+///Wrapped information of `block` and it's receiving time.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct BlockTemplate<B: BlockT>{
+	pub block: <B as BlockT>::Header,
+	pub receive_time: u128,
+}
+
+impl<B: BlockT> Encode for BlockTemplate<B>{
+	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+		self.block.encode_to(dest);
+		self.receive_time.encode_to(dest);
+	}
+}
+
+impl<B: BlockT> Decode for BlockTemplate<B> {
+	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let block =  <B as BlockT>::Header::decode(input)?;
+		let receive_time = u128::decode(input)?;
+		Ok(Self { block, receive_time })
+	}
+}
+
 ///Wrapped information of `adjust` and it's receiving time.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AdjustTemplate<H>{
@@ -180,7 +202,6 @@ impl<H> AdjustTemplate<H> {
 		Self { adjust, receive_time}
 	}
 }
-
 
 impl<H: Encode> Encode for AdjustTemplate<H>{
 	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {

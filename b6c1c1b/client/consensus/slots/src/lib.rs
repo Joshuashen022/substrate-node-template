@@ -700,6 +700,9 @@ pub trait SimpleSlotWorker<B: BlockT> {
 				return None
 			},
 		};
+		// If code goes here, it means we have succeeded in proposing a block.
+
+
 		log::debug!("[Block Generation] Block generation finished");
 		let block_import_params_maker = self.block_import_params();
 		let block_import = self.block_import();

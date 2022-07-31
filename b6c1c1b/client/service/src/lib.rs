@@ -229,12 +229,16 @@ async fn  build_network_future<
 					ReceiveTimestamp::AdjustTimestamp(adjust_time) => {
 						let _header = adjust_time.adjust.header;
 						if let Ok(mut guard) = adjusts_mutex.clone().lock(){
-							(*guard).push(adjust_time)
+							(*guard).push(adjust_time);
+							// (*guard).sort();
+							(*guard).dedup();
 						}
 					}
 					ReceiveTimestamp::BlockTimestamp(mut block) => {
 						if let Ok(mut guard) = blocks_mutex.clone().lock(){
-							(*guard).append(&mut block)
+							(*guard).append(&mut block);
+							// (*guard).sort(); ^^^ the trait `std::cmp::Ord` is not implemented for `<B as BlockT>::Header`
+							(*guard).dedup();
 						}
 					}
 				}

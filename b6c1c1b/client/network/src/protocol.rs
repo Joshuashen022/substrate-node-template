@@ -950,11 +950,7 @@ impl<B: BlockT> Protocol<B> {
 			let aa = message::AdjustAnnounce {
 				header: header.clone(),
 				timestamp,
-				state: if is_best {
-					Some(message::BlockState::Best)
-				} else {
-					Some(message::BlockState::Normal)
-				},
+				state: None,
 				data: Some(data.clone()),
 			};
 			let message = AnnounceMessage::AdjustAnnounce(aa);
