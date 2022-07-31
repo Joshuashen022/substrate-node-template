@@ -873,6 +873,7 @@ impl<B: BlockT> Protocol<B> {
 	/// at least temporarily synced.
 	pub fn announce_block(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
 		self.announce_adjust(hash,data.clone());
+		let data = None;
 		let header = match self.chain.header(BlockId::Hash(hash)) {
 			Ok(Some(header)) => header,
 			Ok(None) => {

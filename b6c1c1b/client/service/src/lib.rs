@@ -43,13 +43,13 @@ use log::{debug, error, warn};
 use sc_utils::mpsc::TracingUnboundedReceiver;
 use sp_runtime::{
 	generic::BlockId,
-	traits::{Block as BlockT, Header as HeaderT},
+	traits::{Block as BlockT, Header as HeaderT, One},
 };
 
 use sc_network::{
 	PeerId,
 	protocol::message::{
-		ReceiveTimestamp, AdjustTemplate, BlockTemplate
+		ReceiveTimestamp, AdjustTemplate, BlockTemplate, BlockTemplates
 	},
 };
 
@@ -256,7 +256,31 @@ async fn  build_network_future<
 				// Announce block to all of the network peers
 				if announce_imported_blocks {
 					log::info!("notification {:?}", notification.header.number());
-					network.service().announce_block(notification.hash, None);
+					let &current_header = notification.header.number();
+
+					let mut tmp1 = Vec::new();
+					if let Ok(mut guard) = blocks_mutex.clone().lock(){
+						let mut tmp2 = Vec::new();
+						for block in (*guard).clone() {
+							if !tmp1.contains(&block) {
+								continue
+							}
+
+							if current_header < block.number() {
+								tmp2.push(block.clone());
+								continue
+							}
+
+							if current_header - block.clone().number() - One::one() > One::one(){
+								continue
+							}
+
+							tmp1.push(block.clone());
+						}
+						*guard = tmp2.clone();
+					}
+					let input = BlockTemplates::new(tmp1);
+					network.service().announce_block(notification.hash, Some(input.encode()));
 				}
 
 				// Update NetworkWorker.ChainSync

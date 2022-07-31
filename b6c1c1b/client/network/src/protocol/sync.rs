@@ -2242,7 +2242,7 @@ pub(crate) fn add_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B
 pub(crate) fn extract_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B>>) -> Vec<BlockTemplate<B>>{
 	let mut collect = Vec::new();
 	let engine = TIMESTAMP_ENGINE;
-	for block in incoming_blocks{
+	for block in incoming_blocks {
 		match (block.header.clone(), block.strip_timestamp(engine)){
 			(Some(head), Ok(t_data)) if t_data.len() == 16 => {
 				let time_stamp = u128::from_be_bytes(t_data.as_slice().try_into().unwrap());
