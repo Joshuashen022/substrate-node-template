@@ -80,6 +80,8 @@ use futures::{
 };
 use log::{debug, info, log, trace, warn};
 use parking_lot::Mutex;
+use std::sync::Mutex as MutexS;
+
 use prometheus_endpoint::Registry;
 use retain_mut::RetainMut;
 use schnorrkel::SignatureError;
@@ -119,6 +121,7 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header, Zero},
 	DigestItem,
 };
+use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate}};
 use futures::{future::Either, Future, TryFutureExt};
 pub use sc_consensus_slots::{SlotProportion, SlotResult};
 pub use sp_consensus::SyncOracle;
@@ -443,6 +446,164 @@ pub struct BabeParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 	pub telemetry: Option<TelemetryHandle>,
 }
 
+
+/// Parameters for AutoSyn.
+pub struct AutoSynParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
+	/// The keystore that manages the keys of the node.
+	pub keystore: SyncCryptoStorePtr,
+
+	/// The client to use
+	pub client: Arc<C>,
+
+	/// The SelectChain Strategy
+	pub select_chain: SC,
+
+	/// The environment we are producing blocks for.
+	pub env: E,
+
+	/// The underlying block-import object to supply our produced blocks to.
+	/// This must be a `BabeBlockImport` or a wrapper of it, otherwise
+	/// critical consensus logic will be omitted.
+	pub block_import: I,
+
+	/// A sync oracle
+	pub sync_oracle: SO,
+
+	/// Hook into the sync module to control the justification sync process.
+	pub justification_sync_link: L,
+
+	/// Something that can create the inherent data providers.
+	pub create_inherent_data_providers: CIDP,
+
+	/// Force authoring of blocks even if we are offline
+	pub force_authoring: bool,
+
+	/// Strategy and parameters for backing off block production.
+	pub backoff_authoring_blocks: Option<BS>,
+
+	/// The source of timestamps for relative slots
+	pub babe_link: BabeLink<B>,
+
+	/// Checks if the current native implementation can author with a runtime at a given block.
+	pub can_author_with: CAW,
+
+	/// The proportion of the slot dedicated to proposing.
+	///
+	/// The block proposing will be limited to this proportion of the slot from the starting of the
+	/// slot. However, the proposing can still take longer when there is some lenience factor
+	/// applied, because there were no blocks produced for some slots.
+	pub block_proposal_slot_portion: SlotProportion,
+
+	/// The maximum proportion of the slot dedicated to proposing with any lenience factor applied
+	/// due to no blocks being produced.
+	pub max_block_proposal_slot_portion: Option<SlotProportion>,
+
+	/// Handle use to report telemetries.
+	pub telemetry: Option<TelemetryHandle>,
+
+	/// adjusts_mutex
+	pub adjusts_mutex: Arc<MutexS<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+
+	/// blocks_mutex
+	pub blocks_mutex: Arc<MutexS<Vec<(<B as BlockT>::Header, u128)>>>,
+}
+
+/// Start the babe-autosyn worker.
+pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
+	AutoSynParams {
+		keystore,
+		client,
+		select_chain,
+		env,
+		block_import,
+		sync_oracle, // network: NetworkService
+		justification_sync_link,
+		create_inherent_data_providers,
+		force_authoring,
+		backoff_authoring_blocks,
+		babe_link,
+		can_author_with,
+		block_proposal_slot_portion,
+		max_block_proposal_slot_portion,
+		telemetry,
+		adjusts_mutex,
+		blocks_mutex
+	}: AutoSynParams<B, C, SC, E, I, SO, L, CIDP, BS, CAW>,
+) -> Result<BabeWorker<B>, sp_consensus::Error>
+	where
+		B: BlockT,
+		C: ProvideRuntimeApi<B>
+		+ ProvideUncles<B>
+		+ BlockchainEvents<B>
+		+ AuxStore
+		+ UsageProvider<B>
+		+ HeaderBackend<B>
+		+ HeaderMetadata<B, Error = ClientError>
+		+ Send
+		+ Sync
+		+ 'static,
+		C::Api: BabeApi<B> + BlockBuilder<B>,
+		SC: SelectChain<B> + 'static,
+		E: Environment<B, Error = Error> + Send + Sync + 'static,
+		E::Proposer: Proposer<B, Error = Error, Transaction = sp_api::TransactionFor<C, B>>,
+		I: BlockImport<B, Error = ConsensusError, Transaction = sp_api::TransactionFor<C, B>>
+		+ Send
+		+ Sync
+		+ 'static,
+		SO: SyncOracle + Send + Sync + Clone + 'static,
+		L: sc_consensus::JustificationSyncLink<B> + 'static,
+		CIDP: CreateInherentDataProviders<B, ()> + Send + Sync + 'static,
+		CIDP::InherentDataProviders: InherentDataProviderExt + Send,
+		BS: BackoffAuthoringBlocksStrategy<NumberFor<B>> + Send + Sync + 'static,
+		CAW: CanAuthorWith<B> + Send + Sync + 'static,
+		Error: std::error::Error + Send + From<ConsensusError> + From<I::Error> + 'static,
+{
+	const HANDLE_BUFFER_SIZE: usize = 1024;
+
+	let config = babe_link.config;
+	let slot_notification_sinks = Arc::new(Mutex::new(Vec::new()));
+
+	let worker = BabeSlotWorker {
+		client: client.clone(),
+		block_import,
+		env,
+		sync_oracle: sync_oracle.clone(),
+		justification_sync_link,
+		force_authoring,
+		backoff_authoring_blocks,
+		keystore,
+		epoch_changes: babe_link.epoch_changes.clone(),
+		slot_notification_sinks: slot_notification_sinks.clone(),
+		config: config.clone(),
+		block_proposal_slot_portion,
+		max_block_proposal_slot_portion,
+		telemetry,
+	};
+
+	info!(target: "babe", "👶 Starting BABE Authorship worker");
+	let inner = sc_consensus_slots::start_slot_worker_with_client(
+		client.clone(),
+		config.0.clone(),
+		select_chain,
+		worker,
+		sync_oracle,
+		create_inherent_data_providers,
+		can_author_with,
+		adjusts_mutex,
+		blocks_mutex,
+	);
+
+	let (worker_tx, worker_rx) = channel(HANDLE_BUFFER_SIZE);
+
+	let answer_requests =
+		answer_requests(worker_rx, config.0, client, babe_link.epoch_changes.clone());
+	Ok(BabeWorker {
+		inner: Box::pin(future::join(inner, answer_requests).map(|_| ())),
+		slot_notification_sinks,
+		handle: BabeWorkerHandle(worker_tx),
+	})
+}
+
 /// Start the babe worker.
 pub fn start_babe<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 	BabeParams {
@@ -514,8 +675,7 @@ where
 	};
 
 	info!(target: "babe", "👶 Starting BABE Authorship worker");
-	let inner = sc_consensus_slots::start_slot_worker_with_client(
-		client.clone(),
+	let inner = sc_consensus_slots::start_slot_worker(
 		config.0.clone(),
 		select_chain,
 		worker,

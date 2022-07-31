@@ -248,7 +248,7 @@ mod behaviour;
 mod chain;
 mod discovery;
 mod peer_info;
-mod protocol;
+pub mod protocol;
 mod request_responses;
 mod schema;
 mod service;

@@ -171,8 +171,8 @@ pub enum ReceiveTimestamp<B:BlockT>{
 ///Wrapped information of `adjust` and it's receiving time.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AdjustTemplate<H>{
-	adjust: AdjustAnnounce<H>,
-	receive_time: u128,
+	pub adjust: AdjustAnnounce<H>,
+	pub receive_time: u128,
 }
 
 impl<H> AdjustTemplate<H> {

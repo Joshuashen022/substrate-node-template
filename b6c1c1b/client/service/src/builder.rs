@@ -43,6 +43,7 @@ use sc_network::{
 	light_client_requests::{self, handler::LightClientRequestHandler},
 	state_request_handler::{self, StateRequestHandler},
 	warp_request_handler::{self, RequestHandler as WarpSyncRequestHandler, WarpSyncProvider},
+	protocol::message::{ReceiveTimestamp, AdjustTemplate},
 	NetworkService,
 };
 use sc_telemetry::{telemetry, ConnectionMessage, Telemetry, TelemetryHandle, SUBSTRATE_INFO};
@@ -60,7 +61,8 @@ use sp_runtime::{
 	traits::{Block as BlockT, BlockIdTo, Zero},
 	BuildStorage,
 };
-use std::{str::FromStr, sync::Arc, time::SystemTime};
+
+use std::{str::FromStr, sync::{Arc, Mutex}, time::SystemTime};
 
 /// A utility trait for building an RPC extension given a `DenyUnsafe` instance.
 /// This is useful since at service definition time we don't know whether the
@@ -769,6 +771,8 @@ pub fn build_network<TBl, TExPool, TImpQu, TCl>(
 		Arc<NetworkService<TBl, <TBl as BlockT>::Hash>>,
 		TracingUnboundedSender<sc_rpc::system::Request<TBl>>,
 		NetworkStarter,
+		Arc<Mutex<Vec<AdjustTemplate<<TBl as BlockT>::Hash>>>>,
+		Arc<Mutex<Vec<(<TBl as BlockT>::Header, u128)>>>,
 	),
 	Error,
 >
@@ -915,6 +919,9 @@ where
 
 	let (system_rpc_tx, system_rpc_rx) = tracing_unbounded("mpsc_system_rpc");
 
+	let adjusts_mutex = Arc::new(Mutex::new(Vec::new()));
+	let blocks_mutex = Arc::new(Mutex::new(Vec::new()));
+
 	// Message Sender
 	let future = build_network_future(
 		config.role.clone(),
@@ -923,6 +930,8 @@ where
 		system_rpc_rx,
 		has_bootnodes,
 		config.announce_block,
+		adjusts_mutex.clone(),
+		blocks_mutex.clone(),
 	);
 
 	// TODO: Normally, one is supposed to pass a list of notifications protocols supported by the
@@ -961,7 +970,7 @@ where
 		future.await
 	});
 	// log::info!("Is protocol polling? build_network_future done{}", line!());
-	Ok((network, system_rpc_tx, NetworkStarter(network_start_tx)))
+	Ok((network, system_rpc_tx, NetworkStarter(network_start_tx), adjusts_mutex, blocks_mutex))
 }
 /// This function is used to check keys in local key store,
 /// for each key, it will be shown in three forms,

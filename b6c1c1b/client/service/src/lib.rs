@@ -39,11 +39,18 @@ use std::{collections::HashMap, io, net::SocketAddr, pin::Pin, task::Poll};
 use codec::{Decode, Encode};
 use futures::{stream, Future, FutureExt, Stream, StreamExt};
 use log::{debug, error, warn};
-use sc_network::PeerId;
+
 use sc_utils::mpsc::TracingUnboundedReceiver;
 use sp_runtime::{
 	generic::BlockId,
 	traits::{Block as BlockT, Header as HeaderT},
+};
+
+use sc_network::{
+	PeerId,
+	protocol::message::{
+		ReceiveTimestamp, AdjustTemplate
+	},
 };
 
 pub use self::{
@@ -74,7 +81,14 @@ pub use sc_tracing::TracingReceiver;
 pub use sc_transaction_pool::Options as TransactionPoolOptions;
 pub use sc_transaction_pool_api::{error::IntoPoolError, InPoolTransaction, TransactionPool};
 #[doc(hidden)]
-pub use std::{ops::Deref, result::Result, sync::Arc};
+pub use std::{
+	ops::Deref,
+	result::Result,
+	sync::{
+		Arc, Mutex
+	}
+};
+
 pub use task_manager::{SpawnTaskHandle, TaskManager, DEFAULT_GROUP_NAME};
 
 const DEFAULT_PROTOCOL_ID: &str = "sup";
@@ -145,6 +159,8 @@ async fn  build_network_future<
 	mut rpc_rx: TracingUnboundedReceiver<sc_rpc::system::Request<B>>,
 	should_have_peers: bool,
 	announce_imported_blocks: bool,
+	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+	blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
 ) {
 	let mut imported_blocks_stream = client.import_notification_stream().fuse();
 
@@ -200,6 +216,30 @@ async fn  build_network_future<
 			// }
 		}
 		futures::select! {
+			// The network worker has done something. Nothing special to do, but could be
+			// used in the future to perform actions in response of things that happened on
+			// the network.
+			receive = (&mut network).fuse() => {
+				log::info!("[Network] {:?}", receive);
+				if receive.is_none() {
+					continue
+				}
+
+				match receive.unwrap(){
+					ReceiveTimestamp::AdjustTimestamp(adjust_time) => {
+						let _header = adjust_time.adjust.header;
+						if let Ok(mut guard) = adjusts_mutex.clone().lock(){
+							(*guard).push(adjust_time)
+						}
+					}
+					ReceiveTimestamp::BlockTimestamp(mut block) => {
+						if let Ok(mut guard) = blocks_mutex.clone().lock(){
+							(*guard).append(&mut block)
+						}
+					}
+				}
+			}
+
 			// List of blocks that the client has imported.
 			notification = imported_blocks_stream.next() => {
 				log::info!("[Network] imported blocks stream");
@@ -312,13 +352,6 @@ async fn  build_network_future<
 						});
 					}
 				}
-			}
-
-			// The network worker has done something. Nothing special to do, but could be
-			// used in the future to perform actions in response of things that happened on
-			// the network.
-			something = (&mut network).fuse() => {
-				log::info!("[Network] {:?}", something);
 			}
 		}
 	}

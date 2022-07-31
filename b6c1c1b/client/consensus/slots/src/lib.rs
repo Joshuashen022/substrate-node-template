@@ -55,8 +55,8 @@ use sp_runtime::{
 	traits::{Block as BlockT, HashFor, Header as HeaderT},
 };
 use sp_timestamp::Timestamp;
-use std::{fmt::Debug, ops::Deref, time::Duration, sync::Arc};
-
+use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
+use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
 
@@ -170,7 +170,13 @@ pub trait SlotWorker<B: BlockT, Proof> {
 	///
 	/// Returns a future that resolves to a [`SlotResult`] iff a block was successfully built in
 	/// the slot. Otherwise `None` is returned.
-	async fn on_slot(&mut self, slot_info: SlotInfo<B>) -> Option<SlotResult<B, Proof>>;
+	async fn on_slot(
+		&mut self,
+		slot_info: SlotInfo<B>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+		blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>
+	)
+		-> Option<SlotResult<B, Proof>>;
 }
 
 /// A skeleton implementation for `SlotWorker` which tries to claim a slot at
@@ -519,6 +525,260 @@ pub trait SimpleSlotWorker<B: BlockT> {
 
 		Some(SlotResult { block: B::new(header, body), storage_proof })
 	}
+
+	async fn on_slot_autosyn(
+		&mut self,
+		slot_info: SlotInfo<B>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+		blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
+	) -> Option<SlotResult<B, <Self::Proposer as Proposer<B>>::Proof>>
+		where
+			Self: Sync,
+	{
+		let (timestamp, slot) = (slot_info.timestamp, slot_info.slot);
+		log::info!("Slot[{:?}]", u64::from(slot));
+
+		let telemetry = self.telemetry();
+		let logging_target = self.logging_target();
+
+		let proposing_remaining_duration = self.proposing_remaining_duration(&slot_info);
+
+		let proposing_remaining = if proposing_remaining_duration == Duration::default() {
+			debug!(
+				target: logging_target,
+				"Skipping proposal slot {} since there's no time left to propose", slot,
+			);
+
+			return None
+		} else {
+			Delay::new(proposing_remaining_duration)
+		};
+
+		let epoch_data = match self.epoch_data(&slot_info.chain_head, slot) {
+			Ok(epoch_data) => epoch_data,
+			Err(err) => {
+				warn!(
+					target: logging_target,
+					"Unable to fetch epoch data at block {:?}: {:?}",
+					slot_info.chain_head.hash(),
+					err,
+				);
+
+				telemetry!(
+					telemetry;
+					CONSENSUS_WARN;
+					"slots.unable_fetching_authorities";
+					"slot" => ?slot_info.chain_head.hash(),
+					"err" => ?err,
+				);
+
+				return None
+			},
+		};
+
+		self.notify_slot(&slot_info.chain_head, slot, &epoch_data);
+
+		let authorities_len = self.authorities_len(&epoch_data);
+
+		// Test send message
+		// log::info!("Test send message");
+		// self.sync_oracle().send_message();
+
+		if !self.force_authoring() &&
+			self.sync_oracle().is_offline() &&
+			authorities_len.map(|a| a > 1).unwrap_or(false)
+		{
+			debug!(target: logging_target, "Skipping proposal slot. Waiting for the network.");
+			telemetry!(
+				telemetry;
+				CONSENSUS_DEBUG;
+				"slots.skipping_proposal_slot";
+				"authorities_len" => authorities_len,
+			);
+
+			return None
+		}
+
+		let claim = self.claim_slot(&slot_info.chain_head, slot, &epoch_data).await?;
+		log::debug!("[Block Generation] after claiming the right to generate block, now we need to generate a block");
+		if self.should_backoff(slot, &slot_info.chain_head) {
+			return None
+		}
+
+		debug!(
+			target: self.logging_target(),
+			"Starting authorship at slot {}; timestamp = {}",
+			slot,
+			*timestamp,
+		);
+
+		telemetry!(
+			telemetry;
+			CONSENSUS_DEBUG;
+			"slots.starting_authorship";
+			"slot_num" => *slot,
+			"timestamp" => *timestamp,
+		);
+
+		let proposer = match self.proposer(&slot_info.chain_head).await {
+			Ok(p) => p,
+			Err(err) => {
+				warn!(
+					target: logging_target,
+					"Unable to author block in slot {:?}: {:?}", slot, err,
+				);
+
+				telemetry!(
+					telemetry;
+					CONSENSUS_WARN;
+					"slots.unable_authoring_block";
+					"slot" => *slot,
+					"err" => ?err
+				);
+
+				return None
+			},
+		};
+
+		let mut logs = self.pre_digest_data(slot, &claim);
+
+		{
+			if let Ok(guard) = adjusts_mutex.clone().lock(){
+				log::info!("adjusts_mutex len {}", (*guard).len());
+			}
+
+			if let Ok(guard) = blocks_mutex.clone().lock(){
+				log::info!("blocks_mutex len {}", (*guard).len());
+			}
+		}
+
+		use sp_runtime::DigestItem;
+		let test_dig = DigestItem::Seal(*b"babe", vec![1, 2, 3]);
+		let test_dig2 = DigestItem::PreRuntime(*b"babe", vec![1, 2, 3]);
+		let test_dig3 = DigestItem::PreRuntime(*b"test", vec![1, 2, 3, 4, 5]);
+		logs.push(test_dig);
+		logs.push(test_dig2);
+		logs.push(test_dig3);
+
+		// deadline our production to 98% of the total time left for proposing. As we deadline
+		// the proposing below to the same total time left, the 2% margin should be enough for
+		// the result to be returned.
+		let proposing = proposer // client>basic_authorship>src>basic_authorship.rs line 291
+			.propose(
+				slot_info.inherent_data,
+				sp_runtime::generic::Digest { logs },
+				proposing_remaining_duration.mul_f32(0.98),
+				None,
+			)
+			.map_err(|e| sp_consensus::Error::ClientImport(format!("{:?}", e)));
+
+		let proposal = match futures::future::select(proposing, proposing_remaining).await {
+			Either::Left((Ok(p), _)) => p,
+			Either::Left((Err(err), _)) => {
+				warn!(target: logging_target, "Proposing failed: {:?}", err);
+
+				return None
+			},
+			Either::Right(_) => {
+				info!(
+					target: logging_target,
+					"⌛️ Discarding proposal for slot {}; block production took too long", slot,
+				);
+				// If the node was compiled with debug, tell the user to use release optimizations.
+				#[cfg(build_type = "debug")]
+				info!(
+					target: logging_target,
+					"👉 Recompile your node in `--release` mode to mitigate this problem.",
+				);
+				telemetry!(
+					telemetry;
+					CONSENSUS_INFO;
+					"slots.discarding_proposal_took_too_long";
+					"slot" => *slot,
+				);
+
+				return None
+			},
+		};
+		log::debug!("[Block Generation] Block generation finished");
+		let block_import_params_maker = self.block_import_params();
+		let block_import = self.block_import();
+
+		let (block, storage_proof) = (proposal.block, proposal.proof);
+		let (header, body) = block.deconstruct();
+		let header_num = *header.number();
+		let header_hash = header.hash();
+		let parent_hash = *header.parent_hash();
+
+		let block_import_params = match block_import_params_maker(
+			header,
+			&header_hash,
+			body.clone(),
+			proposal.storage_changes,
+			claim,
+			epoch_data,
+		) {
+			Ok(bi) => bi,
+			Err(err) => {
+				warn!(target: logging_target, "Failed to create block import params: {:?}", err);
+
+				return None
+			},
+		};
+
+		info!(
+			target: logging_target,
+			"🔖 Pre-sealed block for proposal at {}. Hash now {:?}, previously {:?}.",
+			header_num,
+			block_import_params.post_hash(),
+			header_hash,
+		);
+
+		telemetry!(
+			telemetry;
+			CONSENSUS_INFO;
+			"slots.pre_sealed_block";
+			"header_num" => ?header_num,
+			"hash_now" => ?block_import_params.post_hash(),
+			"hash_previously" => ?header_hash,
+		);
+
+		let header = block_import_params.post_header();
+
+		// log::info!("begin to [import block]");
+		// std::thread::sleep(Duration::from_millis(1000));
+		// Send block to other after this
+		// log::info!("before [import block]");
+		let _internal = block_import.import_block(block_import_params, Default::default()).await;
+		// log::info!("after [import block]");
+		match _internal {
+			Ok(res) => {
+				//  Send block before here
+				res.handle_justification(
+					&header.hash(),
+					*header.number(),
+					self.justification_sync_link(),
+				);
+			},
+			Err(err) => {
+				warn!(
+					target: logging_target,
+					"Error with block built on {:?}: {:?}", parent_hash, err,
+				);
+
+				telemetry!(
+					telemetry;
+					CONSENSUS_WARN;
+					"slots.err_with_block_built_on";
+					"hash" => ?parent_hash,
+					"err" => ?err,
+				);
+			},
+		}
+
+		Some(SlotResult { block: B::new(header, body), storage_proof })
+	}
+
 }
 
 #[async_trait::async_trait]
@@ -528,8 +788,10 @@ impl<B: BlockT, T: SimpleSlotWorker<B> + Send + Sync>
 	async fn on_slot(
 		&mut self,
 		slot_info: SlotInfo<B>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+		blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
 	) -> Option<SlotResult<B, <T::Proposer as Proposer<B>>::Proof>> {
-		SimpleSlotWorker::on_slot(self, slot_info).await
+		SimpleSlotWorker::on_slot_autosyn(self, slot_info, adjusts_mutex, blocks_mutex).await
 	}
 }
 
@@ -632,7 +894,7 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 				err,
 			);
 		} else {
-			let _ = worker.on_slot(slot_info).await;
+			// let _ = worker.on_slot(slot_info).await;
 		}
 	}
 }
@@ -670,6 +932,8 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	mut sync_oracle: SO,
 	create_inherent_data_providers: CIDP,
 	can_author_with: CAW,
+	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+	blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
 ) where
 	Client: ProvideRuntimeApi<B>
 		+ ProvideUncles<B>
@@ -691,13 +955,12 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
 	CAW: CanAuthorWith<B> + Send,
 {
-	// 			C: AuxStore + ProvideRuntimeApi<B> + UsageProvider<B> ,
-	// 			C::Api: BabeApi<B>,
 	let SlotDuration(slot_duration) = slot_duration;
 
 	let mut slots =
 		Slots::new(slot_duration.slot_duration(), create_inherent_data_providers, select_chain);
-
+	// let adjusts_mutex_clone = adjusts_mutex.clone();
+	// let blocks_mutex_clone= blocks_mutex.clone();
 	loop {
 		info!("slots.next_slot()");
 		let slot_info = match slots.next_slot().await {
@@ -741,7 +1004,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 				err,
 			);
 		} else {
-			let _ = worker.on_slot(slot_info).await;
+			let _ = worker.on_slot(slot_info, adjusts_mutex.clone(), blocks_mutex.clone()).await;
 		}
 	}
 }
