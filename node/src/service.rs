@@ -176,7 +176,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 		};
 	}
 
-	let (network, system_rpc_tx, network_starter) =
+	let (network, system_rpc_tx, network_starter, adjusts_mutex, blocks_mutex) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -285,7 +285,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			Ok((timestamp, slot))
 		};
 		let backoff_authoring_blocks: Option<()> = None;
-		let babe_config = sc_consensus_babe::BabeParams {
+		let auto_config = sc_consensus_babe::AutoSynParams {
 			keystore: keystore_container.sync_keystore(),// this has no real effect, only return value
 			client: client.clone(),
 			select_chain,
@@ -301,9 +301,11 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			block_proposal_slot_portion:SlotProportion::new(2f32 / 3f32),
 			max_block_proposal_slot_portion:None,
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
+			adjusts_mutex,
+			blocks_mutex
 		};
 
-		let babe = sc_consensus_babe::start_babe(babe_config)?;
+		let babe = sc_consensus_babe::start_autosyn(auto_config)?;
 
 		// the AURA authoring task is considered essential, i.e. if it
 		// fails we take down the service with it.
