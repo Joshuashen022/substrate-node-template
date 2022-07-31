@@ -1,4 +1,4 @@
-pkill node-template
+pkill -9 node-template
 echo pkill node-template
 rm -rf /tmp/alice
 echo rm -rf /tmp/alice

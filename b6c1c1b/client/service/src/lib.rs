@@ -49,7 +49,7 @@ use sp_runtime::{
 use sc_network::{
 	PeerId,
 	protocol::message::{
-		ReceiveTimestamp, AdjustTemplate
+		ReceiveTimestamp, AdjustTemplate, BlockTemplate
 	},
 };
 
@@ -160,7 +160,7 @@ async fn  build_network_future<
 	should_have_peers: bool,
 	announce_imported_blocks: bool,
 	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
-	blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
+	blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 ) {
 	let mut imported_blocks_stream = client.import_notification_stream().fuse();
 
@@ -255,6 +255,7 @@ async fn  build_network_future<
 				};
 				// Announce block to all of the network peers
 				if announce_imported_blocks {
+					log::info!("notification {:?}", notification.header.number());
 					network.service().announce_block(notification.hash, None);
 				}
 

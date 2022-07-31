@@ -43,7 +43,7 @@ use sc_network::{
 	light_client_requests::{self, handler::LightClientRequestHandler},
 	state_request_handler::{self, StateRequestHandler},
 	warp_request_handler::{self, RequestHandler as WarpSyncRequestHandler, WarpSyncProvider},
-	protocol::message::{ReceiveTimestamp, AdjustTemplate},
+	protocol::message::{ReceiveTimestamp, AdjustTemplate, BlockTemplate},
 	NetworkService,
 };
 use sc_telemetry::{telemetry, ConnectionMessage, Telemetry, TelemetryHandle, SUBSTRATE_INFO};
@@ -772,7 +772,7 @@ pub fn build_network<TBl, TExPool, TImpQu, TCl>(
 		TracingUnboundedSender<sc_rpc::system::Request<TBl>>,
 		NetworkStarter,
 		Arc<Mutex<Vec<AdjustTemplate<<TBl as BlockT>::Hash>>>>,
-		Arc<Mutex<Vec<(<TBl as BlockT>::Header, u128)>>>,
+		Arc<Mutex<Vec<BlockTemplate<TBl>>>>,
 	),
 	Error,
 >

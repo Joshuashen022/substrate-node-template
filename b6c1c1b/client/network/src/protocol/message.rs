@@ -165,7 +165,7 @@ impl<H: HeaderT> generic::BlockAnnounce<H> {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ReceiveTimestamp<B:BlockT>{
 	AdjustTimestamp(AdjustTemplate<<B as BlockT>::Hash>),
-	BlockTimestamp(Vec<(<B as BlockT>::Header, u128)>),
+	BlockTimestamp(Vec<BlockTemplate<B>>),
 }
 
 ///Wrapped information of `block` and it's receiving time.
@@ -173,6 +173,12 @@ pub enum ReceiveTimestamp<B:BlockT>{
 pub struct BlockTemplate<B: BlockT>{
 	pub block: <B as BlockT>::Header,
 	pub receive_time: u128,
+}
+
+impl<B: BlockT> BlockTemplate<B>{
+	pub fn number(&self) -> <<B as BlockT>::Header as HeaderT>::Number{
+		self.block.number()
+	}
 }
 
 impl<B: BlockT> Encode for BlockTemplate<B>{

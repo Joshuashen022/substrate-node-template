@@ -78,7 +78,7 @@ pub mod message;
 pub mod sync;
 
 pub use notifications::{NotificationsSink, NotifsHandlerError, Ready};
-pub use message::AdjustTemplate;
+pub use message::{AdjustTemplate, BlockTemplate};
 /// Interval at which we perform time based maintenance
 const TICK_TIMEOUT: time::Duration = time::Duration::from_millis(1100);
 

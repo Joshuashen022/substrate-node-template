@@ -121,7 +121,7 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header, Zero},
 	DigestItem,
 };
-use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate}};
+use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate, BlockTemplate}};
 use futures::{future::Either, Future, TryFutureExt};
 pub use sc_consensus_slots::{SlotProportion, SlotResult};
 pub use sp_consensus::SyncOracle;
@@ -505,7 +505,7 @@ pub struct AutoSynParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 	pub adjusts_mutex: Arc<MutexS<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
 
 	/// blocks_mutex
-	pub blocks_mutex: Arc<MutexS<Vec<(<B as BlockT>::Header, u128)>>>,
+	pub blocks_mutex: Arc<MutexS<Vec<BlockTemplate<B>>>>,
 }
 
 /// Start the babe-autosyn worker.

@@ -29,7 +29,7 @@
 //! order to update it.
 
 use crate::{
-	protocol::message::{self, BlockAnnounce, BlockAttributes, BlockRequest, BlockResponse},
+	protocol::message::{self, BlockAnnounce, BlockAttributes, BlockRequest, BlockResponse, BlockTemplate},
 	schema::v1::{StateRequest, StateResponse},
 };
 use blocks::BlockCollection;
@@ -2239,14 +2239,15 @@ pub(crate) fn add_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B
 
 /// Retrieve timestamp to `incoming_block`.
 /// Only use for crate inner functions.
-pub(crate) fn extract_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B>>) -> Vec<(<B as BlockT>::Header, u128)>{
+pub(crate) fn extract_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B>>) -> Vec<BlockTemplate<B>>{
 	let mut collect = Vec::new();
 	let engine = TIMESTAMP_ENGINE;
 	for block in incoming_blocks{
 		match (block.header.clone(), block.strip_timestamp(engine)){
 			(Some(head), Ok(t_data)) if t_data.len() == 16 => {
 				let time_stamp = u128::from_be_bytes(t_data.as_slice().try_into().unwrap());
-				collect.push((head.clone(), time_stamp));
+				let template = BlockTemplate {block: head.clone(), receive_time: time_stamp};
+				collect.push(template);
 			}
 			_ => {}
 		}

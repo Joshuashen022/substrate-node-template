@@ -39,7 +39,7 @@ use crate::{
 	protocol::{
 		self,
 		event::Event,
-		message::{generic::Roles, AdjustTemplate, ReceiveTimestamp},
+		message::{generic::Roles, AdjustTemplate, BlockTemplate, ReceiveTimestamp},
 		sync::{Status as SyncStatus, SyncState, extract_timestamp},
 		NotificationsSink, NotifsHandlerError, PeerInfo, Protocol, Ready,
 

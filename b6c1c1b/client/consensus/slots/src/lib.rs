@@ -56,7 +56,7 @@ use sp_runtime::{
 };
 use sp_timestamp::Timestamp;
 use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
-use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate}};
+use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate, BlockTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
 
@@ -174,7 +174,7 @@ pub trait SlotWorker<B: BlockT, Proof> {
 		&mut self,
 		slot_info: SlotInfo<B>,
 		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
-		blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>
+		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>
 	)
 		-> Option<SlotResult<B, Proof>>;
 }
@@ -530,7 +530,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		&mut self,
 		slot_info: SlotInfo<B>,
 		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
-		blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
+		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 	) -> Option<SlotResult<B, <Self::Proposer as Proposer<B>>::Proof>>
 		where
 			Self: Sync,
@@ -792,7 +792,7 @@ impl<B: BlockT, T: SimpleSlotWorker<B> + Send + Sync>
 		&mut self,
 		slot_info: SlotInfo<B>,
 		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
-		blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
+		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 	) -> Option<SlotResult<B, <T::Proposer as Proposer<B>>::Proof>> {
 		SimpleSlotWorker::on_slot_autosyn(self, slot_info, adjusts_mutex, blocks_mutex).await
 	}
@@ -936,7 +936,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	create_inherent_data_providers: CIDP,
 	can_author_with: CAW,
 	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
-	blocks_mutex: Arc<Mutex<Vec<(<B as BlockT>::Header, u128)>>>,
+	blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 ) where
 	Client: ProvideRuntimeApi<B>
 		+ ProvideUncles<B>
