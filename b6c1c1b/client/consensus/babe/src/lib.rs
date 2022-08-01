@@ -121,7 +121,7 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header, Zero},
 	DigestItem,
 };
-use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate, BlockTemplate}};
+use sc_network::{protocol::message::{AdjustTemplate, BlockTemplate}};
 use futures::{future::Either, Future, TryFutureExt};
 pub use sc_consensus_slots::{SlotProportion, SlotResult};
 pub use sp_consensus::SyncOracle;
@@ -1570,6 +1570,76 @@ where
 
 type BlockVerificationResult<Block> =
 	Result<(BlockImportParams<Block, ()>, Option<Vec<(CacheKeyId, Vec<u8>)>>), String>;
+
+#[allow(dead_code)]
+/// Used to check if the given party is the slot leader
+pub async fn check_adjust<Block, Client, CIDP>(
+	epoch_changes: SharedEpochChanges<Block, Epoch>,
+	client: Arc<Client>,
+	header: Block::Header,
+	config: Config,
+	create_inherent_data_providers: CIDP
+) -> bool
+where
+	Block: BlockT,
+	Client: HeaderMetadata<Block, Error = sp_blockchain::Error>
+	+ HeaderBackend<Block>
+	+ ProvideRuntimeApi<Block>
+	+ Send
+	+ Sync
+	+ AuxStore,
+	CIDP: CreateInherentDataProviders<Block, ()> + Send + Sync,
+	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
+{
+	let parent_hash = *header.parent_hash();
+
+	let slot =
+		create_inherent_data_providers
+		.create_inherent_data_providers(parent_hash, ())
+		.await
+		.map_err(|e|
+			Error::<Block>::Client(sp_consensus::Error::from(e).into())
+		).unwrap().slot();
+
+	let parent_header_metadata = client
+		.header_metadata(parent_hash)
+		.map_err(Error::<Block>::FetchParentHeader).unwrap();
+	let header_tmp = header.clone();
+	let pre_digest = find_pre_digest::<Block>(&header_tmp).unwrap();
+
+	let epoch_changes = epoch_changes.shared_data();
+
+	let epoch_descriptor = epoch_changes
+		.epoch_descriptor_for_child_of(
+			descendent_query(&*client),
+			&parent_hash,
+			parent_header_metadata.number,
+			pre_digest.slot(),
+		)
+		.map_err(|e| Error::<Block>::ForkTree(Box::new(e))).unwrap()
+		.ok_or_else(|| Error::<Block>::FetchEpoch(parent_hash)).unwrap();
+
+	let viable_epoch = epoch_changes
+		.viable_epoch(&epoch_descriptor, |slot| Epoch::genesis(&config, slot))
+		.ok_or_else(|| Error::<Block>::FetchEpoch(parent_hash)).unwrap();
+
+	let v_params = verification::VerificationParams {
+		header: header.clone(),
+		pre_digest: Some(pre_digest),
+		slot_now: slot + 1,
+		epoch: viable_epoch.as_ref(),
+	};
+
+	match verification::check_header::<Block>(v_params){
+		Ok(_) => true,
+		Err(e) => {
+			log::warn!("analysis error {:?}", e);
+			false
+		},
+	}
+
+}
+
 
 #[async_trait::async_trait]
 impl<Block, Client, SelectChain, CAW, CIDP> Verifier<Block>

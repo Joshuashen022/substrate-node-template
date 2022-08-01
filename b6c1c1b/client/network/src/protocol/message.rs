@@ -144,13 +144,18 @@ pub struct RemoteReadResponse {
 /// Announcement summary used for debug logging.
 #[derive(Debug)]
 pub struct AnnouncementSummary<H: HeaderT> {
+	/// Announcement summary used for debug logging. block_hash
 	pub block_hash: H::Hash,
+	/// Announcement summary used for debug logging. number
 	pub number: H::Number,
+	/// Announcement summary used for debug logging. parent_hash
 	pub parent_hash: H::Hash,
+	/// Announcement summary used for debug logging. state
 	pub state: Option<BlockState>,
 }
 
 impl<H: HeaderT> generic::BlockAnnounce<H> {
+	/// Announcement summary used for debug logging.
 	pub fn summary(&self) -> AnnouncementSummary<H> {
 		AnnouncementSummary {
 			block_hash: self.header.hash(),
@@ -164,42 +169,57 @@ impl<H: HeaderT> generic::BlockAnnounce<H> {
 ///Currently only used at NetworkWorker::poll()
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ReceiveTimestamp<B:BlockT>{
+	/// Contain Adjust and timestamp
 	AdjustTimestamp(AdjustTemplate<<B as BlockT>::Hash>),
+	/// Contain Block and timestamp
 	BlockTimestamp(Vec<BlockTemplate<B>>),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+/// Used for encoding valid BlockTemplates
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct BlockTemplates<B: BlockT>(Vec<BlockTemplate<B>>);
 
 impl<B: BlockT> BlockTemplates<B> {
+	/// Create a new BlockTemplates
 	pub fn new(inner: Vec<BlockTemplate<B>>) -> Self {
 		BlockTemplates(inner)
 	}
-}
 
-
-impl<B: BlockT> Encode for BlockTemplates<B>{
-	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
-		self.0.encode_to(dest);
+	/// Get BlockTemplates inner length
+	pub fn len(&self) -> usize {
+		self.0.len()
 	}
+
 }
 
-impl<B: BlockT> Decode for BlockTemplates<B> {
-	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-		let block: Vec<BlockTemplate<B>> =Vec::decode(input)?;
-		Ok(Self (block ))
-	}
-}
+
+// impl<B: BlockT> Encode for BlockTemplates<B>{
+// 	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+// 		let inner = self.0.clone();
+// 		inner.encode_to(dest);
+// 	}
+// }
+//
+// impl<B: BlockT> Decode for BlockTemplates<B> {
+// 	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+// 		let block: Vec<BlockTemplate<B>> = Vec::decode(input)?;
+// 		Ok(Self (block ))
+// 	}
+// }
 
 
 ///Wrapped information of `block` and it's receiving time.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BlockTemplate<B: BlockT>{
+	/// Header information of the block
 	pub block: <B as BlockT>::Header,
+
+	/// Receive time of the block
 	pub receive_time: u128,
 }
 
 impl<B: BlockT> BlockTemplate<B>{
+	/// Get block number
 	pub fn number(&self) -> <<B as BlockT>::Header as HeaderT>::Number{
 		*self.block.number()
 	}
@@ -223,11 +243,15 @@ impl<B: BlockT> Decode for BlockTemplate<B> {
 ///Wrapped information of `adjust` and it's receiving time.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AdjustTemplate<H>{
+	/// Adjust information
 	pub adjust: AdjustAnnounce<H>,
+
+	/// Adjust receive time
 	pub receive_time: u128,
 }
 
 impl<H> AdjustTemplate<H> {
+	/// Create a new AdjustTemplate
 	pub fn new(adjust: AdjustAnnounce<H>, receive_time: u128) -> Self{
 		Self { adjust, receive_time}
 	}
@@ -539,9 +563,9 @@ pub mod generic {
 	/// Announce a new complete relay chain block Adjust information on the network.
 	#[derive(Debug, PartialEq, Eq, Clone)]
 	pub struct AdjustAnnounce<H> {
-		/// New block header.
+		/// New block header. Currently only header hash is useful
 		pub header: H,
-		/// Create time.
+		/// Create time. Or Send time.
 		pub timestamp: u128,
 		/// Block state. TODO: Remove `Option` and custom encoding when v4 becomes common.
 		pub state: Option<BlockState>,

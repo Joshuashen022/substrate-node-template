@@ -346,7 +346,7 @@ async fn import_many_blocks<B: BlockT, V: Verifier<B>, Transaction: Send + 'stat
 	metrics: Option<Metrics>,
 ) -> ImportManyBlocksResult<B> {
 	let count = blocks.len();
-	// log::info!("(import_many_blocks)");
+
 	let blocks_range = match (
 		blocks.first().and_then(|b| b.header.as_ref().map(|h| h.number())),
 		blocks.last().and_then(|b| b.header.as_ref().map(|h| h.number())),

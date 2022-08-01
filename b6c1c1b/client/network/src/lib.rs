@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![warn(unused_extern_crates)]
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 
 //! Substrate-specific P2P networking.
 //!
@@ -248,7 +248,6 @@ mod behaviour;
 mod chain;
 mod discovery;
 mod peer_info;
-pub mod protocol;
 mod request_responses;
 mod schema;
 mod service;
@@ -259,6 +258,7 @@ pub mod bitswap;
 pub mod block_request_handler;
 pub mod config;
 pub mod error;
+pub mod protocol;
 pub mod light_client_requests;
 pub mod network_state;
 pub mod state_request_handler;

@@ -78,7 +78,7 @@ pub mod message;
 pub mod sync;
 
 pub use notifications::{NotificationsSink, NotifsHandlerError, Ready};
-pub use message::{AdjustTemplate, BlockTemplate};
+pub use message::{AdjustTemplate, BlockTemplate, BlockTemplates};
 /// Interval at which we perform time based maintenance
 const TICK_TIMEOUT: time::Duration = time::Duration::from_millis(1100);
 
@@ -920,7 +920,24 @@ impl<B: BlockT> Protocol<B> {
 	}
 
 	pub fn announce_adjust(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
-		// log::info!("[Adjust] announce_adjust");
+		// Can not proceed with empty adjust message BlockTemplates
+
+		if let Some(inner) = data.clone() {
+			match BlockTemplates::<B>::decode(&mut inner.as_slice()){
+				Ok(b) => log::debug!("(announce_adjust) {:?}", b.len()),
+				Err(e) => {
+					log::error!("{:?}", e);
+					return
+				}
+			};
+
+		} else {
+			log::warn!("(announce_adjust) data is none");
+			return
+		}
+
+		let data = data.unwrap();
+
 		let header = match self.chain.header(BlockId::Hash(hash)) {
 			Ok(Some(header)) => header,
 			Ok(None) => {
@@ -938,22 +955,22 @@ impl<B: BlockT> Protocol<B> {
 			return
 		}
 
+		// Mark the sending time of Adjust info;
+		let timestamp = duration_now().as_millis();
+
 		let is_best = self.chain.info().best_hash == hash;
 		debug!(target: "sync", "Reannouncing block {:?} is_best: {}", hash, is_best);
 
-		let data = data
-			.or_else(|| self.block_announce_data_cache.get(&hash).cloned())
-			.unwrap_or_default();
-
 		for (who, ref mut _peer) in self.peers.iter_mut() {
 			trace!(target: "sync", "Announcing Adjust {:?} to {}", hash, who);
-			let timestamp = duration_now().as_millis();
+
 			let aa = message::AdjustAnnounce {
 				header: header.clone(),
 				timestamp,
 				state: None,
 				data: Some(data.clone()),
 			};
+
 			let message = AnnounceMessage::AdjustAnnounce(aa);
 			// log::info!("AdjustAnnounce encode {:?}", message.encode());
 			self.behaviour

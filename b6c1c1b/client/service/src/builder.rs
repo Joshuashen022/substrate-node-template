@@ -43,7 +43,7 @@ use sc_network::{
 	light_client_requests::{self, handler::LightClientRequestHandler},
 	state_request_handler::{self, StateRequestHandler},
 	warp_request_handler::{self, RequestHandler as WarpSyncRequestHandler, WarpSyncProvider},
-	protocol::message::{ReceiveTimestamp, AdjustTemplate, BlockTemplate},
+	protocol::message::{AdjustTemplate, BlockTemplate},
 	NetworkService,
 };
 use sc_telemetry::{telemetry, ConnectionMessage, Telemetry, TelemetryHandle, SUBSTRATE_INFO};

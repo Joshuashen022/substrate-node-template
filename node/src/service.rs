@@ -203,8 +203,8 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			let best_hash = client_clone.usage_info().chain.best_hash;
 			if let Ok(headers) = client_clone.header(&BlockId::hash(best_hash)){
 				if let Some(hd) = headers {
-					let digest = hd.digest();
-					log::info!("Test Future get digest {:?}", digest);
+					let _digest = hd.digest();
+					// log::info!("Test Future get digest {:?}", digest);
 				} else {
 					log::info!("Test Future get no digest");
 				}

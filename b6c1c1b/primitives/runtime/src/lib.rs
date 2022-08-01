@@ -820,6 +820,8 @@ impl OpaqueExtrinsic {
 	pub fn from_bytes(mut bytes: &[u8]) -> Result<Self, codec::Error> {
 		Self::decode(&mut bytes)
 	}
+
+	/// Get raw data of extrinsic
 	pub fn get_inner(&self) -> Vec<u8>{
 		self.0.clone()
 	}

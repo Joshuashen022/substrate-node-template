@@ -56,7 +56,7 @@ use sp_runtime::{
 };
 use sp_timestamp::Timestamp;
 use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
-use sc_network::{protocol::message::{ReceiveTimestamp, AdjustTemplate, BlockTemplate}};
+use sc_network::{protocol::message::{ AdjustTemplate, BlockTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
 
@@ -526,6 +526,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		Some(SlotResult { block: B::new(header, body), storage_proof })
 	}
 
+	/// Generate block by autosyn consensus
 	async fn on_slot_autosyn(
 		&mut self,
 		slot_info: SlotInfo<B>,
@@ -847,7 +848,7 @@ impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F, G, H, I, J);
 pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 	slot_duration: SlotDuration<T>,
 	client: C,
-	mut worker: W,
+	_worker: W,
 	mut sync_oracle: SO,
 	create_inherent_data_providers: CIDP,
 	can_author_with: CAW,
@@ -901,7 +902,7 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 		}
 	}
 }
-
+/// Test ClientApi
 pub trait ClientApi<Client, B>
 where
 	B: BlockT,
@@ -917,8 +918,10 @@ where
 	+ 'static,
 	Client::Api: BabeApi<B> + BlockBuilder<B>,
 {
+	/// Test ClientApi to get inner client
 	fn client(&self) -> Arc<Client>;
 
+	/// Test ClientApi to get send data to runtime. This is not working currently.
 	fn send_data_to_runtime(&self, data:Vec<u8>);
 }
 
@@ -928,7 +931,7 @@ where
 /// Every time a new slot is triggered, `worker.on_slot` is called and the future it returns is
 /// polled until completion, unless we are major syncing.
 pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Client>(
-	client: Arc<Client>,
+	_client: Arc<Client>,
 	slot_duration: SlotDuration<T>,
 	select_chain: C,
 	mut worker: W,

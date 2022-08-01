@@ -43,7 +43,7 @@ use log::{debug, error, warn};
 use sc_utils::mpsc::TracingUnboundedReceiver;
 use sp_runtime::{
 	generic::BlockId,
-	traits::{Block as BlockT, Header as HeaderT, One},
+	traits::{Block as BlockT, Header as HeaderT},
 };
 
 use sc_network::{
@@ -220,7 +220,7 @@ async fn  build_network_future<
 			// used in the future to perform actions in response of things that happened on
 			// the network.
 			receive = (&mut network).fuse() => {
-				log::info!("[Network] {:?}", receive);
+				// log::info!("[Network] receive", receive);
 				if receive.is_none() {
 					continue
 				}
@@ -262,16 +262,19 @@ async fn  build_network_future<
 					if let Ok(mut guard) = blocks_mutex.clone().lock(){
 						let mut tmp2 = Vec::new();
 						for block in (*guard).clone() {
-							if !tmp1.contains(&block) {
+							if tmp1.contains(&block) {
+								log::info!("tmp1.contains(&block)");
 								continue
 							}
 
 							if current_header < block.number() {
+								log::info!("block is too new");
 								tmp2.push(block.clone());
 								continue
 							}
-
-							if current_header - block.clone().number() - One::one() > One::one(){
+							let gap_number = <<B as BlockT>::Header as HeaderT>::Number::from(2u32);
+							if current_header - block.clone().number() > gap_number {
+								log::info!("block is too old by {:?}", current_header - block.clone().number());
 								continue
 							}
 
@@ -279,8 +282,14 @@ async fn  build_network_future<
 						}
 						*guard = tmp2.clone();
 					}
-					let input = BlockTemplates::new(tmp1);
-					network.service().announce_block(notification.hash, Some(input.encode()));
+
+					let input = if tmp1.len() > 0{
+						Some(BlockTemplates::new(tmp1).encode())
+					} else {
+						None
+					};
+
+					network.service().announce_block(notification.hash, input);
 				}
 
 				// Update NetworkWorker.ChainSync

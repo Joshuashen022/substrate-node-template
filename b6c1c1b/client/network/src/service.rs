@@ -39,14 +39,13 @@ use crate::{
 	protocol::{
 		self,
 		event::Event,
-		message::{generic::Roles, AdjustTemplate, BlockTemplate, ReceiveTimestamp},
+		message::{generic::Roles, AdjustTemplate, ReceiveTimestamp},
 		sync::{Status as SyncStatus, SyncState, extract_timestamp},
 		NotificationsSink, NotifsHandlerError, PeerInfo, Protocol, Ready,
 
 	},
 	transactions, transport, DhtEvent, ExHashT, NetworkStateInfo, NetworkStatus, ReputationChange,
-	TIMESTAMP_ENGINE,
-};
+	};
 use codec::Decode;
 use codec::Encode as _;
 use futures::{channel::oneshot, prelude::*};
