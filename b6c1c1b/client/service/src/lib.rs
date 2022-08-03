@@ -159,7 +159,7 @@ async fn  build_network_future<
 	mut rpc_rx: TracingUnboundedReceiver<sc_rpc::system::Request<B>>,
 	should_have_peers: bool,
 	announce_imported_blocks: bool,
-	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
+	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<B>>>>,
 	blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 ) {
 	let mut imported_blocks_stream = client.import_notification_stream().fuse();
@@ -220,21 +220,23 @@ async fn  build_network_future<
 			// used in the future to perform actions in response of things that happened on
 			// the network.
 			receive = (&mut network).fuse() => {
-				// log::info!("[Network] receive", receive);
 				if receive.is_none() {
 					continue
 				}
 
 				match receive.unwrap(){
 					ReceiveTimestamp::AdjustTimestamp(adjust_time) => {
+						log::info!("[Network] receive AdjustTimestamp ");
 						let _header = adjust_time.clone().adjust.header;
 						if let Ok(mut guard) = adjusts_mutex.clone().lock(){
 							(*guard).push(adjust_time);
 							// (*guard).sort();
 							(*guard).dedup();
+							log::info!("[Network] adjusts_mutex len {}", (*guard).len());
 						}
 					}
 					ReceiveTimestamp::BlockTimestamp(mut block) => {
+						log::info!("[Network] receive BlockTimestamps len {}", block.len());
 						if let Ok(mut guard) = blocks_mutex.clone().lock(){
 							(*guard).append(&mut block);
 							// (*guard).sort(); ^^^ the trait `std::cmp::Ord` is not implemented for `<B as BlockT>::Header`
@@ -260,6 +262,7 @@ async fn  build_network_future<
 
 					let mut tmp1 = Vec::new();
 					if let Ok(mut guard) = blocks_mutex.clone().lock(){
+						log::debug!("notification blocks_mutex len {:?}", (*guard).len());
 						let mut tmp2 = Vec::new();
 						for block in (*guard).clone() {
 							if tmp1.contains(&block) {

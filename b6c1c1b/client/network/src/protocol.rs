@@ -78,7 +78,7 @@ pub mod message;
 pub mod sync;
 
 pub use notifications::{NotificationsSink, NotifsHandlerError, Ready};
-pub use message::{AdjustTemplate, BlockTemplate, BlockTemplates};
+pub use message::{AdjustTemplate, BlockTemplate, BlockTemplates, AdjustAnnounceValidation};
 /// Interval at which we perform time based maintenance
 const TICK_TIMEOUT: time::Duration = time::Duration::from_millis(1100);
 
@@ -872,6 +872,7 @@ impl<B: BlockT> Protocol<B> {
 	/// In chain-based consensus, we often need to make sure non-best forks are
 	/// at least temporarily synced.
 	pub fn announce_block(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
+		log::debug!("(announce_block) data.is_some() {}", data.is_some());
 		self.announce_adjust(hash,data.clone());
 		let data = None;
 		let header = match self.chain.header(BlockId::Hash(hash)) {
@@ -922,19 +923,26 @@ impl<B: BlockT> Protocol<B> {
 	pub fn announce_adjust(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
 		// Can not proceed with empty adjust message BlockTemplates
 
-		if let Some(inner) = data.clone() {
+		let mut inner_blocks = 0;
+
+		let _blocks = if let Some(inner) = data.clone() {
+			inner_blocks = 0;
 			match BlockTemplates::<B>::decode(&mut inner.as_slice()){
-				Ok(b) => log::debug!("(announce_adjust) {:?}", b.len()),
+				Ok(b) => {
+					inner_blocks = b.len();
+					log::debug!("(announce_adjust) {:?}", inner_blocks);
+					b
+				},
 				Err(e) => {
 					log::error!("{:?}", e);
 					return
 				}
-			};
-
+			}
 		} else {
-			log::warn!("(announce_adjust) data is none");
+			inner_blocks = 0;
+			log::debug!("(announce_adjust) data is none");
 			return
-		}
+		};
 
 		let data = data.unwrap();
 
@@ -959,7 +967,9 @@ impl<B: BlockT> Protocol<B> {
 		let timestamp = duration_now().as_millis();
 
 		let is_best = self.chain.info().best_hash == hash;
-		debug!(target: "sync", "Reannouncing block {:?} is_best: {}", hash, is_best);
+		debug!(target: "sync", "Reannouncing adjust {:?} is_best: {}", hash, is_best);
+
+		log::info!("🕐 Announcing Adjust Template contains {} block", inner_blocks);
 
 		for (who, ref mut _peer) in self.peers.iter_mut() {
 			trace!(target: "sync", "Announcing Adjust {:?} to {}", hash, who);
@@ -1019,11 +1029,43 @@ impl<B: BlockT> Protocol<B> {
 	/// send AnnounceAdjust with receiving time to local memory
 	fn push_adjust_announce_validation(&mut self, peer_id: PeerId, adjust: AdjustAnnounce<B::Header>) -> CustomMessageOutcome<B> {
 		let receive_time = duration_now().as_millis();
-		let protocol_name = self.notification_protocols[0].clone();
+		let protocol_name = Cow::Borrowed("adjust");
 
-		let adjust_template = AdjustTemplate::new(adjust, receive_time);
-		let tmp = adjust_template.encode();
+		let adjust_template = AdjustTemplate::<B>::new(adjust.clone(), receive_time);
+		let validation = AdjustAnnounceValidation::<B>::from_template(adjust_template.clone());
+		// Adjust
+		{
+			// let adjust = Adjust::<B>{
+			// 	header: adjust.header,
+			// 	receive_time,
+			// 	send_time: adjust.timestamp
+			// };
+			// let adjust_tmp = adjust.encode();
+			//
+			// match Adjust::<B>::decode(&mut &adjust_tmp.clone()[..]) {
+			// 	Ok(a) => log::info!("decode success"),
+			// 	Err(e) =>{
+			// 		log::info!("[Behaviour] adjust_tmp decode error {:?}, b={:?}", e, adjust_tmp.clone())
+			// 	}
+			// }
+		}
+		// Validation
+		{
+			// let tmp = validation.encode();
+			// match AdjustAnnounceValidation::<B>::decode(&mut &tmp.clone()[..]) {
+			// 	Ok(a) => {
+			// 		log::info!("decode success {:?}", a.as_template());
+			// 	},
+			// 	Err(e) =>{
+			// 		// log::info!("[Behaviour] NotificationsReceived decode error {:?}, b={:?}", e, tmp.clone())
+			// 	}
+			// }
+		}
+		let tmp = validation.encode();
+
 		let message = Bytes::copy_from_slice(tmp.as_slice());
+
+		log::debug!("[Behaviour] (push_adjust_announce_validation) encode success");
 
 		CustomMessageOutcome::NotificationsReceived {
 			remote: peer_id,
@@ -1037,14 +1079,11 @@ impl<B: BlockT> Protocol<B> {
 		&mut self,
 		validation_result: sync::PollBlockAnnounceValidation<B::Header>,
 	) -> CustomMessageOutcome<B> {
-		log::info!("[Adjust] (process_block_announce_validation_result) ");
 		let (header, is_best, who) = match validation_result {
 			sync::PollBlockAnnounceValidation::Skip => {
-				log::info!("[Adjust] PollBlockAnnounceValidation::Skip ");
 				return CustomMessageOutcome::None
 			},
 			sync::PollBlockAnnounceValidation::Nothing { is_best, who, announce } => {
-				log::info!("[Adjust] PollBlockAnnounceValidation::Nothing ");
 				self.update_peer_info(&who);
 
 				if let Some(data) = announce.data {
@@ -1054,10 +1093,8 @@ impl<B: BlockT> Protocol<B> {
 				}
 
 				if is_best {
-					log::info!("[Adjust] CustomMessageOutcome::PeerNewBest ");
 					return CustomMessageOutcome::PeerNewBest(who, *announce.header.number())
 				} else {
-					log::info!("[Adjust] CustomMessageOutcome::None ");
 					return CustomMessageOutcome::None
 				}
 			},
@@ -1069,7 +1106,6 @@ impl<B: BlockT> Protocol<B> {
 				// AND
 				// 2) parent block is already imported and not pruned.
 				// Which would never happen
-				log::info!("[Adjust] PollBlockAnnounceValidation::ImportHeader ");
 				self.update_peer_info(&who);
 
 				if let Some(data) = announce.data {
@@ -1081,7 +1117,6 @@ impl<B: BlockT> Protocol<B> {
 				(announce.header, is_best, who)
 			},
 			sync::PollBlockAnnounceValidation::Failure { who, disconnect } => {
-				log::info!("[Adjust] PollBlockAnnounceValidation::Failure ");
 				if disconnect {
 					self.behaviour.disconnect_peer(&who, HARDCODED_PEERSETS_SYNC);
 				}
@@ -1843,10 +1878,8 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 								// Make sure that the newly added block announce validation future was
 								// polled once to be registered in the task.
 								if let Poll::Ready(res) = self.sync.poll_block_announce_validation(cx) {
-									log::info!("[Adjust] Poll::Ready");
 									self.process_block_announce_validation_result(res)
 								} else {
-									log::info!("[Adjust] Poll::Pending");
 									CustomMessageOutcome::None
 								}
 							}

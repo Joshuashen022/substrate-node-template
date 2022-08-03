@@ -70,6 +70,13 @@ impl InherentDataProvider {
 		Self { slot }
 	}
 
+	/// Create a default slot
+	pub fn test_slot() -> InherentType{
+		let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+		let duration = std::time::Duration::from_millis(6000);
+		InherentType::from((timestamp.as_duration().as_millis() / duration.as_millis()) as u64)
+	}
+
 	/// Returns the `slot` of this inherent data provider.
 	pub fn slot(&self) -> InherentType {
 		self.slot

@@ -173,7 +173,7 @@ pub trait SlotWorker<B: BlockT, Proof> {
 	async fn on_slot(
 		&mut self,
 		slot_info: SlotInfo<B>,
-		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<B>>>>,
 		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>
 	)
 		-> Option<SlotResult<B, Proof>>;
@@ -530,7 +530,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 	async fn on_slot_autosyn(
 		&mut self,
 		slot_info: SlotInfo<B>,
-		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<B>>>>,
 		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 	) -> Option<SlotResult<B, <Self::Proposer as Proposer<B>>::Proof>>
 		where
@@ -655,7 +655,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		// blocks_mutex is not using yet
 		{
 			if let Ok(guard) = blocks_mutex.clone().lock(){
-				log::debug!("blocks_mutex len {}", (*guard).len());
+				log::info!("blocks_mutex len {}", (*guard).len());
 			}
 		}
 
@@ -794,7 +794,7 @@ impl<B: BlockT, T: SimpleSlotWorker<B> + Send + Sync>
 	async fn on_slot(
 		&mut self,
 		slot_info: SlotInfo<B>,
-		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<B>>>>,
 		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 	) -> Option<SlotResult<B, <T::Proposer as Proposer<B>>::Proof>> {
 		SimpleSlotWorker::on_slot_autosyn(self, slot_info, adjusts_mutex, blocks_mutex).await
@@ -940,7 +940,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	mut sync_oracle: SO,
 	create_inherent_data_providers: CIDP,
 	can_author_with: CAW,
-	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
+	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<B>>>>,
 	blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 ) where
 	Client: ProvideRuntimeApi<B>

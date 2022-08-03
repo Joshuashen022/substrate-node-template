@@ -502,7 +502,7 @@ pub struct AutoSynParams<'a, B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 	pub telemetry: Option<TelemetryHandle>,
 
 	/// adjusts_mutex
-	pub adjusts_mutex: Arc<MutexS<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
+	pub adjusts_mutex: Arc<MutexS<Vec<AdjustTemplate<B>>>>,
 
 	/// blocks_mutex
 	pub blocks_mutex: Arc<MutexS<Vec<BlockTemplate<B>>>>,
@@ -610,8 +610,10 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 				let mut valid_adjusts = Vec::new();
 				for template in &*adjusts {
 					let header = template.clone().adjust.header;
-					// TODO: use real slot
-					let slot = Slot::from(0);
+
+					// TODO::change this to useful real slot
+					let slot = sp_consensus_babe::inherents::InherentDataProvider::test_slot();
+
 					if check_adjust(
 						epoch_change.clone(),
 						client_clone.clone(),

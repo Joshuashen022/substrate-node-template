@@ -39,7 +39,7 @@ use crate::{
 	protocol::{
 		self,
 		event::Event,
-		message::{generic::Roles, AdjustTemplate, ReceiveTimestamp},
+		message::{generic::Roles, AdjustTemplate, ReceiveTimestamp, AdjustAnnounceValidation},
 		sync::{Status as SyncStatus, SyncState, extract_timestamp},
 		NotificationsSink, NotifsHandlerError, PeerInfo, Protocol, Ready,
 
@@ -1934,19 +1934,23 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					remote,
 					messages,
 				})) => {
-					// info!("[Behaviour] NotificationsReceived");
 					let messages_clone = messages.clone();
-					for(p, b) in messages_clone{
-						let a_result =
-							AdjustTemplate::<<B as BlockT>::Header>::decode(&mut b.as_ref());
-						if let Ok(a) = a_result{
-							log::info!(
-								"[Behaviour] NotificationsReceived protocol {:?}",
-								p
-							);
 
-							return Poll::Ready(Some(ReceiveTimestamp::AdjustTimestamp(a)))
+					// Decode the message if it can be decoded then it's our message
+					// and since the adjust message only appear once, we should just return it.
+					for(p, b) in messages_clone{
+						if !(p == Cow::Borrowed("adjust")){
+							continue
 						}
+						log::debug!("[Behaviour] NotificationsReceived protocol {:?}", p);
+
+						match AdjustAnnounceValidation::<B>::decode(&mut b.as_ref()) {
+							Ok(a) => return Poll::Ready(Some(ReceiveTimestamp::AdjustTimestamp(a.as_template()))),
+							Err(e) =>{
+								log::error!("[Behaviour] NotificationsReceived decode error {:?}, b={:?}", e, b.as_ref())
+							}
+						}
+
 					}
 
 					if let Some(metrics) = this.metrics.as_ref() {

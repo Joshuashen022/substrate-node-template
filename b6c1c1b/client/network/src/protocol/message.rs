@@ -170,7 +170,7 @@ impl<H: HeaderT> generic::BlockAnnounce<H> {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ReceiveTimestamp<B:BlockT>{
 	/// Contain Adjust and timestamp
-	AdjustTimestamp(AdjustTemplate<<B as BlockT>::Header>),
+	AdjustTimestamp(AdjustTemplate<B>),
 	/// Contain Block and timestamp
 	BlockTimestamp(Vec<BlockTemplate<B>>),
 }
@@ -191,22 +191,6 @@ impl<B: BlockT> BlockTemplates<B> {
 	}
 
 }
-
-
-// impl<B: BlockT> Encode for BlockTemplates<B>{
-// 	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
-// 		let inner = self.0.clone();
-// 		inner.encode_to(dest);
-// 	}
-// }
-//
-// impl<B: BlockT> Decode for BlockTemplates<B> {
-// 	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-// 		let block: Vec<BlockTemplate<B>> = Vec::decode(input)?;
-// 		Ok(Self (block ))
-// 	}
-// }
-
 
 ///Wrapped information of `block` and it's receiving time.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -248,7 +232,7 @@ pub struct AdjustTemplates<B: BlockT>(Vec<Adjust<B>>);
 impl<B: BlockT> AdjustTemplates<B> {
 
 	/// Create a new AdjustTemplates from vector.
-	pub fn new_from_vec(input: Vec<AdjustTemplate<<B as BlockT>::Header>>) -> Self {
+	pub fn new_from_vec(input: Vec<AdjustTemplate<B>>) -> Self {
 		let mut inner = Vec::new();
 		for adjust_tmp in input{
 			inner.push(
@@ -282,34 +266,82 @@ pub struct Adjust<B: BlockT>{
 
 
 ///Wrapped information of `adjust` and it's receiving time.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct AdjustTemplate<H>{
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+pub struct AdjustTemplate<B: BlockT>{
 	/// Adjust information
-	pub adjust: AdjustAnnounce<H>,
+	pub adjust: AdjustAnnounce<<B as BlockT>::Header>,
 
 	/// Adjust receive time, recorded locally
 	pub receive_time: u128,
 }
 
-impl<H> AdjustTemplate<H> {
+/// Only used for adjust announce validation process
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+pub struct AdjustAnnounceValidation<B: BlockT>{
+	/// Create time. Or Send time.
+	pub create_time: u128,
+	/// Adjust receive time, recorded locally
+	pub receive_time: u128,
+	/// Data associated with this block announcement, e.g. a candidate message.
+	pub block_templates: Option<Vec<u8>>,
+	/// Proof of sender is leader
+	pub sender_header: <B as BlockT>::Header,
+}
+
+impl<B: BlockT> AdjustAnnounceValidation<B> {
+
+	/// Transformation
+	pub fn as_template(&self) -> AdjustTemplate<B> {
+
+		let adjust = AdjustAnnounce{
+			header: self.clone().sender_header.clone(),
+			timestamp: self.clone().create_time,
+			state: None,
+			data: self.clone().block_templates.clone(),
+		};
+
+		AdjustTemplate{
+			adjust,
+			receive_time: self.clone().receive_time
+		}
+	}
+
+	/// Transform
+	pub fn from_template(template: AdjustTemplate<B>) -> Self {
+		AdjustAnnounceValidation{
+			create_time: template.clone().adjust.timestamp,
+			receive_time: template.receive_time,
+			block_templates: template.clone().adjust.data,
+			sender_header:template.clone().adjust.header,
+		}
+	}
+
+	/// Transform
+	pub fn from_announce_and_timestamp(
+		announce: AdjustAnnounce<<B as BlockT>::Header>,
+		receive_time: u128,
+	) -> Self {
+		AdjustAnnounceValidation{
+			create_time: announce.clone().timestamp,
+			receive_time,
+			block_templates: announce.clone().data,
+			sender_header:announce.clone().header,
+		}
+	}
+}
+
+
+impl<B: BlockT> AdjustTemplate<B> {
 	/// Create a new AdjustTemplate
-	pub fn new(adjust: AdjustAnnounce<H>, receive_time: u128) -> Self{
-		Self { adjust, receive_time}
-	}
-}
+	pub fn new(
+		adjust: AdjustAnnounce<<B as BlockT>::Header>,
+		receive_time: u128,
+	) -> Self{
 
-impl<H: Encode> Encode for AdjustTemplate<H>{
-	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
-		self.adjust.encode_to(dest);
-		self.receive_time.encode_to(dest);
-	}
-}
-
-impl<H: Decode> Decode for AdjustTemplate<H> {
-	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-		let adjust =  AdjustAnnounce::decode(input)?;
-		let receive_time = u128::decode(input)?;
-		Ok(Self { adjust, receive_time })
+		Self {
+			adjust,
+			receive_time
+		}
 	}
 }
 
@@ -561,9 +593,9 @@ pub mod generic {
 	}
 
 	#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
-	pub enum AnnounceMessage<Hash>{
-		AdjustAnnounce(AdjustAnnounce<Hash>),
-		BlockAnnounce(BlockAnnounce<Hash>),
+	pub enum AnnounceMessage<Header>{
+		AdjustAnnounce(AdjustAnnounce<Header>),
+		BlockAnnounce(BlockAnnounce<Header>),
 	}
 
 	/// Announce a new complete relay chain block on the network.
