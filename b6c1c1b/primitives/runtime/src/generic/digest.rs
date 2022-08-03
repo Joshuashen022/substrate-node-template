@@ -71,6 +71,28 @@ impl Digest {
 	pub fn convert_first<T, F: Fn(&DigestItem) -> Option<T>>(&self, predicate: F) -> Option<T> {
 		self.logs().iter().find_map(predicate)
 	}
+
+	/// Extract PreRuntime data with specific engine Id
+	pub fn pre_runtime_id(&self, target_id: ConsensusEngineId) -> Option<Vec<u8>>{
+		let mut result = Vec::new();
+		for log in self.logs.clone() {
+			match log {
+				DigestItem::PreRuntime(id, data) => {
+					if id == target_id {
+						result = data;
+					}
+				}
+				_ => {}
+			}
+		};
+
+		if result.is_empty() {
+			None
+		} else {
+			Some(result)
+		}
+	}
+
 }
 
 /// Digest item that is able to encode/decode 'system' digest items and

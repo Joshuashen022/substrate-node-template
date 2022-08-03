@@ -34,8 +34,7 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
 use slots::Slots;
 
-// use sc_consensus_babe:: SlotProportion;
-use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsageProvider};
+use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsageProvider, client::BlockBackend};
 use sp_blockchain::{Error as ClientError, HeaderBackend, HeaderMetadata, Result as ClientResult};
 use codec::{Decode, Encode};
 use futures::{future::Either, Future, TryFutureExt};
@@ -51,12 +50,13 @@ use sp_consensus_slots::Slot;
 
 use sp_inherents::CreateInherentDataProviders;
 use sp_runtime::{
+	DigestItem,
 	generic::BlockId,
 	traits::{Block as BlockT, HashFor, Header as HeaderT},
 };
 use sp_timestamp::Timestamp;
 use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
-use sc_network::{protocol::message::{ AdjustTemplate, BlockTemplate}};
+use sc_network::{protocol::message::{ AdjustTemplate, AdjustTemplates, BlockTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
 
@@ -173,7 +173,7 @@ pub trait SlotWorker<B: BlockT, Proof> {
 	async fn on_slot(
 		&mut self,
 		slot_info: SlotInfo<B>,
-		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
 		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>
 	)
 		-> Option<SlotResult<B, Proof>>;
@@ -530,7 +530,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 	async fn on_slot_autosyn(
 		&mut self,
 		slot_info: SlotInfo<B>,
-		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
 		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 	) -> Option<SlotResult<B, <Self::Proposer as Proposer<B>>::Proof>>
 		where
@@ -643,23 +643,21 @@ pub trait SimpleSlotWorker<B: BlockT> {
 
 		let mut logs = self.pre_digest_data(slot, &claim);
 
-		{
-			if let Ok(guard) = adjusts_mutex.clone().lock(){
-				log::info!("adjusts_mutex len {}", (*guard).len());
-			}
+		// Save valid adjusts into next block head
+		let mut digest_data = Vec::new();
+		if let Ok(guard) = adjusts_mutex.clone().lock(){
+			log::info!("adjusts_mutex len {}", (*guard).len());
+			let adjusts = AdjustTemplates::<B>::new_from_vec((*guard).clone());
+			digest_data = adjusts.encode();
+		}
+		logs.push(DigestItem::PreRuntime(*b"ajst", digest_data));
 
+		// blocks_mutex is not using yet
+		{
 			if let Ok(guard) = blocks_mutex.clone().lock(){
-				log::info!("blocks_mutex len {}", (*guard).len());
+				log::debug!("blocks_mutex len {}", (*guard).len());
 			}
 		}
-
-		use sp_runtime::DigestItem;
-		let test_dig = DigestItem::Seal(*b"babe", vec![1, 2, 3]);
-		let test_dig2 = DigestItem::PreRuntime(*b"babe", vec![1, 2, 3]);
-		let test_dig3 = DigestItem::PreRuntime(*b"test", vec![1, 2, 3, 4, 5]);
-		logs.push(test_dig);
-		logs.push(test_dig2);
-		logs.push(test_dig3);
 
 		// deadline our production to 98% of the total time left for proposing. As we deadline
 		// the proposing below to the same total time left, the 2% margin should be enough for
@@ -701,8 +699,12 @@ pub trait SimpleSlotWorker<B: BlockT> {
 				return None
 			},
 		};
-		// If code goes here, it means we have succeeded in proposing a block.
 
+		// If code goes here, it means we have succeeded in proposing a block.
+		// And we need clean data in adjusts_mutex.
+		if let Ok(mut guard) = adjusts_mutex.clone().lock(){
+			(*guard).drain(..);
+		}
 
 		log::debug!("[Block Generation] Block generation finished");
 		let block_import_params_maker = self.block_import_params();
@@ -792,7 +794,7 @@ impl<B: BlockT, T: SimpleSlotWorker<B> + Send + Sync>
 	async fn on_slot(
 		&mut self,
 		slot_info: SlotInfo<B>,
-		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+		adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
 		blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 	) -> Option<SlotResult<B, <T::Proposer as Proposer<B>>::Proof>> {
 		SimpleSlotWorker::on_slot_autosyn(self, slot_info, adjusts_mutex, blocks_mutex).await
@@ -931,14 +933,14 @@ where
 /// Every time a new slot is triggered, `worker.on_slot` is called and the future it returns is
 /// polled until completion, unless we are major syncing.
 pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Client>(
-	_client: Arc<Client>,
+	client: Arc<Client>,
 	slot_duration: SlotDuration<T>,
 	select_chain: C,
 	mut worker: W,
 	mut sync_oracle: SO,
 	create_inherent_data_providers: CIDP,
 	can_author_with: CAW,
-	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
 	blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 ) where
 	Client: ProvideRuntimeApi<B>
@@ -948,6 +950,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 		+ UsageProvider<B>
 		+ HeaderBackend<B>
 		+ HeaderMetadata<B, Error = ClientError>
+		+ BlockBackend<B>
 		+ Send
 		+ Sync
 		+ 'static,
@@ -981,15 +984,14 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 
 		// This works
 		{
-			// if let Ok(config) = Config::get_or_compute(&*client){
-			// 	let duration = config.0.slot_duration();
-			// 	info!("duration {:?}", duration );
-			// } else {
-			// 	info!("duration error");
-			// };
-			// let slot: u64 = slot_info.slot.into();
-			// let data = vec!(1,2,3, slot as u8);
-			// worker.send_data_to_runtime(data);
+			let best_hash = client.clone().usage_info().chain.best_hash;
+			let engine_id = *b"ajst";
+			if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
+				let res = AdjustTemplates::<B>::decode(&mut adjust_raw.as_slice());
+				log::info!(" adjust_raw {:?}", res);
+			} else {
+				log::info!("Test Future get no adjust_raw");
+			}
 		}
 
 		log::debug!("sync_oracle.is_major_syncing");
@@ -998,8 +1000,6 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 			continue
 		}
 
-		log::debug!("can_author_with.can_author_with");
-		// sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 		if let Err(err) = can_author_with.can_author_with(&BlockId::Hash(slot_info.chain_head.hash()))
 		{
 			warn!(

@@ -55,6 +55,12 @@ derive_more = "0.99.16"
 retain_mut = "0.1.4"
 async-trait = "0.1.50"
 
+[dependencies.sc-service]
+features = ['wasmtime']
+path = "../../../client/service"
+version = '0.10.0-dev'
+
+
 [dev-dependencies]
 sp-timestamp = { version = "4.0.0-dev", path = "../../../primitives/timestamp" }
 sp-tracing = { version = "4.0.0-dev", path = "../../../primitives/tracing" }

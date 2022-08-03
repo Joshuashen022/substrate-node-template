@@ -1004,6 +1004,19 @@ where
 		self.backend.blockchain().header(*id)
 	}
 
+	/// Get block adjusts by id.
+	pub fn adjusts_raw(
+		&self,
+		engine_id: [u8;4],
+		id: &BlockId<Block>,
+	) -> Option<Vec<u8>> {
+		if let Ok(Some(header)) = self.backend.blockchain().header(*id){
+			header.digest().pre_runtime_id(engine_id)
+		} else {
+			None
+		}
+	}
+
 	/// Get block body by id.
 	pub fn body(
 		&self,
@@ -1914,6 +1927,19 @@ where
 	) -> sp_blockchain::Result<Option<Vec<Vec<u8>>>> {
 		self.backend.blockchain().block_indexed_body(*id)
 	}
+
+	fn adjusts_raw(
+		&self,
+		engine_id: [u8;4],
+		id: &BlockId<Block>,
+	) -> Option<Vec<u8>> {
+		if let Ok(Some(header)) = self.backend.blockchain().header(*id){
+			header.digest().pre_runtime_id(engine_id)
+		} else {
+			None
+		}
+	}
+
 }
 
 impl<B, E, Block, RA> backend::AuxStore for Client<B, E, Block, RA>

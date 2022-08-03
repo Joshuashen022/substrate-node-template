@@ -31,7 +31,7 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header as HeaderT},
 	ConsensusEngineId,
 };
-
+pub use sp_arithmetic::traits::{ AtLeast32Bit, AtLeast32BitUnsigned};
 /// A unique ID of a request.
 pub type RequestId = u64;
 
@@ -170,7 +170,7 @@ impl<H: HeaderT> generic::BlockAnnounce<H> {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ReceiveTimestamp<B:BlockT>{
 	/// Contain Adjust and timestamp
-	AdjustTimestamp(AdjustTemplate<<B as BlockT>::Hash>),
+	AdjustTimestamp(AdjustTemplate<<B as BlockT>::Header>),
 	/// Contain Block and timestamp
 	BlockTimestamp(Vec<BlockTemplate<B>>),
 }
@@ -240,13 +240,54 @@ impl<B: BlockT> Decode for BlockTemplate<B> {
 	}
 }
 
+
+/// Used for encoding valid BlockTemplates
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+pub struct AdjustTemplates<B: BlockT>(Vec<Adjust<B>>);
+
+impl<B: BlockT> AdjustTemplates<B> {
+
+	/// Create a new AdjustTemplates from vector.
+	pub fn new_from_vec(input: Vec<AdjustTemplate<<B as BlockT>::Header>>) -> Self {
+		let mut inner = Vec::new();
+		for adjust_tmp in input{
+			inner.push(
+				Adjust{
+					header: adjust_tmp.clone().adjust.header,
+					send_time: adjust_tmp.clone().adjust.timestamp,
+					receive_time: adjust_tmp.receive_time,
+				}
+			)
+		}
+		Self( inner)
+	}
+
+	/// Get inner vector length.
+	pub fn len(&self) -> usize {
+		self.0.len()
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+pub struct Adjust<B: BlockT>{
+	/// New block header. Currently only header hash is useful
+	pub header: <B as BlockT>::Header,
+
+	/// Create time or send time, generated creator.
+	pub send_time: u128,
+
+	/// Adjust receive time, generated locally
+	pub receive_time: u128,
+}
+
+
 ///Wrapped information of `adjust` and it's receiving time.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AdjustTemplate<H>{
 	/// Adjust information
 	pub adjust: AdjustAnnounce<H>,
 
-	/// Adjust receive time
+	/// Adjust receive time, recorded locally
 	pub receive_time: u128,
 }
 

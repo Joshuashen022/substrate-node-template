@@ -1938,7 +1938,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 					let messages_clone = messages.clone();
 					for(p, b) in messages_clone{
 						let a_result =
-							AdjustTemplate::<<B as BlockT>::Hash>::decode(&mut b.as_ref());
+							AdjustTemplate::<<B as BlockT>::Header>::decode(&mut b.as_ref());
 						if let Ok(a) = a_result{
 							log::info!(
 								"[Behaviour] NotificationsReceived protocol {:?}",

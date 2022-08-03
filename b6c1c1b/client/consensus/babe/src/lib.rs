@@ -134,7 +134,7 @@ pub use sp_consensus_babe::{
 	BabeEpochConfiguration, BabeGenesisConfiguration, ConsensusLog, BABE_ENGINE_ID,
 	VRF_OUTPUT_LENGTH,
 };
-
+use sc_service::TaskManager;
 pub use aux_schema::load_block_weight as block_weight;
 use sp_block_builder::BlockBuilder;
 
@@ -448,7 +448,7 @@ pub struct BabeParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 
 
 /// Parameters for AutoSyn.
-pub struct AutoSynParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
+pub struct AutoSynParams<'a, B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 	/// The keystore that manages the keys of the node.
 	pub keystore: SyncCryptoStorePtr,
 
@@ -502,10 +502,12 @@ pub struct AutoSynParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 	pub telemetry: Option<TelemetryHandle>,
 
 	/// adjusts_mutex
-	pub adjusts_mutex: Arc<MutexS<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+	pub adjusts_mutex: Arc<MutexS<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
 
 	/// blocks_mutex
 	pub blocks_mutex: Arc<MutexS<Vec<BlockTemplate<B>>>>,
+	/// A task manager returned by `new_full_parts`.
+	pub task_manager: &'a mut TaskManager,
 }
 
 /// Start the babe-autosyn worker.
@@ -527,7 +529,8 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		max_block_proposal_slot_portion,
 		telemetry,
 		adjusts_mutex,
-		blocks_mutex
+		blocks_mutex,
+		task_manager
 	}: AutoSynParams<B, C, SC, E, I, SO, L, CIDP, BS, CAW>,
 ) -> Result<BabeWorker<B>, sp_consensus::Error>
 	where
@@ -541,7 +544,7 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		+ HeaderMetadata<B, Error = ClientError>
 		+ Send
 		+ Sync
-		+ 'static,
+		+ 'static + sc_client_api::BlockBackend<B>,
 		C::Api: BabeApi<B> + BlockBuilder<B>,
 		SC: SelectChain<B> + 'static,
 		E: Environment<B, Error = Error> + Send + Sync + 'static,
@@ -589,11 +592,42 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		sync_oracle,
 		create_inherent_data_providers,
 		can_author_with,
-		adjusts_mutex,
+		adjusts_mutex.clone(),
 		blocks_mutex,
 	);
 
 	let (worker_tx, worker_rx) = channel(HANDLE_BUFFER_SIZE);
+
+	let adjusts_mutex_clone = adjusts_mutex.clone();
+	let epoch_change = babe_link.epoch_changes.clone();
+	let client_clone = client.clone();
+	let config_clone = config.clone();
+
+	let select_adjust_future = async move {
+		loop {
+			std::thread::sleep(std::time::Duration::from_millis(6000));
+			if let Ok(mut adjusts) = adjusts_mutex_clone.clone().lock(){
+				let mut valid_adjusts = Vec::new();
+				for template in &*adjusts {
+					let header = template.clone().adjust.header;
+					// TODO: use real slot
+					let slot = Slot::from(0);
+					if check_adjust(
+						epoch_change.clone(),
+						client_clone.clone(),
+						header,
+						config_clone.clone(),
+						slot
+					) {
+						valid_adjusts.push(template.clone());
+					}
+				}
+				(*adjusts) = valid_adjusts;
+			}
+		}
+	};
+
+	task_manager.spawn_handle().spawn("Check Adjust", None,select_adjust_future);
 
 	let answer_requests =
 		answer_requests(worker_rx, config.0, client, babe_link.epoch_changes.clone());
@@ -1571,14 +1605,14 @@ where
 type BlockVerificationResult<Block> =
 	Result<(BlockImportParams<Block, ()>, Option<Vec<(CacheKeyId, Vec<u8>)>>), String>;
 
-#[allow(dead_code)]
+
 /// Used to check if the given party is the slot leader
-pub async fn check_adjust<Block, Client, CIDP>(
+pub fn check_adjust<Block, Client>(
 	epoch_changes: SharedEpochChanges<Block, Epoch>,
 	client: Arc<Client>,
 	header: Block::Header,
 	config: Config,
-	create_inherent_data_providers: CIDP
+	slot: Slot
 ) -> bool
 where
 	Block: BlockT,
@@ -1588,18 +1622,8 @@ where
 	+ Send
 	+ Sync
 	+ AuxStore,
-	CIDP: CreateInherentDataProviders<Block, ()> + Send + Sync,
-	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	let parent_hash = *header.parent_hash();
-
-	let slot =
-		create_inherent_data_providers
-		.create_inherent_data_providers(parent_hash, ())
-		.await
-		.map_err(|e|
-			Error::<Block>::Client(sp_consensus::Error::from(e).into())
-		).unwrap().slot();
 
 	let parent_header_metadata = client
 		.header_metadata(parent_hash)

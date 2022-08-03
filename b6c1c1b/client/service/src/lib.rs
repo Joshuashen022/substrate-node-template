@@ -159,7 +159,7 @@ async fn  build_network_future<
 	mut rpc_rx: TracingUnboundedReceiver<sc_rpc::system::Request<B>>,
 	should_have_peers: bool,
 	announce_imported_blocks: bool,
-	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Hash>>>>,
+	adjusts_mutex: Arc<Mutex<Vec<AdjustTemplate<<B as BlockT>::Header>>>>,
 	blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
 ) {
 	let mut imported_blocks_stream = client.import_notification_stream().fuse();
@@ -227,7 +227,7 @@ async fn  build_network_future<
 
 				match receive.unwrap(){
 					ReceiveTimestamp::AdjustTimestamp(adjust_time) => {
-						let _header = adjust_time.adjust.header;
+						let _header = adjust_time.clone().adjust.header;
 						if let Ok(mut guard) = adjusts_mutex.clone().lock(){
 							(*guard).push(adjust_time);
 							// (*guard).sort();

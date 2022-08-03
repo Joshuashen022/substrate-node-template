@@ -771,7 +771,7 @@ pub fn build_network<TBl, TExPool, TImpQu, TCl>(
 		Arc<NetworkService<TBl, <TBl as BlockT>::Hash>>,
 		TracingUnboundedSender<sc_rpc::system::Request<TBl>>,
 		NetworkStarter,
-		Arc<Mutex<Vec<AdjustTemplate<<TBl as BlockT>::Hash>>>>,
+		Arc<Mutex<Vec<AdjustTemplate<<TBl as BlockT>::Header>>>>,
 		Arc<Mutex<Vec<BlockTemplate<TBl>>>>,
 	),
 	Error,

@@ -113,6 +113,13 @@ pub trait BlockBackend<Block: BlockT> {
 	/// that are indexed by the runtime with `storage_index_transaction`.
 	fn indexed_transaction(&self, hash: &Block::Hash) -> sp_blockchain::Result<Option<Vec<u8>>>;
 
+	/// read raw data of adjust inside header
+	fn adjusts_raw(
+		&self,
+		_engine_id: [u8;4],
+		_id: &BlockId<Block>,
+	) -> Option<Vec<u8>> { None }
+
 	/// Check if transaction index exists.
 	fn has_indexed_transaction(&self, hash: &Block::Hash) -> sp_blockchain::Result<bool> {
 		Ok(self.indexed_transaction(hash)?.is_some())

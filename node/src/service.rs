@@ -197,13 +197,16 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 	}
 
 	let client_clone = client.clone();
+	let adjusts_mutex_clone = adjusts_mutex.clone();
 	let test_future = async move {
 		loop{
 			std::thread::sleep(std::time::Duration::from_millis(6000));
+			let engine_id = *b"ajst";
 			let best_hash = client_clone.usage_info().chain.best_hash;
-			if let Ok(headers) = client_clone.header(&BlockId::hash(best_hash)){
+			if let Ok(headers) = client_clone.clone().header(&BlockId::hash(best_hash)){
 				if let Some(hd) = headers {
 					let _digest = hd.digest();
+
 					// log::info!("Test Future get digest {:?}", digest);
 				} else {
 					log::info!("Test Future get no digest");
@@ -212,18 +215,15 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			} else {
 				log::info!("Test Future get no header");
 			}
-			// if let Ok(extrincs) = client_clone.body(&BlockId::hash(best_hash)){
-			// 	if let Some(exts) = extrincs{
-			// 		let length = exts.len();
-			// 		let mut show = Vec::new();
-			// 		for e in exts{
-			// 			show.push(e.get_inner());
-			// 		}
-			// 		log::trace!("Test Future get extrinsic {:?}", show);
-			// 	} else {
-			// 		log::trace!("Test Future get extrinsic None");
-			// 	}
-			// };
+
+			if let Some(_adjust_raw) = client_clone.clone().adjusts_raw(engine_id, &BlockId::hash(best_hash)){
+				log::info!("Test Future get some adjust_raw");
+			} else {
+				log::info!("Test Future get no adjust_raw");
+			}
+			if let Ok(guard) = adjusts_mutex_clone.clone().lock(){
+				log::info!("adjusts_mutex len {}", (*guard).len());
+			}
 		}
 	};
 	task_manager.spawn_handle().spawn("Test Block", None,test_future);
@@ -272,7 +272,8 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 		let can_author_with =
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 		let slot_duration = babe_link.config().slot_duration();
-		// let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+
+		//TODO:change this to autosyn inherent data provider
 		let inherent_data_providers = move |_, ()| async move{
 			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
@@ -302,7 +303,8 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			max_block_proposal_slot_portion:None,
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
 			adjusts_mutex,
-			blocks_mutex
+			blocks_mutex,
+			task_manager: &mut task_manager,
 		};
 
 		let babe = sc_consensus_babe::start_autosyn(auto_config)?;
