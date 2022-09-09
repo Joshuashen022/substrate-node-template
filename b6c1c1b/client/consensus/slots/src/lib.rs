@@ -56,7 +56,7 @@ use sp_runtime::{
 };
 use sp_timestamp::Timestamp;
 use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
-use sc_network::{protocol::message::{ AdjustTemplate, AdjustTemplates, BlockTemplate}};
+use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
 
@@ -647,7 +647,8 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		let mut digest_data = Vec::new();
 		if let Ok(guard) = adjusts_mutex.clone().lock(){
 			log::info!("adjusts_mutex len {}", (*guard).len());
-			let adjusts = AdjustTemplates::<B>::new_from_vec((*guard).clone());
+			// TODO:: Add data (Blocks) into AdjustExtracts
+			let adjusts = AdjustExtracts::<B>::new_from_vec((*guard).clone());
 			digest_data = adjusts.encode();
 		}
 		logs.push(DigestItem::PreRuntime(*b"ajst", digest_data));
@@ -982,15 +983,15 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 		info!("");
 		info!("");
 
-		// This works
+
 		{
 			let best_hash = client.clone().usage_info().chain.best_hash;
 			let engine_id = *b"ajst";
 			if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
-				let res = AdjustTemplates::<B>::decode(&mut adjust_raw.as_slice());
-				log::info!(" adjust_raw {:?}", res);
+				let res = AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice());
+				log::info!("[Test] On chain adjust_raw {:?}", res);
 			} else {
-				log::info!("Test Future get no adjust_raw");
+				log::info!("[Test] get no adjust_raw");
 			}
 		}
 

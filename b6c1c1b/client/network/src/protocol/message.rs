@@ -227,23 +227,37 @@ impl<B: BlockT> Decode for BlockTemplate<B> {
 
 /// Used for encoding valid BlockTemplates
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
-pub struct AdjustTemplates<B: BlockT>(Vec<Adjust<B>>);
+pub struct AdjustExtracts<B: BlockT>(Vec<Adjust<B>>);
 
-impl<B: BlockT> AdjustTemplates<B> {
+impl<B: BlockT> AdjustExtracts<B> {
 
-	/// Create a new AdjustTemplates from vector.
+	/// Create a new AdjustExtracts from vector of AdjustTemplate.
 	pub fn new_from_vec(input: Vec<AdjustTemplate<B>>) -> Self {
 		let mut inner = Vec::new();
-		for adjust_tmp in input{
-			inner.push(
-				Adjust{
-					header: adjust_tmp.clone().adjust.header,
-					send_time: adjust_tmp.clone().adjust.timestamp,
-					receive_time: adjust_tmp.receive_time,
-				}
-			)
+		for adjust_tmp in input {
+
+			let data = adjust_tmp.clone().adjust.data;
+
+			// Check if adjust template contains block data
+			if data.is_none() {
+				log::warn!("Adjust contains no block");
+				continue
+			}
+
+			// Transform data into BlockTemplates
+			if let Ok(blocks) = BlockTemplates::<B>::decode(&mut data.unwrap().as_slice()){
+				inner.push(
+					Adjust{
+						header: adjust_tmp.clone().adjust.header,
+						send_time: adjust_tmp.clone().adjust.timestamp,
+						receive_time: adjust_tmp.receive_time,
+						blocks
+					}
+				)
+			};
+
 		}
-		Self( inner)
+		Self(inner)
 	}
 
 	/// Get inner vector length.
@@ -262,6 +276,8 @@ pub struct Adjust<B: BlockT>{
 
 	/// Adjust receive time, generated locally
 	pub receive_time: u128,
+
+	pub blocks: BlockTemplates<B>
 }
 
 
