@@ -988,8 +988,16 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 			let best_hash = client.clone().usage_info().chain.best_hash;
 			let engine_id = *b"ajst";
 			if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
-				let res = AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice());
-				log::info!("[Test] On chain adjust_raw {:?}", res);
+				match AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice()){
+					Ok(a) => {
+						log::info!("[Test] On chain adjust_raw contains {:?}", a.len());
+						log::info!("[Test] On chain adjust_raw {:?}", a);
+					},
+					Err(e) => {
+						log::info!("[Error][Test] On chain adjust_raw error {:?}", e);
+					},
+				};
+
 			} else {
 				log::info!("[Test] get no adjust_raw");
 			}

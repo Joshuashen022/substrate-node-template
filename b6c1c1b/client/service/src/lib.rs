@@ -226,17 +226,19 @@ async fn  build_network_future<
 
 				match receive.unwrap(){
 					ReceiveTimestamp::AdjustTimestamp(adjust_time) => {
-						log::info!("[Network] receive AdjustTimestamp ");
+						let check = adjust_time.clone().check_block_validity();
+						log::info!("[Network] receive AdjustTimestamp valid? {}", check);
 						let _header = adjust_time.clone().adjust.header;
+
 						if let Ok(mut guard) = adjusts_mutex.clone().lock(){
 							(*guard).push(adjust_time);
 							// (*guard).sort();
 							(*guard).dedup();
-							log::info!("[Network] adjusts_mutex len {}", (*guard).len());
+							// log::info!("[Network] adjusts_mutex len {}", (*guard).len());
 						}
 					}
 					ReceiveTimestamp::BlockTimestamp(mut block) => {
-						log::info!("[Network] receive BlockTimestamps len {}", block.len());
+						// log::info!("[Network] receive BlockTimestamps len {}", block.len());
 						if let Ok(mut guard) = blocks_mutex.clone().lock(){
 							(*guard).append(&mut block);
 							// (*guard).sort(); ^^^ the trait `std::cmp::Ord` is not implemented for `<B as BlockT>::Header`

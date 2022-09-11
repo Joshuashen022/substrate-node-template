@@ -190,6 +190,17 @@ impl<B: BlockT> BlockTemplates<B> {
 		self.0.len()
 	}
 
+	/// Transform into BlocksSimplified
+	pub fn simplify(&self) -> BlocksSimplified<B> {
+		let mut inner = Vec::new();
+
+		for block in self.0.clone(){
+			inner.push(block.simplify());
+		}
+
+		BlocksSimplified(inner)
+	}
+
 }
 
 ///Wrapped information of `block` and it's receiving time.
@@ -201,11 +212,41 @@ pub struct BlockTemplate<B: BlockT>{
 	/// Receive time of the block
 	pub receive_time: u128,
 }
+/// `Adjust` will store this information,
+/// and later stored on chain
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+pub struct BlockSimplified<B: BlockT>{
+	/// Current block hash
+	pub hash: <B as BlockT>::Hash,
+
+	/// Parent block hash
+	pub parent_hash: <B as BlockT>::Hash,
+
+	/// Current block number
+	pub number: <<B as BlockT>::Header as HeaderT>::Number,
+
+	/// Block receive time
+	pub receive_time: u128,
+}
+
+/// Used for adjust to store on chain
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+pub struct BlocksSimplified<B: BlockT>(Vec<BlockSimplified<B>>);
 
 impl<B: BlockT> BlockTemplate<B>{
 	/// Get block number
 	pub fn number(&self) -> <<B as BlockT>::Header as HeaderT>::Number{
 		*self.block.number()
+	}
+
+	/// Transform into simplified block
+	pub fn simplify(&self) -> BlockSimplified<B>{
+		let hash = self.block.hash();
+		let &parent_hash = self.block.parent_hash();
+		let &number = self.block.number();
+		let receive_time = self.receive_time;
+
+		BlockSimplified{hash, parent_hash, number, receive_time}
 	}
 }
 
@@ -234,6 +275,7 @@ impl<B: BlockT> AdjustExtracts<B> {
 	/// Create a new AdjustExtracts from vector of AdjustTemplate.
 	pub fn new_from_vec(input: Vec<AdjustTemplate<B>>) -> Self {
 		let mut inner = Vec::new();
+
 		for adjust_tmp in input {
 
 			let data = adjust_tmp.clone().adjust.data;
@@ -244,19 +286,25 @@ impl<B: BlockT> AdjustExtracts<B> {
 				continue
 			}
 
-			// Transform data into BlockTemplates
+			// Transform data into Adjust
 			if let Ok(blocks) = BlockTemplates::<B>::decode(&mut data.unwrap().as_slice()){
+				let simplified_blocks = blocks.simplify();
+				let header = adjust_tmp.clone().adjust.header;
+
 				inner.push(
 					Adjust{
-						header: adjust_tmp.clone().adjust.header,
+						hash: header.hash(),
+						parent_hash: *header.parent_hash(),
+						number: *header.number(),
 						send_time: adjust_tmp.clone().adjust.timestamp,
 						receive_time: adjust_tmp.receive_time,
-						blocks
+						blocks: Some(simplified_blocks),
 					}
 				)
 			};
 
 		}
+
 		Self(inner)
 	}
 
@@ -268,8 +316,14 @@ impl<B: BlockT> AdjustExtracts<B> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct Adjust<B: BlockT>{
-	/// New block header. Currently only header hash is useful
-	pub header: <B as BlockT>::Header,
+	/// Current block hash
+	pub hash: <B as BlockT>::Hash,
+
+	/// Parent block hash
+	pub parent_hash: <B as BlockT>::Hash,
+
+	/// Current block number
+	pub number: <<B as BlockT>::Header as HeaderT>::Number,
 
 	/// Create time or send time, generated creator.
 	pub send_time: u128,
@@ -277,7 +331,7 @@ pub struct Adjust<B: BlockT>{
 	/// Adjust receive time, generated locally
 	pub receive_time: u128,
 
-	pub blocks: BlockTemplates<B>
+	pub blocks: Option<BlocksSimplified<B>>
 }
 
 
@@ -322,7 +376,7 @@ impl<B: BlockT> AdjustAnnounceValidation<B> {
 		}
 	}
 
-	/// Transform
+	/// Transformation
 	pub fn from_template(template: AdjustTemplate<B>) -> Self {
 		AdjustAnnounceValidation{
 			create_time: template.clone().adjust.timestamp,
@@ -358,6 +412,17 @@ impl<B: BlockT> AdjustTemplate<B> {
 			adjust,
 			receive_time
 		}
+	}
+
+	pub fn check_block_validity(&self) -> bool {
+
+		if let Some(raw_data) = self.clone().adjust.data{
+			if let Ok(_blocks) = BlockTemplates::<B>::decode(&mut raw_data.as_slice()){
+				return true
+			}
+		}
+
+		false
 	}
 }
 
@@ -650,7 +715,7 @@ pub mod generic {
 	}
 
 	/// Announce a new complete relay chain block Adjust information on the network.
-	#[derive(Debug, PartialEq, Eq, Clone)]
+	#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 	pub struct AdjustAnnounce<H> {
 		/// New block header. Currently only header hash is useful
 		pub header: H,
@@ -662,30 +727,30 @@ pub mod generic {
 		pub data: Option<Vec<u8>>,
 	}
 
-	// Custom Encode/Decode impl to maintain backwards compatibility with v3.
-	// This assumes that the packet contains nothing but the announcement message.
-	impl<H: Encode> Encode for AdjustAnnounce<H> {
-		fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
-			self.header.encode_to(dest);
-			self.timestamp.encode_to(dest);
-			if let Some(state) = &self.state {
-				state.encode_to(dest);
-			}
-			if let Some(data) = &self.data {
-				data.encode_to(dest)
-			}
-		}
-	}
-
-	impl<H: Decode> Decode for AdjustAnnounce<H> {
-		fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-			let header = H::decode(input)?;
-			let timestamp = u128::decode(input)?;
-			let state = BlockState::decode(input).ok();
-			let data = Vec::decode(input).ok();
-			Ok(Self { header, timestamp, state, data })
-		}
-	}
+	// // Custom Encode/Decode impl to maintain backwards compatibility with v3.
+	// // This assumes that the packet contains nothing but the announcement message.
+	// impl<H: Encode> Encode for AdjustAnnounce<H> {
+	// 	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+	// 		self.header.encode_to(dest);
+	// 		self.timestamp.encode_to(dest);
+	// 		if let Some(state) = &self.state {
+	// 			state.encode_to(dest);
+	// 		}
+	// 		if let Some(data) = &self.data {
+	// 			data.encode_to(dest)
+	// 		}
+	// 	}
+	// }
+	//
+	// impl<H: Decode> Decode for AdjustAnnounce<H> {
+	// 	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+	// 		let header = H::decode(input)?;
+	// 		let timestamp = u128::decode(input)?;
+	// 		let state = BlockState::decode(input).ok();
+	// 		let data = Vec::decode(input).ok();
+	// 		Ok(Self { header, timestamp, state, data })
+	// 	}
+	// }
 
 
 	#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]

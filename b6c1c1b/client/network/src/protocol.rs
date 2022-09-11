@@ -980,7 +980,7 @@ impl<B: BlockT> Protocol<B> {
 				state: None,
 				data: Some(data.clone()),
 			};
-
+			// log::info!("AdjustAnnounce {:?}", aa);
 			let message = AnnounceMessage::AdjustAnnounce(aa);
 			// log::info!("AdjustAnnounce encode {:?}", message.encode());
 			self.behaviour
@@ -1030,37 +1030,26 @@ impl<B: BlockT> Protocol<B> {
 	fn push_adjust_announce_validation(&mut self, peer_id: PeerId, adjust: AdjustAnnounce<B::Header>) -> CustomMessageOutcome<B> {
 		let receive_time = duration_now().as_millis();
 		let protocol_name = Cow::Borrowed("adjust");
-
+		// log::info!("(push_adjust_announce_validation) AdjustAnnounce {:?}", adjust);
 		let adjust_template = AdjustTemplate::<B>::new(adjust.clone(), receive_time);
+
+		{
+			if let Some(data) = adjust.data{
+				let res = BlockTemplates::<B>::decode(&mut data.as_slice());
+				if res.is_ok() {
+					log::info!("(push_adjust_announce_validation) BlockTemplates {}", res.is_ok());
+				} else {
+					log::info!("(push_adjust_announce_validation) BlockTemplates raw {:?}", data);
+				}
+
+			} else{
+				log::info!("(push_adjust_announce_validation) BlockTemplates adjust.data is None");
+			};
+
+		}
+
 		let validation = AdjustAnnounceValidation::<B>::from_template(adjust_template.clone());
-		// Adjust
-		{
-			// let adjust = Adjust::<B>{
-			// 	header: adjust.header,
-			// 	receive_time,
-			// 	send_time: adjust.timestamp
-			// };
-			// let adjust_tmp = adjust.encode();
-			//
-			// match Adjust::<B>::decode(&mut &adjust_tmp.clone()[..]) {
-			// 	Ok(a) => log::info!("decode success"),
-			// 	Err(e) =>{
-			// 		log::info!("[Behaviour] adjust_tmp decode error {:?}, b={:?}", e, adjust_tmp.clone())
-			// 	}
-			// }
-		}
-		// Validation
-		{
-			// let tmp = validation.encode();
-			// match AdjustAnnounceValidation::<B>::decode(&mut &tmp.clone()[..]) {
-			// 	Ok(a) => {
-			// 		log::info!("decode success {:?}", a.as_template());
-			// 	},
-			// 	Err(e) =>{
-			// 		// log::info!("[Behaviour] NotificationsReceived decode error {:?}, b={:?}", e, tmp.clone())
-			// 	}
-			// }
-		}
+
 		let tmp = validation.encode();
 
 		let message = Bytes::copy_from_slice(tmp.as_slice());
@@ -1871,9 +1860,10 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 				HARDCODED_PEERSETS_SYNC if self.peers.contains_key(&peer_id) => {
 					// log::info!("[Adjust] before decode {:?}", message.as_ref());
 					if let Ok(announce_message) = message::AnnounceMessage::decode(&mut message.as_ref()) {
+						// log::info!("[Adjust] after decode {:?}", announce_message);
 						match announce_message {
 							AnnounceMessage::BlockAnnounce(ba) => {
-								log::info!("[Adjust] decode at BlockAnnounce");
+								// log::info!("[Adjust] decode at BlockAnnounce");
 								self.push_block_announce_validation(peer_id, ba);
 								// Make sure that the newly added block announce validation future was
 								// polled once to be registered in the task.
@@ -1884,7 +1874,7 @@ impl<B: BlockT> NetworkBehaviour for Protocol<B> {
 								}
 							}
 							AnnounceMessage::AdjustAnnounce(aa) => {
-								log::info!("[Adjust] try decode at AdjustAnnounce");
+								// log::info!("[Adjust] try decode at AdjustAnnounce");
 								self.push_adjust_announce_validation(peer_id, aa)
 							}
 						}
