@@ -1073,7 +1073,7 @@ impl<B: BlockT> ChainSync<B> {
 		request: Option<BlockRequest<B>>,
 		response: BlockResponse<B>,
 	) -> Result<OnBlockData<B>, BadPeer> {
-		log::info!("[Block Import] (on_block_data) request.is_some? {}", request.is_some());
+		// log::info!("[Block Import] (on_block_data) request.is_some? {}", request.is_some());
 		self.downloaded_blocks += response.blocks.len();
 		let mut gap = false;
 		let mut new_blocks: Vec<IncomingBlock<B>> = if let Some(peer) = self.peers.get_mut(who) {
@@ -1087,7 +1087,7 @@ impl<B: BlockT> ChainSync<B> {
 			}
 			self.pending_requests.add(who);
 			if let Some(request) = request {
-				log::info!("[Block Import] (on_block_data) peer state {:?}", peer.state);
+				// log::info!("[Block Import] (on_block_data) peer state {:?}", peer.state);
 				match &mut peer.state {
 					PeerSyncState::DownloadingNew(_) => {
 						self.blocks.clear_peer_download(who);

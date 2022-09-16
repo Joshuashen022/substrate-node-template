@@ -266,3 +266,12 @@ impl sp_inherents::InherentDataProvider for InherentDataProvider {
 		}
 	}
 }
+
+sp_api::decl_runtime_apis! {
+	/// API necessary for the timestamp information.
+	#[api_version(2)]
+	pub trait TimestampApi {
+		/// Returns information regarding the current slot timestamp.
+		fn timestamp() -> Timestamp;
+	}
+}

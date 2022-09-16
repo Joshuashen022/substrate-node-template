@@ -440,7 +440,7 @@ impl<B: BlockT> Protocol<B> {
 				tmp
 			})
 			.collect();
-		log::info!("notification_protocols {:?}", notification_protocols);
+		// log::info!("notification_protocols {:?}", notification_protocols);
 
 		let protocol = Self {
 			tick_timeout: Box::pin(interval(TICK_TIMEOUT)),
@@ -612,7 +612,7 @@ impl<B: BlockT> Protocol<B> {
 		request: message::BlockRequest<B>,
 		response: crate::schema::v1::BlockResponse,
 	) -> CustomMessageOutcome<B> {
-		log::info!("[Block Import] (on_block_response)");
+		// log::info!("[Block Import] (on_block_response)");
 		let blocks = response
 			.blocks
 			.into_iter()
@@ -1034,17 +1034,17 @@ impl<B: BlockT> Protocol<B> {
 		let adjust_template = AdjustTemplate::<B>::new(adjust.clone(), receive_time);
 
 		{
-			if let Some(data) = adjust.data{
-				let res = BlockTemplates::<B>::decode(&mut data.as_slice());
-				if res.is_ok() {
-					log::info!("(push_adjust_announce_validation) BlockTemplates {}", res.is_ok());
-				} else {
-					log::info!("(push_adjust_announce_validation) BlockTemplates raw {:?}", data);
-				}
-
-			} else{
-				log::info!("(push_adjust_announce_validation) BlockTemplates adjust.data is None");
-			};
+			// if let Some(data) = adjust.data{
+			// 	let res = BlockTemplates::<B>::decode(&mut data.as_slice());
+			// 	if res.is_ok() {
+			// 		log::info!("(push_adjust_announce_validation) BlockTemplates {}", res.is_ok());
+			// 	} else {
+			// 		log::info!("(push_adjust_announce_validation) BlockTemplates raw {:?}", data);
+			// 	}
+			//
+			// } else{
+			// 	log::info!("(push_adjust_announce_validation) BlockTemplates adjust.data is None");
+			// };
 
 		}
 

@@ -499,7 +499,7 @@ impl<T: Config> pallet_session::ShouldEndSession<T::BlockNumber> for Pallet<T> {
 impl<T: Config> Pallet<T> {
 	/// Determine the BABE slot duration based on the Timestamp module configuration.
 	pub fn slot_duration() -> T::Moment {
-		log::info!("#[pallet::babe] (slot_duration)");
+		// log::info!("#[pallet::babe] (slot_duration)");
 		// we double the minimum block-period so each author can always propose within
 		// the majority of their slot.
 		let t = <T as pallet_timestamp::Config>::MinimumPeriod::get();

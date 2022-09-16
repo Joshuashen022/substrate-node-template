@@ -336,7 +336,7 @@ impl<B: BlockT> NetworkBehaviourEventProcess<CustomMessageOutcome<B>> for Behavi
 		// log::info!("inject_event");
 		match event {
 			CustomMessageOutcome::BlockImport(origin, blocks) =>{
-				log::info!("[Block Import] CustomMessageOutcome::BlockImport");
+				// log::info!("[Block Import] CustomMessageOutcome::BlockImport");
 				self.events.push_back(BehaviourOut::BlockImport(origin, blocks))
 			},
 			CustomMessageOutcome::JustificationImport(origin, hash, nb, justification) => self
@@ -429,7 +429,7 @@ impl<B: BlockT> NetworkBehaviourEventProcess<CustomMessageOutcome<B>> for Behavi
 				self.events.push_back(BehaviourOut::NotificationsReceived { remote, messages });
 			},
 			CustomMessageOutcome::PeerNewBest(_peer_id, _number) => {
-				log::info!("[Adjust] CustomMessageOutcome::PeerNewBest End");
+				// log::info!("[Adjust] CustomMessageOutcome::PeerNewBest End");
 			},
 			CustomMessageOutcome::SyncConnected(peer_id) =>
 				self.events.push_back(BehaviourOut::SyncConnected(peer_id)),

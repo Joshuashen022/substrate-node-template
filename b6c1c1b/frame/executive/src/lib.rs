@@ -453,7 +453,7 @@ where
 		encoded_len: usize,
 		to_note: Vec<u8>,
 	) -> ApplyExtrinsicResult {
-		log::info!("(apply_extrinsic_with_len)");
+		// log::info!("(apply_extrinsic_with_len)");
 		sp_tracing::enter_span!(sp_tracing::info_span!("apply_extrinsic",
 				ext=?sp_core::hexdisplay::HexDisplay::from(&uxt.encode())));
 		// Verify that the signature is good.

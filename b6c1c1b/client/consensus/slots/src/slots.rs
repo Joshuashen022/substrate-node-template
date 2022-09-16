@@ -24,10 +24,24 @@ use super::{InherentDataProviderExt, Slot};
 use sp_consensus::{Error, SelectChain};
 use sp_inherents::{CreateInherentDataProviders, InherentData, InherentDataProvider};
 use sp_runtime::traits::{Block as BlockT, Header as HeaderT};
+use sp_runtime::generic::BlockId;
+
+use sp_api::{ApiExt, ApiRef, ProvideRuntimeApi};
+use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsageProvider, client::BlockBackend};
+use sp_blockchain::{Error as ClientError, HeaderBackend, HeaderMetadata, Result as ClientResult};
+use sp_consensus_babe::BabeApi;
+use sp_block_builder::BlockBuilder;
+use codec::{Decode, Encode};
+use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTemplate}};
+
+use crate::{MILLISECS_PER_BLOCK,
+			ERA_DURATION_IN_SLOTS, SLOT_DURATION,
+			EPOCH_DURATION_IN_BLOCKS, EPOCH_DURATION_IN_SLOTS
+};
 
 use futures_timer::Delay;
 use std::time::{Duration, Instant};
-
+use std::sync::{Arc, Mutex};
 /// Returns current duration since unix epoch.
 pub fn duration_now() -> Duration {
 	use std::time::SystemTime;
@@ -120,10 +134,13 @@ where
 	C: SelectChain<Block>,
 	IDP: CreateInherentDataProviders<Block, ()>,
 	IDP::InherentDataProviders: crate::InherentDataProviderExt,
+
 {
 	/// Returns a future that fires when the next slot starts.
 	pub async fn next_slot(&mut self) -> Result<SlotInfo<Block>, Error> {
 		loop {
+
+			// Calculate left time and set inner_delay
 			self.inner_delay = match self.inner_delay.take() {
 				None => {
 					// schedule wait.
@@ -132,10 +149,15 @@ where
 				},
 				Some(d) => Some(d),
 			};
-			// log::info!("slots.next_slot() {}", line!());
+
+			// log::info!("before inner_delay.await;");
+
+			// Wait until time to expire
 			if let Some(inner_delay) = self.inner_delay.take() {
 				inner_delay.await;
 			}
+
+			// log::info!("after inner_delay.await;");
 			// timeout has fired.
 			// During this time, other running task maintain block import
 			let ends_in = time_until_next_slot(self.slot_duration);
@@ -198,4 +220,383 @@ where
 			}
 		}
 	}
+
+	pub async fn next_slot_with_client<Client> (&mut self, client: Option<Arc<Client>>) -> Result<SlotInfo<Block>, Error>
+		where
+			Client:	 ProvideRuntimeApi<Block>
+			+ ProvideUncles<Block>
+			+ BlockchainEvents<Block>
+			+ AuxStore
+			+ UsageProvider<Block>
+			+ HeaderBackend<Block>
+			+ HeaderMetadata<Block, Error = ClientError>
+			+ BlockBackend<Block>
+			+ Send
+			+ Sync
+			+ 'static,
+			Client::Api: BabeApi<Block> + BlockBuilder<Block>,
+	{
+		let client = client.unwrap();
+		loop {
+			// Calculate left time and set inner_delay
+			self.inner_delay = match self.inner_delay.take() {
+				None => {
+					// schedule wait.
+					let wait_dur = time_until_next_slot(self.slot_duration);
+					Some(Delay::new(wait_dur))
+				},
+				Some(d) => Some(d),
+			};
+			log::info!("calculate_slot_length");
+			calculate_slot_length(client.clone());
+			{
+				// {
+				// 	//
+				// 	let best_block_number = client.clone().usage_info().chain.best_number;
+				// 	let one = <<Block as BlockT>::Header as HeaderT>::Number::from(1u32);
+				// 	let zero = <<Block as BlockT>::Header as HeaderT>::Number::from(0u32);
+				// 	let era_in_number = <<Block as BlockT>::Header as HeaderT>::Number::from(ERA_DURATION_IN_SLOTS as u32); // currently `1 Era = 1 Epoch`
+				// 	//
+				// 	// let mut current_era = zero;
+				// 	// let target_era = best_block_number / era_in_number;
+				// 	// let mut counter = 0;
+				// 	// let slot_length_init = SLOT_DURATION as u32;
+				// 	// let mut slot_length = slot_length_init;
+				// 	// // Enum from 0 to best_block_number with 1 Era at a step
+				// 	// // block 0 is excluded for it could not contain useful adjust information
+				// 	// while current_era <= target_era {
+				// 	// 	let mut current_block = zero;
+				// 	//
+				// 	// 	if current_era < target_era {
+				// 	//
+				// 	// 		while current_block <= era_in_number {
+				// 	// 			counter += 1;
+				// 	// 			if current_block / era_in_number == zero {
+				// 	//
+				// 	// 			}
+				// 	// 			current_block = current_block + one;
+				// 	// 		}
+				// 	//
+				// 	// 	} else if current_era = target_era {
+				// 	// 		log::info!("[Test] loop now  current_era = target_era ");
+				// 	//
+				// 	// 		// Do nothing.
+				// 	//
+				// 	// 		// while current_block <= best_block_number % era_in_number {
+				// 	// 		// 	counter += 1;
+				// 	// 		// 	if current_block / era_in_number == zero{
+				// 	// 		//
+				// 	// 		// 	}
+				// 	// 		// 	current_block = current_block + one;
+				// 	// 		// }
+				// 	//
+				// 	// 	}
+				// 	//
+				// 	// 	current_era = current_era + one;
+				// 	// }
+				// 	//
+				// 	// log::info!("[Test] loop {:?} times", counter);
+				// 	// log::info!("[Test] best block hash {:?} from {:?}", (*client).block_hash(best_block_number), best_block_number);
+				// }
+				//
+				// let best_hash = client.clone().usage_info().chain.best_hash;
+				// // log::info!("[Test] best block hash from backend {:?}", best_hash);
+				// let engine_id = *b"ajst";
+				//
+				// if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
+				// 	match AdjustExtracts::<Block>::decode(&mut adjust_raw.as_slice()){
+				// 		Ok(a) => {
+				// 			log::info!("[Test] On chain {:?} adjust_raw contains {:?}", best_hash, a.len());
+				// 			log::info!("[Test] On chain adjust_raw {:#?}", a);
+				// 		},
+				// 		Err(e) => {
+				// 			log::info!("[Error][Test] On chain adjust_raw error {:?}", e);
+				// 		},
+				// 	};
+				//
+				// } else {
+				// 	log::info!("[Test] get no adjust_raw");
+				// }
+			}
+
+			// Wait until time to expire
+			if let Some(inner_delay) = self.inner_delay.take() {
+				inner_delay.await;
+			}
+
+			// log::info!("after inner_delay.await;");
+			// timeout has fired.
+			// During this time, other running task maintain block import
+			let ends_in = time_until_next_slot(self.slot_duration);
+			// log::info!("slots.next_slot() {}", line!());
+			// reschedule delay for next slot.
+			self.inner_delay = Some(Delay::new(ends_in));
+
+			let ends_at = Instant::now() + ends_in;
+
+			let chain_head = match self.client.best_chain().await {
+				Ok(x) => x,
+				Err(e) => {
+					log::warn!(
+						target: "slots",
+						"Unable to author block in slot. No best block header: {:?}",
+						e,
+					);
+					// Let's try at the next slot..
+					self.inner_delay.take();
+					continue
+				},
+			};
+
+			let inherent_data_providers = self
+				.create_inherent_data_providers
+				.create_inherent_data_providers(chain_head.hash(), ())
+				.await?;
+
+			if Instant::now() > ends_at {
+				log::warn!(
+					target: "slots",
+					"Creating inherent data providers took more time than we had left for the slot.",
+				);
+			}
+
+			let timestamp = inherent_data_providers.timestamp();
+			let slot = inherent_data_providers.slot();
+			let inherent_data = inherent_data_providers.create_inherent_data()?;
+
+			// Inherent Data
+			{
+				// log::info!("inherent_data len {}", inherent_data.len());
+				// let inherent_identifier = *b"testnets";// [u8;8]
+				// let inherent_0 = vec![1, 2, 3];
+				// inherent_data.put_data(inherent_identifier,&inherent_0).unwrap();
+			}
+
+			// never yield the same slot twice.
+			if slot > self.last_slot {
+				self.last_slot = slot;
+				// log::info!("slots.next_slot() return");
+				break Ok(SlotInfo::new(
+					slot,
+					timestamp,
+					inherent_data,
+					self.slot_duration,
+					chain_head,
+					None,
+				))
+			}
+		}
+	}
+
 }
+/// Calculate slot length
+pub fn calculate_slot_length<Client, B>(
+	client: Arc<Client>,
+) where
+	Client: ProvideRuntimeApi<B>
+	+ ProvideUncles<B>
+	+ BlockchainEvents<B>
+	+ AuxStore
+	+ UsageProvider<B>
+	+ HeaderBackend<B>
+	+ HeaderMetadata<B, Error = ClientError>
+	+ BlockBackend<B>
+	+ Send
+	+ Sync
+	+ 'static,
+	Client::Api: BabeApi<B> + BlockBuilder<B>,
+	B: BlockT
+{
+	let w1 = 0.3;
+	let w2 = 0.1;
+	//
+	let best_block_number = client.clone().usage_info().chain.best_number;
+	let zero = as_number::<B>(0u32);
+	let one = as_number::<B>(1u32);
+	let two = as_number::<B>(2u32);
+	let epoch_length = as_number::<B>(EPOCH_DURATION_IN_SLOTS as u32); // currently `1 Era = 2 Epoch`
+	let era_length = as_number::<B>(ERA_DURATION_IN_SLOTS as u32); // currently `1 Era = 2 Epoch`
+	//
+	let mut current_era = zero;
+	let target_era = best_block_number / era_length;
+	let mut counter = 0;
+	let slot_length_init = SLOT_DURATION as u32;
+	let mut slot_length = slot_length_init;
+	//
+	let length: u32 =  into_u32::<B>(target_era);
+	let mut slot_length_set = vec!(0u32; length as usize);
+	//
+	let engine_id = *b"slot";
+	let mut genesis_time: u128 = 0;
+	if let Ok(Some(block_one_hash)) = (*client).block_hash(one){
+		if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(block_one_hash)){
+			match Slot::decode(&mut adjust_raw.as_slice()){
+				Ok(a) => {
+					// log::info!("[Test] On chain {:?} adjust_raw contains {:?}", best_hash, a.len());
+					genesis_time = (u64::from(a) as u128) * (SLOT_DURATION as u128);
+
+				},
+				Err(e) => {
+					log::info!("[Test] Genesis Error {:?}", e);
+				},
+			};
+		} else{
+			log::info!("[Test] Genesis Error");
+		}
+	};
+
+	// check and make sure `genesis_time > 0`
+	if genesis_time == 0{
+		return
+	}
+	log::info!("[Test] genesis_time {:?}", genesis_time);
+	// Enum from 0 to best_block_number with 1 Era at a step
+	// block 0 is excluded for that it does not contain useful adjust information
+	{
+		let mut current_block = zero;
+		while current_era < target_era {
+
+
+			if current_era == zero {
+				// At first Era, slot length is the initial slot length
+				slot_length = slot_length_init;
+				slot_length_set[0] = slot_length_init;
+			} else if current_era == one {
+				// At second Era, slot length is calculated differently than the following era
+				let t_round = slot_length_init;
+				let mut t_round_new = t_round;
+				let start_slot_number = epoch_length / two;
+				let end_slot_number = era_length - epoch_length / two;
+
+				let mut current_time = genesis_time ;
+				loop {
+					counter += 1;
+
+					log::info!("Block[{:?}], slot", current_block);
+
+
+					current_block = current_block + one;
+				}
+
+			} else {
+				// At other Era, slot length need to be calculated
+
+				if slot_length_set[into_u32::<B>(target_era - one) as usize] == 0 {
+					log::error!("Error at Calculate Slot length: slot_length_set empty");
+					return
+				}
+				let t_round_1 = slot_length_set[into_u32::<B>(target_era - one) as usize]; // Era 1
+				let t_round_2 = slot_length_set[into_u32::<B>(target_era - one - one) as usize]; // Era 0
+				let mut t_round_1_new = t_round_1;
+				let mut t_round_2_new = t_round_2;
+
+				// Calculate for t_round_1_new
+				let start_block_number_1 = (target_era - one - one) * era_length + era_length / two;
+				let end_block_number_1 = (target_era - one ) * era_length ;
+				let mut current_block = start_block_number_1;
+				while current_block < end_block_number_1 {
+					counter += 1;
+
+
+					current_block = current_block + one;
+				}
+
+				// Calculate for t_round_2_new
+				let start_block_number_2 = (target_era - one ) * era_length ;
+				let end_block_number_2 = (target_era - one) * era_length + era_length / two;
+				let mut current_block = start_block_number_2;
+				while current_block < end_block_number_2 {
+					counter += 1;
+
+
+
+					current_block = current_block + one;
+				}
+
+			}
+
+			current_era = current_era + one;
+		}
+	}
+
+	log::info!("[Test] loop {:?} times", counter);
+	log::info!("[Test] best block hash {:?} from {:?}", (*client).block_hash(best_block_number), best_block_number);
+
+	let best_number = client.clone().usage_info().chain.best_number;
+
+	// log::info!("BEFORE extract_block_data");
+	extract_block_data(client, best_number);
+}
+
+
+pub(crate) fn extract_block_data<Client, B>(client: Arc<Client>,  number: <<B as BlockT>::Header as HeaderT>::Number)
+	-> Option<AdjustExtracts<B>>
+where
+	Client: ProvideRuntimeApi<B>
+	+ ProvideUncles<B>
+	+ BlockchainEvents<B>
+	+ AuxStore
+	+ UsageProvider<B>
+	+ HeaderBackend<B>
+	+ HeaderMetadata<B, Error = ClientError>
+	+ BlockBackend<B>
+	+ Send
+	+ Sync
+	+ 'static,
+	Client::Api: BabeApi<B> + BlockBuilder<B>,
+	B: BlockT,
+ {
+	let engine_id = *b"ajst";
+	let adjust = if let Ok(Some(hash)) = (*client).block_hash(number){
+		if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(hash)){
+			match AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice()){
+				Ok(a) => {
+					// log::info!("[Test] On chain {:?} adjust_raw contains {:?}", best_hash, a.len());
+					log::info!("[Test] extract_block_data adjust_raw {:#?}", a);
+					Some(a)
+				},
+				Err(e) => {
+					log::info!("[Error][Test] extract_block_data adjust_raw error {:?}", e);
+					None
+				},
+			}
+		} else {
+			log::info!("[Test] extract_block_data get no adjust_raw");
+			None
+		}
+	} else {
+		None
+	};
+
+	adjust
+
+}
+
+pub fn deal_adjusts<B:BlockT>(adjusts: AdjustExtracts<B>, slot:Slot) {
+	for adjust in adjusts.adjusts() {
+		// let adjust_slot = adjust.
+	}
+}
+
+/// Crate inner function,
+/// transform `u32` into `BlockT::Header::Number`.
+pub(crate) fn as_number<B: BlockT>(number: u32) -> <<B as BlockT>::Header as HeaderT>::Number{
+	<<B as BlockT>::Header as HeaderT>::Number::from(number)
+}
+
+/// Crate inner function,
+/// transform `BlockT::Header::Number` into `u32`.
+pub(crate) fn into_u32<B: BlockT>(number: <<B as BlockT>::Header as HeaderT>::Number) -> u32{
+	let mut result = 0;
+	let mut counter = number;
+	let one = as_number::<B>(1u32);
+	let zero = as_number::<B>(0u32);
+	while counter > zero{
+		result += 1;
+		counter = counter - one;
+	}
+	result
+}
+
+
+

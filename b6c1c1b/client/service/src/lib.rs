@@ -227,7 +227,7 @@ async fn  build_network_future<
 				match receive.unwrap(){
 					ReceiveTimestamp::AdjustTimestamp(adjust_time) => {
 						let check = adjust_time.clone().check_block_validity();
-						log::info!("[Network] receive AdjustTimestamp valid? {}", check);
+						// log::info!("[Network] receive AdjustTimestamp valid? {}", check);
 						let _header = adjust_time.clone().adjust.header;
 
 						if let Ok(mut guard) = adjusts_mutex.clone().lock(){
@@ -250,7 +250,7 @@ async fn  build_network_future<
 
 			// List of blocks that the client has imported.
 			notification = imported_blocks_stream.next() => {
-				log::info!("[Network] imported blocks stream");
+				// log::info!("[Network] imported blocks stream");
 				let notification = match notification {
 					Some(n) => n,
 					// If this stream is shut down, that means the client has shut down, and the
@@ -259,7 +259,7 @@ async fn  build_network_future<
 				};
 				// Announce block to all of the network peers
 				if announce_imported_blocks {
-					log::info!("notification {:?}", notification.header.number());
+					// log::info!("notification {:?}", notification.header.number());
 					let &current_header = notification.header.number();
 
 					let mut tmp1 = Vec::new();

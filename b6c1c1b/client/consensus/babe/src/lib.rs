@@ -121,7 +121,7 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header, Zero},
 	DigestItem,
 };
-use sc_network::{protocol::message::{AdjustTemplate, BlockTemplate}};
+use sc_network::{protocol::message::{AdjustTemplate, BlockTemplate, BlockTemplates}};
 use futures::{future::Either, Future, TryFutureExt};
 pub use sc_consensus_slots::{SlotProportion, SlotResult};
 pub use sp_consensus::SyncOracle;
@@ -610,16 +610,27 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 				let mut valid_adjusts = Vec::new();
 				for template in &*adjusts {
 					let header = template.clone().adjust.header;
+					let blocks_data = template.clone().adjust.data;
+
+					if blocks_data.is_none(){
+						log::info!("[ERROR] Adjust[{:?}]({:?}) contains empty block data", header.number(), header.hash());
+						continue
+					}
 
 					// TODO::change this to useful real slot
-					let slot = sp_consensus_babe::inherents::InherentDataProvider::test_slot();
+					let current_slot = sp_consensus_babe::inherents::InherentDataProvider::test_slot();// current slot
+
+					// Slot of each Block.Header inside AdjustTemplate should greater than current slot for a certain number
+					// TODO?:: change a certain number to a valid number
+					// Slot in Header of AdjustTemplate should greater than current slot for a certain number
+					// TODO?:: change a certain number to a valid number
 
 					if check_adjust(
 						epoch_change.clone(),
 						client_clone.clone(),
 						header,
 						config_clone.clone(),
-						slot
+						current_slot
 					) {
 						valid_adjusts.push(template.clone());
 					}

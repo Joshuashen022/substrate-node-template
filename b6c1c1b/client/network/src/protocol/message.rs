@@ -201,6 +201,10 @@ impl<B: BlockT> BlockTemplates<B> {
 		BlocksSimplified(inner)
 	}
 
+	/// Get inner blocks
+	pub fn blocks(&self) -> Vec<BlockTemplate<B>>{
+		self.clone().0
+	}
 }
 
 ///Wrapped information of `block` and it's receiving time.
@@ -227,11 +231,35 @@ pub struct BlockSimplified<B: BlockT>{
 
 	/// Block receive time
 	pub receive_time: u128,
+
+	/// Slot
+	pub slot: Option<u64>
 }
 
 /// Used for adjust to store on chain
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct BlocksSimplified<B: BlockT>(Vec<BlockSimplified<B>>);
+
+/// Most functions are used for validation.
+impl<B:BlockT> BlocksSimplified<B>{
+
+	/// gets inner block
+	pub fn blocks(&self) -> Vec<BlockSimplified<B>>{
+		self.clone().0
+	}
+
+	/// Check if there are block contain empty slot number.
+	pub fn valid(&self) -> bool{
+		let mut result = true;
+		for block in self.0.clone(){
+			if block.slot.is_none(){
+				result = false;
+				break
+			}
+		}
+		result
+	}
+}
 
 impl<B: BlockT> BlockTemplate<B>{
 	/// Get block number
@@ -245,9 +273,33 @@ impl<B: BlockT> BlockTemplate<B>{
 		let &parent_hash = self.block.parent_hash();
 		let &number = self.block.number();
 		let receive_time = self.receive_time;
-
-		BlockSimplified{hash, parent_hash, number, receive_time}
+		let &engine_id = b"slot";
+		let slot = if let Some(mut data) = self.block.digest().pre_runtime_id(engine_id){
+			if let Ok(slot) = u64::decode(&mut data.as_slice()){
+				Some(slot)
+			} else{
+				None
+			}
+		} else {
+			None
+		};
+		BlockSimplified{hash, parent_hash, number, receive_time, slot}
 	}
+
+	/// Return inner slot
+	pub fn slot(&self) -> Option<u64> {
+		let &engine_id = b"slot";
+		if let Some(mut data) = self.block.digest().pre_runtime_id(engine_id){
+			if let Ok(block_slot) = u64::decode(&mut data.as_slice()){
+				Some(block_slot)
+			} else{
+				None
+			}
+		} else {
+			None
+		}
+	}
+
 }
 
 impl<B: BlockT> Encode for BlockTemplate<B>{
@@ -275,9 +327,9 @@ impl<B: BlockT> AdjustExtracts<B> {
 	/// Create a new AdjustExtracts from vector of AdjustTemplate.
 	pub fn new_from_vec(input: Vec<AdjustTemplate<B>>) -> Self {
 		let mut inner = Vec::new();
-
+		let engine_id = *b"slot";
 		for adjust_tmp in input {
-
+			// let header = adjust_tmp.clone().adjust.header;
 			let data = adjust_tmp.clone().adjust.data;
 
 			// Check if adjust template contains block data
@@ -290,7 +342,6 @@ impl<B: BlockT> AdjustExtracts<B> {
 			if let Ok(blocks) = BlockTemplates::<B>::decode(&mut data.unwrap().as_slice()){
 				let simplified_blocks = blocks.simplify();
 				let header = adjust_tmp.clone().adjust.header;
-
 				inner.push(
 					Adjust{
 						hash: header.hash(),
@@ -312,6 +363,11 @@ impl<B: BlockT> AdjustExtracts<B> {
 	pub fn len(&self) -> usize {
 		self.0.len()
 	}
+
+	pub fn adjusts(&self) -> Vec<Adjust<B>>{
+		self.clone().0
+	}
+
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
@@ -414,6 +470,7 @@ impl<B: BlockT> AdjustTemplate<B> {
 		}
 	}
 
+	/// Check if inner data can be decoded
 	pub fn check_block_validity(&self) -> bool {
 
 		if let Some(raw_data) = self.clone().adjust.data{
@@ -423,6 +480,58 @@ impl<B: BlockT> AdjustTemplate<B> {
 		}
 
 		false
+	}
+
+	/// Check if
+	/// 1. slot in the header of the adjust
+	/// 2. slot in each block inside of inner Block
+	/// is less than a certain number
+	pub fn created_before_slot(&self, slot: u64) -> bool {
+		let blocks_data = self.clone().adjust.data;
+
+		// Block data should not be empty
+		if blocks_data.is_none(){
+			return false
+		}
+
+		let &engine_id = b"slot";
+
+		// Check adjust
+		let header = self.clone().adjust.header;
+		if let Some(digest) = header.digest().pre_runtime_id(engine_id){
+			if let Ok(adjust_slot) = u64::decode(&mut digest.as_slice()) {
+				if slot <= adjust_slot {
+					log::info!("[ERROR] Slot in adjust of {:?}({:?}) should not be greater or equal than current slot {:?} ",
+						header.number(), header.hash(), slot
+					);
+					return false
+				}
+
+			} else {
+				log::info!("[ERROR] Slot info. decode error in Adjust {:?}, {:?}", header.number(), header.hash());
+				return false
+			};
+		} else{
+			log::info!("[ERROR] No slot info. in Adjust {:?}, {:?}", header.number(), header.hash());
+			return false
+		};
+
+		// Check inner blocks
+		if let Ok(blocks) = BlockTemplates::<B>::decode(&mut blocks_data.unwrap().as_slice()){
+			for block in blocks.blocks(){
+				if let Some(block_slot) = block.slot(){
+					if slot < block_slot  {
+						return false
+					}
+				} else {
+					// Empty slot data
+					return false
+				}
+			}
+			true
+		} else {
+			false
+		}
 	}
 }
 

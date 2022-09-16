@@ -1735,7 +1735,7 @@ impl<B: BlockT + 'static, H: ExHashT> Future for NetworkWorker<B, H> {
 			match poll_value {
 				Poll::Pending => break,
 				Poll::Ready(SwarmEvent::Behaviour(BehaviourOut::BlockImport(origin, mut blocks))) => {
-					info!("[Behaviour] BlockImport => BlockTimestamp");
+					// info!("[Behaviour] BlockImport => BlockTimestamp");
 					let time_stamp_vec = extract_timestamp(&mut blocks);
 
 					if let Some(metrics) = this.metrics.as_ref() {

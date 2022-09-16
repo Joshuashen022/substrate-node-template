@@ -59,6 +59,24 @@ use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
 use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
+use crate::slots::{as_number, into_u32};
+
+pub type BlockNumber = u32;
+
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+// pub const HOURS: BlockNumber = MINUTES * 60;
+// pub const DAYS: BlockNumber = HOURS * 24;
+
+pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
+/// Same as `EPOCH_DURATION_IN_BLOCKS` above
+pub const EPOCH_DURATION_IN_SLOTS: u64 = { //
+const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64; // 1
+	(EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
+};
+
+pub const ERA_DURATION_IN_SLOTS: u64 = EPOCH_DURATION_IN_SLOTS * 2;
 
 /// Used to pass slot length information to `start_slot_worker`.
 ///
@@ -537,7 +555,8 @@ pub trait SimpleSlotWorker<B: BlockT> {
 			Self: Sync,
 	{
 		let (timestamp, slot) = (slot_info.timestamp, slot_info.slot);
-		log::info!("Slot[{:?}]", u64::from(slot));
+		let slot_number = u64::from(slot);
+		log::info!("Slot[{:?}]", slot_number);
 
 		let telemetry = self.telemetry();
 		let logging_target = self.logging_target();
@@ -645,18 +664,37 @@ pub trait SimpleSlotWorker<B: BlockT> {
 
 		// Save valid adjusts into next block head
 		let mut digest_data = Vec::new();
+		// Future adjust will be add back to `adjusts_mutex`
+		let mut future_adjust = Vec::new();
+
 		if let Ok(guard) = adjusts_mutex.clone().lock(){
-			log::info!("adjusts_mutex len {}", (*guard).len());
-			// TODO:: Add data (Blocks) into AdjustExtracts
-			let adjusts = AdjustExtracts::<B>::new_from_vec((*guard).clone());
+			let mut valid_adjusts = Vec::new();
+
+			// Select out valid adjust templates
+			for adjust in (*guard).clone(){
+				if adjust.created_before_slot(u64::from(slot)){
+					valid_adjusts.push(adjust);
+				} else{
+					log::info!("Select out future adjust {:?}, current slot {}",
+						adjust.clone().adjust.header.hash(), slot_number
+					);
+					future_adjust.push(adjust.clone());
+				}
+			}
+			let adjusts = AdjustExtracts::<B>::new_from_vec(valid_adjusts.clone());
+
 			digest_data = adjusts.encode();
 		}
+
+		let slot_data = slot.encode();
+		logs.push(DigestItem::PreRuntime(*b"slot", slot_data));
+
 		logs.push(DigestItem::PreRuntime(*b"ajst", digest_data));
 
 		// blocks_mutex is not using yet
 		{
-			if let Ok(guard) = blocks_mutex.clone().lock(){
-				log::info!("blocks_mutex len {}", (*guard).len());
+			if let Ok(_guard) = blocks_mutex.clone().lock(){
+				// log::info!("blocks_mutex len {}", (*guard).len());
 			}
 		}
 
@@ -704,7 +742,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		// If code goes here, it means we have succeeded in proposing a block.
 		// And we need clean data in adjusts_mutex.
 		if let Ok(mut guard) = adjusts_mutex.clone().lock(){
-			(*guard).drain(..);
+			(*guard ) = future_adjust;
 		}
 
 		log::debug!("[Block Generation] Block generation finished");
@@ -717,6 +755,12 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		let header_hash = header.hash();
 		let parent_hash = *header.parent_hash();
 
+		if header_num == as_number::<B>(0u32){
+			log::info!("Genesis Block round 0 at {:?} header hash {:?}", slot, header_hash);
+		}
+		if header_num == as_number::<B>(1u32){
+			log::info!("Genesis Block round 1 at {:?} header hash {:?}", slot, header_hash);
+		}
 		let block_import_params = match block_import_params_maker(
 			header,
 			&header_hash,
@@ -973,7 +1017,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	// let blocks_mutex_clone= blocks_mutex.clone();
 	loop {
 		info!("slots.next_slot()");
-		let slot_info = match slots.next_slot().await {
+		let slot_info = match slots.next_slot_with_client(Some(client.clone())).await {
 			Ok(r) => r,
 			Err(e) => {
 				warn!(target: "slots", "Error while polling for next slot: {:?}", e);
@@ -983,24 +1027,75 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 		info!("");
 		info!("");
 
-
 		{
-			let best_hash = client.clone().usage_info().chain.best_hash;
-			let engine_id = *b"ajst";
-			if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
-				match AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice()){
-					Ok(a) => {
-						log::info!("[Test] On chain adjust_raw contains {:?}", a.len());
-						log::info!("[Test] On chain adjust_raw {:?}", a);
-					},
-					Err(e) => {
-						log::info!("[Error][Test] On chain adjust_raw error {:?}", e);
-					},
-				};
+			// {
+			// 	//
+			// let best_block_number = client.clone().usage_info().chain.best_number;
 
-			} else {
-				log::info!("[Test] get no adjust_raw");
-			}
+			// 	// let one = <<B as BlockT>::Header as HeaderT>::Number::from(1u32);
+			// 	// let zero = <<B as BlockT>::Header as HeaderT>::Number::from(0u32);
+			// 	// let era_in_number = <<B as BlockT>::Header as HeaderT>::Number::from(ERA_DURATION_IN_SLOTS as u32); // currently `1 Era = 1 Epoch`
+			// 	//
+			// 	// let mut current_era = zero;
+			// 	// let target_era = best_block_number / era_in_number;
+			// 	// let mut counter = 0;
+			// 	// let slot_length_init = SLOT_DURATION as u32;
+			// 	// let mut slot_length = slot_length_init;
+			// 	// // Enum from 0 to best_block_number with 1 Era at a step
+			// 	// // block 0 is excluded for it could not contain useful adjust information
+			// 	// while current_era <= target_era {
+			// 	// 	let mut current_block = zero;
+			// 	//
+			// 	// 	if current_era < target_era {
+			// 	//
+			// 	// 		while current_block <= era_in_number {
+			// 	// 			counter += 1;
+			// 	// 			if current_block / era_in_number == zero {
+			// 	//
+			// 	// 			}
+			// 	// 			current_block = current_block + one;
+			// 	// 		}
+			// 	//
+			// 	// 	} else if current_era = target_era {
+			// 	// 		log::info!("[Test] loop now  current_era = target_era ");
+			// 	//
+			// 	// 		// Do nothing.
+			// 	//
+			// 	// 		// while current_block <= best_block_number % era_in_number {
+			// 	// 		// 	counter += 1;
+			// 	// 		// 	if current_block / era_in_number == zero{
+			// 	// 		//
+			// 	// 		// 	}
+			// 	// 		// 	current_block = current_block + one;
+			// 	// 		// }
+			// 	//
+			// 	// 	}
+			// 	//
+			// 	// 	current_era = current_era + one;
+			// 	// }
+			// 	//
+			// 	// log::info!("[Test] loop {:?} times", counter);
+			// 	// log::info!("[Test] best block hash {:?} from {:?}", (*client).block_hash(best_block_number), best_block_number);
+			// }
+			//
+			// let best_hash = client.clone().usage_info().chain.best_hash;
+			// // log::info!("[Test] best block hash from backend {:?}", best_hash);
+			// let engine_id = *b"ajst";
+			//
+			// if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
+			// 	match AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice()){
+			// 		Ok(a) => {
+			// 			// log::info!("[Test] On chain {:?} adjust_raw contains {:?}", best_hash, a.len());
+			// 			// log::info!("[Test] On chain adjust_raw {:#?}", a);
+			// 		},
+			// 		Err(e) => {
+			// 			// log::info!("[Error][Test] On chain adjust_raw error {:?}", e);
+			// 		},
+			// 	};
+			//
+			// } else {
+			// 	// log::info!("[Test] get no adjust_raw");
+			// }
 		}
 
 		log::debug!("sync_oracle.is_major_syncing");
@@ -1372,6 +1467,22 @@ impl<N> BackoffAuthoringBlocksStrategy<N> for () {
 		false
 	}
 }
+
+// pub fn read_slot<B:BlockT>(header: <B as BlockT>::Header) -> Option<u64>{
+// 	let engine_id = *b"slot";
+//
+// 	if let Some(digest) = header.digest().pre_runtime_id(engine_id){
+// 		if let Ok(slot) = Slot::decode(&mut digest.as_slice()){
+//
+//
+// 		} else {
+// 			log::info!("[ERROR] Slot info. decode error in Adjust {:?}, {:?}", header.number(), header.hash());
+// 		};
+// 	} else{
+// 		log::info!("[ERROR] No slot info. in Adjust {:?}, {:?}", header.number(), header.hash());
+// 	};
+// 	None
+// }
 
 #[cfg(test)]
 mod test {
