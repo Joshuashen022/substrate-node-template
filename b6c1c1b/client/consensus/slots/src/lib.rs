@@ -59,7 +59,8 @@ use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
 use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
-use crate::slots::{as_number, into_u32};
+use crate::slots::{as_number, into_u32, duration_now};
+use std::time::SystemTime;
 
 pub type BlockNumber = u32;
 
@@ -69,7 +70,7 @@ pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 // pub const HOURS: BlockNumber = MINUTES * 60;
 // pub const DAYS: BlockNumber = HOURS * 24;
 
-pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
+pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 1 * MINUTES;
 /// Same as `EPOCH_DURATION_IN_BLOCKS` above
 pub const EPOCH_DURATION_IN_SLOTS: u64 = { //
 const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64; // 1
@@ -556,7 +557,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 	{
 		let (timestamp, slot) = (slot_info.timestamp, slot_info.slot);
 		let slot_number = u64::from(slot);
-		log::info!("Slot[{:?}]", slot_number);
+		log::info!("Slot[{:?}] at {:?}", slot_number, duration_now().as_millis());
 
 		let telemetry = self.telemetry();
 		let logging_target = self.logging_target();

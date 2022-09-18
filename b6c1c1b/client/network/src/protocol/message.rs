@@ -328,6 +328,7 @@ impl<B: BlockT> AdjustExtracts<B> {
 	pub fn new_from_vec(input: Vec<AdjustTemplate<B>>) -> Self {
 		let mut inner = Vec::new();
 		let engine_id = *b"slot";
+
 		for adjust_tmp in input {
 			// let header = adjust_tmp.clone().adjust.header;
 			let data = adjust_tmp.clone().adjust.data;
@@ -337,16 +338,18 @@ impl<B: BlockT> AdjustExtracts<B> {
 				log::warn!("Adjust contains no block");
 				continue
 			}
-
+			let slot = adjust_tmp.slot();
 			// Transform data into Adjust
 			if let Ok(blocks) = BlockTemplates::<B>::decode(&mut data.unwrap().as_slice()){
 				let simplified_blocks = blocks.simplify();
 				let header = adjust_tmp.clone().adjust.header;
+
 				inner.push(
 					Adjust{
 						hash: header.hash(),
 						parent_hash: *header.parent_hash(),
 						number: *header.number(),
+						slot,
 						send_time: adjust_tmp.clone().adjust.timestamp,
 						receive_time: adjust_tmp.receive_time,
 						blocks: Some(simplified_blocks),
@@ -364,10 +367,41 @@ impl<B: BlockT> AdjustExtracts<B> {
 		self.0.len()
 	}
 
+	/// Get inner adjusts
 	pub fn adjusts(&self) -> Vec<Adjust<B>>{
 		self.clone().0
 	}
 
+	/// Get biggest slot
+	pub fn biggest_slot(&self) -> Option<u64> {
+		let mut slots = self.0.iter().map(|x|{
+			x.clone().slot.unwrap_or(0)
+		}).collect::<Vec<_>>();
+
+		slots.sort();
+
+		if let Some(&res) = slots.last(){
+			Some(res)
+		} else {
+			None
+		}
+
+	}
+
+	/// Get smallest slot
+	pub fn smallest_slot(&self) -> Option<u64> {
+		let mut slots = self.0.iter().map(|x|{
+			x.clone().slot.unwrap_or(0)
+		}).collect::<Vec<_>>();
+
+		slots.sort();
+
+		if let Some(&res) = slots.first(){
+			Some(res)
+		} else {
+			None
+		}
+	}
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
@@ -380,6 +414,9 @@ pub struct Adjust<B: BlockT>{
 
 	/// Current block number
 	pub number: <<B as BlockT>::Header as HeaderT>::Number,
+
+	/// Created slot number
+	pub slot: Option<u64>,
 
 	/// Create time or send time, generated creator.
 	pub send_time: u128,
@@ -467,6 +504,22 @@ impl<B: BlockT> AdjustTemplate<B> {
 		Self {
 			adjust,
 			receive_time
+		}
+	}
+
+	/// Decode self inner slot, if slot data is not empty
+	pub fn slot(&self) -> Option<u64>{
+		let &engine_id = b"slot";
+
+		let header = self.clone().adjust.header;
+		if let Some(digest) = header.digest().pre_runtime_id(engine_id){
+			if let Ok(adjust_slot) = u64::decode(&mut digest.as_slice()) {
+				Some(adjust_slot)
+			} else {
+				None
+			}
+		} else{
+			None
 		}
 	}
 
@@ -835,32 +888,6 @@ pub mod generic {
 		/// Data associated with this block announcement, e.g. a candidate message.
 		pub data: Option<Vec<u8>>,
 	}
-
-	// // Custom Encode/Decode impl to maintain backwards compatibility with v3.
-	// // This assumes that the packet contains nothing but the announcement message.
-	// impl<H: Encode> Encode for AdjustAnnounce<H> {
-	// 	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
-	// 		self.header.encode_to(dest);
-	// 		self.timestamp.encode_to(dest);
-	// 		if let Some(state) = &self.state {
-	// 			state.encode_to(dest);
-	// 		}
-	// 		if let Some(data) = &self.data {
-	// 			data.encode_to(dest)
-	// 		}
-	// 	}
-	// }
-	//
-	// impl<H: Decode> Decode for AdjustAnnounce<H> {
-	// 	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-	// 		let header = H::decode(input)?;
-	// 		let timestamp = u128::decode(input)?;
-	// 		let state = BlockState::decode(input).ok();
-	// 		let data = Vec::decode(input).ok();
-	// 		Ok(Self { header, timestamp, state, data })
-	// 	}
-	// }
-
 
 	#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 	/// Remote call request.

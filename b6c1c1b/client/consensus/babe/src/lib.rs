@@ -624,6 +624,8 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 					// TODO?:: change a certain number to a valid number
 					// Slot in Header of AdjustTemplate should greater than current slot for a certain number
 					// TODO?:: change a certain number to a valid number
+					// Make sure block inside each adjust is created before adjust
+					// TODO:: adjust.slot > max {each block.slot}
 
 					if check_adjust(
 						epoch_change.clone(),
