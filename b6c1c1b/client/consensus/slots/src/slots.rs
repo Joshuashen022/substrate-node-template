@@ -249,75 +249,6 @@ where
 			};
 			log::info!("calculate_current_slot");
 			calculate_current_slot(client.clone());
-			{
-				// {
-				// 	//
-				// 	let best_block_number = client.clone().usage_info().chain.best_number;
-				// 	let one = <<Block as BlockT>::Header as HeaderT>::Number::from(1u32);
-				// 	let zero = <<Block as BlockT>::Header as HeaderT>::Number::from(0u32);
-				// 	let era_in_number = <<Block as BlockT>::Header as HeaderT>::Number::from(ERA_DURATION_IN_SLOTS as u32); // currently `1 Era = 1 Epoch`
-				// 	//
-				// 	// let mut current_era = zero;
-				// 	// let target_era = best_block_number / era_in_number;
-				// 	// let mut counter = 0;
-				// 	// let slot_length_init = SLOT_DURATION as u32;
-				// 	// let mut slot_length = slot_length_init;
-				// 	// // Enum from 0 to best_block_number with 1 Era at a step
-				// 	// // block 0 is excluded for it could not contain useful adjust information
-				// 	// while current_era <= target_era {
-				// 	// 	let mut current_block = zero;
-				// 	//
-				// 	// 	if current_era < target_era {
-				// 	//
-				// 	// 		while current_block <= era_in_number {
-				// 	// 			counter += 1;
-				// 	// 			if current_block / era_in_number == zero {
-				// 	//
-				// 	// 			}
-				// 	// 			current_block = current_block + one;
-				// 	// 		}
-				// 	//
-				// 	// 	} else if current_era = target_era {
-				// 	// 		log::info!("[Test] loop now  current_era = target_era ");
-				// 	//
-				// 	// 		// Do nothing.
-				// 	//
-				// 	// 		// while current_block <= best_block_number % era_in_number {
-				// 	// 		// 	counter += 1;
-				// 	// 		// 	if current_block / era_in_number == zero{
-				// 	// 		//
-				// 	// 		// 	}
-				// 	// 		// 	current_block = current_block + one;
-				// 	// 		// }
-				// 	//
-				// 	// 	}
-				// 	//
-				// 	// 	current_era = current_era + one;
-				// 	// }
-				// 	//
-				// 	// log::info!("[Test] loop {:?} times", counter);
-				// 	// log::info!("[Test] best block hash {:?} from {:?}", (*client).block_hash(best_block_number), best_block_number);
-				// }
-				//
-				// let best_hash = client.clone().usage_info().chain.best_hash;
-				// // log::info!("[Test] best block hash from backend {:?}", best_hash);
-				// let engine_id = *b"ajst";
-				//
-				// if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
-				// 	match AdjustExtracts::<Block>::decode(&mut adjust_raw.as_slice()){
-				// 		Ok(a) => {
-				// 			log::info!("[Test] On chain {:?} adjust_raw contains {:?}", best_hash, a.len());
-				// 			log::info!("[Test] On chain adjust_raw {:#?}", a);
-				// 		},
-				// 		Err(e) => {
-				// 			log::info!("[Error][Test] On chain adjust_raw error {:?}", e);
-				// 		},
-				// 	};
-				//
-				// } else {
-				// 	log::info!("[Test] get no adjust_raw");
-				// }
-			}
 
 			// Wait until time to expire
 			if let Some(inner_delay) = self.inner_delay.take() {
@@ -548,9 +479,19 @@ impl EraSlot{
 		}
 		self.0[index] = value;
 	}
+
+	/// Get record slot length for an era
+	pub fn era_slot_length(&self, era:usize) -> u64 {
+		if era >= self.0.len() {
+			0
+		} else {
+			self.0[era]
+		}
+	}
 }
 
 /// Calculate slot length
+/// In this model Era length in slots should be at least twice as Epoch length in slots
 pub fn calculate_current_slot<Client, B>(
 	client: Arc<Client>,
 ) where
@@ -568,8 +509,9 @@ pub fn calculate_current_slot<Client, B>(
 	Client::Api: BabeApi<B> + BlockBuilder<B>,
 	B: BlockT
 {
-	let w1 = 0.3;
-	let w2 = 0.1;
+	let w1 = 0.03;
+	let w2 = 0.01;
+	let w3 = 1.0 - w1 - w2 ;
 	//
 	let best_block_number = client.clone().usage_info().chain.best_number;
 	let zero = as_number::<B>(0u32);
@@ -631,15 +573,15 @@ pub fn calculate_current_slot<Client, B>(
 
 				slot_length_set.set_value(0, slot_length_init);
 
-				current_time += (slot_length_init as u128) * (ERA_DURATION_IN_SLOTS as u128);
+				current_time += (slot_length as u128) * (ERA_DURATION_IN_SLOTS as u128);
 
 				current_slot += ERA_DURATION_IN_SLOTS;
 
 				counter += 1;
 			} else if current_era == one {
 				// At second Era, slot length is calculated differently than the following era
-				// let t_round = slot_length_init;
-				// let mut t_round_new = t_round;
+
+				// Slot interval used to calculate new slot length
 				let start_slot = genesis_slot + EPOCH_DURATION_IN_SLOTS / 2;
 				let end_slot = genesis_slot + ERA_DURATION_IN_SLOTS - EPOCH_DURATION_IN_SLOTS / 2;
 				//
@@ -649,10 +591,13 @@ pub fn calculate_current_slot<Client, B>(
 
 				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
 				let mut slot_pointer = genesis_slot;
+				let mut delay = AverageDelay::new();
+
+				// Calculate AdjustExtracts in each Block for delay
 				loop {
 
 					if let Some(adjusts) = extract_block_data(client.clone(), current_block){
-						log::info!("current_block [{}] ", current_block);
+						// log::info!("current_block [{}] ", current_block);
 						if adjusts.biggest_slot().is_none() {
 							counter += 1;
 							current_block = current_block + one;
@@ -660,11 +605,16 @@ pub fn calculate_current_slot<Client, B>(
 						}
 
 						slot_pointer = adjusts.biggest_slot().unwrap();
+
 						// log::info!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
 						// log::info!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
+
 						let res = deal_adjusts(adjusts, start_slot, end_slot, zero, this_slot_length, last_slot_length, start_time);
 
-						log::info!("Block [{}] (a,b) = {:?}", current_block, res);
+						if let Some((adjust_delay, block_delay)) = res {
+							// log::info!("Block [{}] (a,b) = {:?}", current_block, res);
+							delay.insert_adjust_block(adjust_delay, block_delay);
+						}
 
 					} else {
 						log::error!("[Error] Block [{}] not found", current_block)
@@ -683,43 +633,103 @@ pub fn calculate_current_slot<Client, B>(
 					current_block = current_block + one;
 				}
 
-			} else {
-				// At other Era, slot length need to be calculated
+				let (average_adjust_delay, average_block_delay) = delay.average_adjust_block_delay();
 
-				// if slot_length_set[into_u32::<B>(target_era - one) as usize] == 0 {
-				// 	log::error!("Error at Calculate Slot length: slot_length_set empty");
-				// 	return
-				// }
-				// let t_round_1 = slot_length_set[into_u32::<B>(target_era - one) as usize]; // Era 1
-				// let t_round_2 = slot_length_set[into_u32::<B>(target_era - one - one) as usize]; // Era 0
-				// let mut t_round_1_new = t_round_1;
-				// let mut t_round_2_new = t_round_2;
+				let era_1_slot_length = (w3 * SLOT_DURATION as f64 + w2 * average_adjust_delay as f64 + w1 * average_block_delay as f64) as u64;
+
+				log::info!("Era 1 slot length {}*{} + {}*{} + {}*{} = {}",
+					w3, SLOT_DURATION, w2, average_adjust_delay, w1, average_block_delay, era_1_slot_length
+				);
+
+				// Calculated results
+				slot_length = era_1_slot_length ;
+
+				// Record results
+				slot_length_set.set_value(1, slot_length);
+
+				// Mark current time, until Era 1 end
+				current_time += (slot_length as u128) * (ERA_DURATION_IN_SLOTS as u128);
+
+				// Mark current Era, until Era 1 end
+				current_slot += ERA_DURATION_IN_SLOTS;
+
+			} else {
+				// At Era n, slot length need to be calculated
+				// log::info!(" Calculate at Era n");
+				// Slot interval used to calculate new slot length
+				let start_slot = current_slot - ERA_DURATION_IN_SLOTS - EPOCH_DURATION_IN_SLOTS / 2;
+				let end_slot = current_slot - EPOCH_DURATION_IN_SLOTS / 2;
+
 				//
-				// // Calculate for t_round_1_new
-				// let start_block_number_1 = (target_era - one - one) * era_length + era_length / two;
-				// let end_block_number_1 = (target_era - one ) * era_length ;
-				// let mut current_block = start_block_number_1;
-				// while current_block < end_block_number_1 {
-				// 	counter += 1;
-				//
-				//
-				// 	current_block = current_block + one;
-				// }
-				//
-				// // Calculate for t_round_2_new
-				// let start_block_number_2 = (target_era - one ) * era_length ;
-				// let end_block_number_2 = (target_era - one) * era_length + era_length / two;
-				// let mut current_block = start_block_number_2;
-				// while current_block < end_block_number_2 {
-				// 	counter += 1;
-				//
-				//
-				//
-				// 	current_block = current_block + one;
-				// }
+				let last_slot_length = slot_length_set.era_slot_length(into_u32::<B>(current_era) as usize - 2);
+				let this_slot_length = slot_length_set.era_slot_length(into_u32::<B>(current_era) as usize - 1);
+				let start_time = current_time - (ERA_DURATION_IN_SLOTS * this_slot_length) as u128
+									- (EPOCH_DURATION_IN_SLOTS / 2 * last_slot_length) as u128;
+
+				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
+				let mut slot_pointer = start_slot;
+				let mut delay = AverageDelay::new();
+
+				loop {
+
+					if let Some(adjusts) = extract_block_data(client.clone(), current_block){
+						// log::info!("current_block [{}] ", current_block);
+						if adjusts.biggest_slot().is_none() {
+							counter += 1;
+							current_block = current_block + one;
+							continue
+						}
+
+						slot_pointer = adjusts.biggest_slot().unwrap();
+
+						// log::info!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
+						// log::info!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
+
+						let res = deal_adjusts(adjusts, start_slot, end_slot, current_era - one, this_slot_length, last_slot_length, start_time);
+
+						if let Some((adjust_delay, block_delay)) = res {
+							// log::info!("Block [{}] (a,b) = {:?}", current_block, res);
+							delay.insert_adjust_block(adjust_delay, block_delay);
+						}
+
+					} else {
+						log::error!("[Error] Block [{}] not found", current_block)
+					}
+
+					if slot_pointer >= end_slot {
+						break
+					}
+
+					if counter >= default_exit{
+						log::error!("[Error] Using default exit Era count");
+						break;
+					}
+
+					counter += 1;
+					current_block = current_block + one;
+				}
+
+				let (average_adjust_delay, average_block_delay) = delay.average_adjust_block_delay();
+
+				let era_n_slot_length = (w3 * this_slot_length as f64 + w2 * average_adjust_delay as f64 + w1 * average_block_delay as f64) as u64;
+
+				log::info!("Era {} slot length {}*{} + {}*{} + {}*{} = {}",
+					current_era, w3, this_slot_length, w2, average_adjust_delay, w1, average_block_delay, era_n_slot_length
+				);
+
+				// Calculated results
+				slot_length = era_n_slot_length ;
+
+				// Record results
+				slot_length_set.set_value(into_u32::<B>(current_era) as usize, slot_length);
+
+				// Mark current time, until Era n-1 end
+				current_time += (slot_length as u128) * (ERA_DURATION_IN_SLOTS as u128);
+
+				// Mark current Era, until Era n-1 end
+				current_slot += ERA_DURATION_IN_SLOTS;
 
 			}
-
 
 			if current_time > now {
 				loop{
@@ -792,7 +802,12 @@ where
 
 }
 
-/// Calculate `average_adjust_delay`, `average_block_delay` between two given slot
+/// Calculate `average_adjust_delay`, `average_block_delay` between two given slot.
+/// An AdjustExtracts contain multiple Adjusts.
+/// An Adjust contains multiple Blocks,
+/// `average_adjust_delay` is calculated from multiple Adjusts,
+/// `average_block_delay` is calculated from multiple Blocks.
+/// Option<(i32, i32)> => Option<(average_adjust_delay, average_block_delay)>.
 pub fn deal_adjusts<B:BlockT>(
 	adjusts: AdjustExtracts<B>,
 	start_slot: u64,
@@ -824,7 +839,7 @@ pub fn deal_adjusts<B:BlockT>(
 
 		let slot = adjust.slot.unwrap();
 
-		if start_slot <= slot && slot <= end_slot {
+		if start_slot <= slot && slot < end_slot {
 
 			// calculate adjust delay
 			let delay = if adjust.send_time > adjust.receive_time {
@@ -912,6 +927,8 @@ pub fn deal_adjusts<B:BlockT>(
 			}
 			adjust_number += 1;
 
+		} else{
+			return None
 		}
 
 	}
@@ -929,7 +946,7 @@ pub fn deal_adjusts<B:BlockT>(
 
 /// Used to generate new new era
 #[allow(dead_code)]
-pub struct NextEra<B:BlockT> {
+pub struct NextEraConfig<B:BlockT> {
 	start_slot: u64,
 	end_slot: u64,
 	pub era: <<B as BlockT>::Header as HeaderT>::Number, // currently useless
@@ -939,7 +956,7 @@ pub struct NextEra<B:BlockT> {
 }
 
 #[allow(dead_code)]
-impl<B:BlockT> NextEra <B> {
+impl<B:BlockT> NextEraConfig <B> {
 	pub fn new(
 		start_slot: u64,
 		end_slot: u64,
@@ -959,6 +976,66 @@ impl<B:BlockT> NextEra <B> {
 		}
 	}
 }
+
+/// Used to calculate value of
+/// `average_adjust_delay`, `average_block_delay`
+/// by recording counts and sum
+pub struct AverageDelay{
+	adjust_count: i32,
+	block_count: i32,
+
+	sum_adjust_delay: i32,
+	sum_block_delay: i32,
+}
+
+impl AverageDelay {
+	pub fn new() -> Self {
+		Self{
+			adjust_count: 0,
+			block_count: 0,
+			sum_adjust_delay: 0,
+			sum_block_delay: 0,
+		}
+	}
+
+	/// Input adjust data
+	pub fn insert_adjust(&mut self, adjust_sum: i32){
+		self.sum_adjust_delay += adjust_sum;
+		self.adjust_count += 1;
+	}
+
+	/// Input block data
+	pub fn insert_block(&mut self, block_sum: i32){
+		self.sum_block_delay += block_sum;
+		self.block_count += 1;
+	}
+
+	/// Input adjust data block data
+	pub fn insert_adjust_block(&mut self, adjust_sum: i32, block_sum: i32){
+		self.sum_adjust_delay += adjust_sum;
+		self.adjust_count += 1;
+		self.sum_block_delay += block_sum;
+		self.block_count += 1;
+	}
+
+	/// Get results
+	pub fn average_adjust_block_delay(&self) -> (i32, i32) {
+
+		let mut average_adjust_delay = 0;
+		let mut average_block_delay = 0;
+
+		if self.adjust_count != 0 {
+			average_adjust_delay = self.sum_adjust_delay / self.adjust_count;
+		}
+
+		if self.block_count != 0 {
+			average_block_delay = self.sum_block_delay / self.block_count;
+		}
+
+		(average_adjust_delay, average_block_delay)
+	}
+}
+
 
 /// Crate inner function,
 /// transform `u32` into `BlockT::Header::Number`.
