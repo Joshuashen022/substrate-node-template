@@ -123,7 +123,7 @@ use sp_runtime::{
 };
 use sc_network::{protocol::message::{AdjustTemplate, BlockTemplate, BlockTemplates}};
 use futures::{future::Either, Future, TryFutureExt};
-pub use sc_consensus_slots::{SlotProportion, SlotResult};
+pub use sc_consensus_slots::{SlotProportion, SlotResult, calculate_current_slot};
 pub use sp_consensus::SyncOracle;
 pub use sp_consensus_babe::{
 	digests::{
@@ -605,7 +605,22 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 
 	let select_adjust_future = async move {
 		loop {
-			std::thread::sleep(std::time::Duration::from_millis(6000));
+
+			let current_slot = if let Some((slot, era, length, start_time))
+				= calculate_current_slot(client_clone.clone())
+			{
+				log::info!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
+				std::thread::sleep(std::time::Duration::from_millis(length));
+				Slot::from(slot)
+			} else {
+				log::info!("[A Sel] Using default sleep time 6000 and InherentDataProvider");
+				std::thread::sleep(std::time::Duration::from_millis(6000));
+
+				sp_consensus_babe::inherents::InherentDataProvider::test_slot()
+
+			};
+
+
 			if let Ok(mut adjusts) = adjusts_mutex_clone.clone().lock(){
 				let mut valid_adjusts = Vec::new();
 				for template in &*adjusts {

@@ -242,13 +242,24 @@ where
 			self.inner_delay = match self.inner_delay.take() {
 				None => {
 					// schedule wait.
+					let wait_dur = if let Some((slot, era, length, start_time))
+						= calculate_current_slot(client.clone())
+					{
+						log::info!("[A Nxt] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
+						let now = duration_now().as_millis();
+						let remaining_millis = start_time + length as u128 - now;
+						Duration::from_millis(remaining_millis as u64)
+					} else {
+						log::info!("[A Nxt] Using default time_until_next_slot()");
+						time_until_next_slot(self.slot_duration)
+					};
+
+
 					let wait_dur = time_until_next_slot(self.slot_duration);
 					Some(Delay::new(wait_dur))
 				},
 				Some(d) => Some(d),
 			};
-			log::info!("calculate_current_slot");
-			calculate_current_slot(client.clone());
 
 			// Wait until time to expire
 			if let Some(inner_delay) = self.inner_delay.take() {
@@ -258,6 +269,21 @@ where
 			// log::info!("after inner_delay.await;");
 			// timeout has fired.
 			// During this time, other running task maintain block import
+
+
+			let ends_in = if let Some((slot, era, length, start_time))
+				= calculate_current_slot(client.clone())
+			{
+				log::info!("[A Nxt] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
+				let now = duration_now().as_millis();
+				let remaining_millis = start_time + length as u128 - now;
+				Duration::from_millis(remaining_millis as u64)
+
+			} else{
+				log::info!("[A Nxt] Using default time_until_next_slot()");
+				time_until_next_slot(self.slot_duration)
+			};
+
 			let ends_in = time_until_next_slot(self.slot_duration);
 			// log::info!("slots.next_slot() {}", line!());
 			// reschedule delay for next slot.
@@ -494,7 +520,8 @@ impl EraSlot{
 /// In this model Era length in slots should be at least twice as Epoch length in slots
 pub fn calculate_current_slot<Client, B>(
 	client: Arc<Client>,
-) where
+) -> Option<(u64,<<B as BlockT>::Header as HeaderT>::Number,u64, u128)>
+	where
 	Client: ProvideRuntimeApi<B>
 	+ ProvideUncles<B>
 	+ BlockchainEvents<B>
@@ -545,7 +572,7 @@ pub fn calculate_current_slot<Client, B>(
 
 	// check and make sure `genesis_time > 0` and `genesis_slot > 0`
 	if genesis_time <= 0 || genesis_slot <= 0{
-		return
+		return None
 	}
 	log::info!("[Test] Genesis Slot {}, Genesis Time {:?}", genesis_slot, genesis_time);
 
@@ -749,14 +776,12 @@ pub fn calculate_current_slot<Client, B>(
 	log::info!("[Test] after loop now {:?}, slot_length {:?}, current_era {:?},  current_block {:?}, current_slot {:?}, current_time {:?}, counter {:?},",
 		now, slot_length, current_era,  current_block, current_slot, current_time, counter,
 	);
-
+	let slot_start_time = current_time;
+	let out = (current_slot, current_era, slot_length, slot_start_time);//
 	log::info!("[Test] loop {:?} times", counter);
-	log::info!("[Test] best block hash {:?} from {:?}", (*client).block_hash(best_block_number), best_block_number);
 
-	let best_number = client.clone().usage_info().chain.best_number;
+	Some(out)
 
-	// log::info!("BEFORE extract_block_data");
-	extract_block_data(client, best_number);
 }
 
 pub(crate) fn extract_block_data<Client, B>(client: Arc<Client>,  number: <<B as BlockT>::Header as HeaderT>::Number)

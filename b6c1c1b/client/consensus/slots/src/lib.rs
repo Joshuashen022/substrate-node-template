@@ -59,6 +59,7 @@ use std::{fmt::Debug, ops::Deref, time::Duration, sync::{Arc, Mutex}};
 use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTemplate}};
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
+pub use crate::slots::calculate_current_slot;
 use crate::slots::{as_number, into_u32, duration_now};
 use std::time::SystemTime;
 
