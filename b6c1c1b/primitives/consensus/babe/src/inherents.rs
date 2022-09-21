@@ -77,6 +77,13 @@ impl InherentDataProvider {
 		InherentType::from((timestamp.as_duration().as_millis() / duration.as_millis()) as u64)
 	}
 
+	/// Create from u64
+	pub fn from_u64(slot: u64) -> Self{
+		Self{
+			slot: InherentType::from(slot)
+		}
+	}
+
 	/// Returns the `slot` of this inherent data provider.
 	pub fn slot(&self) -> InherentType {
 		self.slot

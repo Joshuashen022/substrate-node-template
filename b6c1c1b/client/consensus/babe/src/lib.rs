@@ -86,7 +86,7 @@ use prometheus_endpoint::Registry;
 use retain_mut::RetainMut;
 use schnorrkel::SignatureError;
 
-use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsageProvider};
+use sc_client_api::{backend::AuxStore, client::BlockBackend, BlockchainEvents, ProvideUncles, UsageProvider};
 use sc_consensus::{
 	block_import::{
 		BlockCheckParams, BlockImport, BlockImportParams, ForkChoiceStrategy, ImportResult,
@@ -544,7 +544,7 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		+ HeaderMetadata<B, Error = ClientError>
 		+ Send
 		+ Sync
-		+ 'static + sc_client_api::BlockBackend<B>,
+		+ 'static + BlockBackend<B>,
 		C::Api: BabeApi<B> + BlockBuilder<B>,
 		SC: SelectChain<B> + 'static,
 		E: Environment<B, Error = Error> + Send + Sync + 'static,
@@ -1494,7 +1494,12 @@ impl<Block: BlockT> BabeLink<Block> {
 }
 
 /// A verifier for Babe blocks.
-pub struct BabeVerifier<Block: BlockT, Client, SelectChain, CAW, CIDP> {
+pub struct BabeVerifier<Block: BlockT, Client, SelectChain, CAW, CIDP>
+where
+	Client: UsageProvider<Block>
+	+ HeaderBackend<Block>
+	+ BlockBackend<Block>,
+{
 	client: Arc<Client>,
 	select_chain: SelectChain,
 	create_inherent_data_providers: CIDP,
@@ -1509,6 +1514,8 @@ where
 	Block: BlockT,
 	Client: AuxStore + HeaderBackend<Block> + HeaderMetadata<Block> + ProvideRuntimeApi<Block>,
 	Client::Api: BlockBuilderApi<Block> + BabeApi<Block>,
+	Client: UsageProvider<Block>
+	+ BlockBackend<Block>,
 	SelectChain: sp_consensus::SelectChain<Block>,
 	CAW: CanAuthorWith<Block>,
 	CIDP: CreateInherentDataProviders<Block, ()>,
@@ -1693,7 +1700,9 @@ where
 
 }
 
-
+// UsageProvider<B>
+// + HeaderBackend<B>
+// + BlockBackend<B>,
 #[async_trait::async_trait]
 impl<Block, Client, SelectChain, CAW, CIDP> Verifier<Block>
 	for BabeVerifier<Block, Client, SelectChain, CAW, CIDP>
@@ -1706,6 +1715,8 @@ where
 		+ Sync
 		+ AuxStore,
 	Client::Api: BlockBuilderApi<Block> + BabeApi<Block>,
+	Client: UsageProvider<Block>
+	+ BlockBackend<Block>,
 	SelectChain: sp_consensus::SelectChain<Block>,
 	CAW: CanAuthorWith<Block> + Send + Sync,
 	CIDP: CreateInherentDataProviders<Block, ()> + Send + Sync,
@@ -1743,7 +1754,15 @@ where
 			.await
 			.map_err(|e| Error::<Block>::Client(sp_consensus::Error::from(e).into()))?;
 
-		let slot_now = create_inherent_data_providers.slot();
+		let slot_now = if let Some((slot, _era, _length, _start_time))
+			= calculate_current_slot(self.client.clone())
+		{
+			Slot::from(slot)
+		} else {
+			create_inherent_data_providers.slot()
+		};
+
+		// let slot_now = create_inherent_data_providers.slot();
 
 		let parent_header_metadata = self
 			.client
@@ -2357,6 +2376,9 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
+	Client: UsageProvider<Block>
+	+ HeaderBackend<Block>
+	+ BlockBackend<Block>,
 	Client::Api: BlockBuilderApi<Block> + BabeApi<Block> + ApiExt<Block>,
 	SelectChain: sp_consensus::SelectChain<Block> + 'static,
 	CAW: CanAuthorWith<Block> + Send + Sync + 'static,

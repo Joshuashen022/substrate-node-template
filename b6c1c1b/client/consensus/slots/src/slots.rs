@@ -27,12 +27,16 @@ use sp_runtime::traits::{Block as BlockT, Header as HeaderT};
 use sp_runtime::generic::BlockId;
 
 use sp_api::{ApiExt, ApiRef, ProvideRuntimeApi};
-use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsageProvider, client::BlockBackend};
-use sp_blockchain::{Error as ClientError, HeaderBackend, HeaderMetadata, Result as ClientResult};
+use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles};
+use sp_blockchain::{Error as ClientError, HeaderMetadata, Result as ClientResult};
 use sp_consensus_babe::BabeApi;
 use sp_block_builder::BlockBuilder;
 use codec::{Decode, Encode};
 use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTemplate}};
+
+use sc_client_api::UsageProvider;
+use sc_client_api::client::BlockBackend;
+use sp_blockchain::HeaderBackend;
 
 use std::time::SystemTime;
 use crate::{MILLISECS_PER_BLOCK,
@@ -529,18 +533,9 @@ pub fn calculate_current_slot<Client, B>(
 	client: Arc<Client>,
 ) -> Option<(u64,<<B as BlockT>::Header as HeaderT>::Number,u64, u128)>
 	where
-	Client: ProvideRuntimeApi<B>
-	+ ProvideUncles<B>
-	+ BlockchainEvents<B>
-	+ AuxStore
-	+ UsageProvider<B>
+	Client: UsageProvider<B>
 	+ HeaderBackend<B>
-	+ HeaderMetadata<B, Error = ClientError>
-	+ BlockBackend<B>
-	+ Send
-	+ Sync
-	+ 'static,
-	Client::Api: BabeApi<B> + BlockBuilder<B>,
+	+ BlockBackend<B>,
 	B: BlockT
 {
 	let w1 = 0.03;
@@ -569,11 +564,11 @@ pub fn calculate_current_slot<Client, B>(
 					genesis_time = (u64::from(a) as u128) * (SLOT_DURATION as u128);
 				},
 				Err(e) => {
-					log::info!("[Test] Genesis Error {:?}", e);
+					log::error!("[Test] Genesis Error {:?}", e);
 				},
 			};
 		} else{
-			log::info!("[Test] Genesis Error");
+			log::error!("[Test] Genesis Error");
 		}
 	};
 
@@ -581,7 +576,7 @@ pub fn calculate_current_slot<Client, B>(
 	if genesis_time <= 0 || genesis_slot <= 0{
 		return None
 	}
-	log::info!("[Test] Genesis Slot {}, Genesis Time {:?}", genesis_slot, genesis_time);
+	log::trace!("[Test] Genesis Slot {}, Genesis Time {:?}", genesis_slot, genesis_time);
 
 	//
 	let mut counter = 0;
@@ -595,7 +590,7 @@ pub fn calculate_current_slot<Client, B>(
 	let mut current_time = genesis_time;
 	let mut current_block = one;
 	let mut current_slot = genesis_slot;
-	log::info!("[Test] before loop now {:?}, slot_length {:?}, current_era {:?},  current_block {:?}, current_slot {:?}, current_time {:?}, counter {:?},",
+	log::debug!("[Test] before loop now {:?}, slot_length {:?}, current_era {:?},  current_block {:?}, current_slot {:?}, current_time {:?}, counter {:?},",
 		now, slot_length, current_era,  current_block, current_slot, current_time, counter,
 	);
 	{
@@ -671,7 +666,7 @@ pub fn calculate_current_slot<Client, B>(
 
 				let era_1_slot_length = (w3 * SLOT_DURATION as f64 + w2 * average_adjust_delay as f64 + w1 * average_block_delay as f64) as u64;
 
-				log::info!("Era 1 slot length {}*{} + {}*{} + {}*{} = {}",
+				log::debug!("Era 1 slot length {}*{} + {}*{} + {}*{} = {}",
 					w3, SLOT_DURATION, w2, average_adjust_delay, w1, average_block_delay, era_1_slot_length
 				);
 
@@ -689,7 +684,7 @@ pub fn calculate_current_slot<Client, B>(
 
 			} else {
 				// At Era n, slot length need to be calculated
-				log::info!(" Calculate at Era n");
+
 				// Slot interval used to calculate new slot length
 				let start_slot = current_slot - ERA_DURATION_IN_SLOTS ;
 				let end_slot = current_slot - EPOCH_DURATION_IN_SLOTS / 2;
@@ -702,7 +697,7 @@ pub fn calculate_current_slot<Client, B>(
 				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
 				let mut slot_pointer = start_slot - EPOCH_DURATION_IN_SLOTS / 2;
 				let mut delay = AverageDelay::new();
-				log::info!("last_slot_length {} this_slot_length {} start_time {}", last_slot_length, this_slot_length, start_time);
+				log::debug!("last_slot_length {} this_slot_length {} start_time {}", last_slot_length, this_slot_length, start_time);
 				loop {
 
 					if let Some(adjusts) = extract_block_data(client.clone(), current_block){
@@ -746,7 +741,7 @@ pub fn calculate_current_slot<Client, B>(
 
 				let era_n_slot_length = (w3 * this_slot_length as f64 + w2 * average_adjust_delay as f64 + w1 * average_block_delay as f64) as u64;
 
-				log::info!("Era {} slot length {}*{} + {}*{} + {}*{} = {}",
+				log::debug!("Era {} slot length {}*{} + {}*{} + {}*{} = {}",
 					current_era, w3, this_slot_length, w2, average_adjust_delay, w1, average_block_delay, era_n_slot_length
 				);
 
@@ -779,12 +774,12 @@ pub fn calculate_current_slot<Client, B>(
 			current_era = current_era + one;
 		}
 	}
-	log::info!("[Test] after loop now {:?}, slot_length {:?}, current_era {:?},  current_block {:?}, current_slot {:?}, current_time {:?}, counter {:?},",
+	log::debug!("[Test] after loop now {:?}, slot_length {:?}, current_era {:?},  current_block {:?}, current_slot {:?}, current_time {:?}, counter {:?},",
 		now, slot_length, current_era,  current_block, current_slot, current_time, counter,
 	);
 	let slot_start_time = current_time;
 	let out = (current_slot, current_era, slot_length, slot_start_time);//
-	log::info!("[Test] loop {:?} times", counter);
+	log::debug!("[Test] loop {:?} times", counter);
 
 	Some(out)
 
@@ -793,18 +788,7 @@ pub fn calculate_current_slot<Client, B>(
 pub(crate) fn extract_block_data<Client, B>(client: Arc<Client>,  number: <<B as BlockT>::Header as HeaderT>::Number)
 	-> Option<AdjustExtracts<B>>
 where
-	Client: ProvideRuntimeApi<B>
-	+ ProvideUncles<B>
-	+ BlockchainEvents<B>
-	+ AuxStore
-	+ UsageProvider<B>
-	+ HeaderBackend<B>
-	+ HeaderMetadata<B, Error = ClientError>
-	+ BlockBackend<B>
-	+ Send
-	+ Sync
-	+ 'static,
-	Client::Api: BabeApi<B> + BlockBuilder<B>,
+	Client: BlockBackend<B>,
 	B: BlockT,
  {
 	let engine_id = *b"ajst";

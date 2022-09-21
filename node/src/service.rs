@@ -2,7 +2,7 @@
 
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
 use sc_client_api::ExecutorProvider;
-use sc_consensus_babe:: SlotProportion;
+use sc_consensus_babe:: {SlotProportion, calculate_current_slot};
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_keystore::LocalKeystore;
 use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
