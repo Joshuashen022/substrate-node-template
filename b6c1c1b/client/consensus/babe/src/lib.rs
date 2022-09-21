@@ -632,8 +632,7 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 						continue
 					}
 
-					// TODO::change this to useful real slot
-					let current_slot = sp_consensus_babe::inherents::InherentDataProvider::test_slot();// current slot
+					// let current_slot = sp_consensus_babe::inherents::InherentDataProvider::test_slot();// current slot
 
 					// Slot of each Block.Header inside AdjustTemplate should greater than current slot for a certain number
 					// TODO?:: change a certain number to a valid number

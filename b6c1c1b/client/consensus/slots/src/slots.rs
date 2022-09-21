@@ -270,13 +270,14 @@ where
 			// timeout has fired.
 			// During this time, other running task maintain block import
 
-
-			let ends_in = if let Some((slot, era, length, start_time))
+			let mut slot_res: Option<Slot>  = None ;
+			let ends_in = if let Some((slot_in, era, length, start_time))
 				= calculate_current_slot(client.clone())
 			{
-				log::info!("[A Nxt] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
+				log::info!("[A Nxt] slot {} era {}, length {}, start_time {}", slot_in, era, length, start_time);
 				let now = duration_now().as_millis();
 				let remaining_millis = start_time + length as u128 - now;
+				slot_res = Some(Slot::from(slot_in));
 				Duration::from_millis(remaining_millis as u64)
 
 			} else{
@@ -284,7 +285,7 @@ where
 				time_until_next_slot(self.slot_duration)
 			};
 
-			let ends_in = time_until_next_slot(self.slot_duration);
+			// let ends_in = time_until_next_slot(self.slot_duration);
 			// log::info!("slots.next_slot() {}", line!());
 			// reschedule delay for next slot.
 			self.inner_delay = Some(Delay::new(ends_in));
@@ -318,7 +319,13 @@ where
 			}
 
 			let timestamp = inherent_data_providers.timestamp();
-			let slot = inherent_data_providers.slot();
+
+			let slot = if let Some(slot) = slot_res{
+				slot
+			} else{
+				inherent_data_providers.slot()
+			};
+
 			let inherent_data = inherent_data_providers.create_inherent_data()?;
 
 			// Inherent Data
@@ -609,12 +616,12 @@ pub fn calculate_current_slot<Client, B>(
 				// At second Era, slot length is calculated differently than the following era
 
 				// Slot interval used to calculate new slot length
-				let start_slot = genesis_slot + EPOCH_DURATION_IN_SLOTS / 2;
+				let start_slot = genesis_slot + EPOCH_DURATION_IN_SLOTS ;
 				let end_slot = genesis_slot + ERA_DURATION_IN_SLOTS - EPOCH_DURATION_IN_SLOTS / 2;
 				//
 				let last_slot_length = slot_length_init;
 				let this_slot_length = last_slot_length;
-				let start_time = genesis_time + (EPOCH_DURATION_IN_SLOTS / 2) as u128 * SLOT_DURATION as u128;
+				let start_time = genesis_time + EPOCH_DURATION_IN_SLOTS as u128 * SLOT_DURATION as u128;
 
 				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
 				let mut slot_pointer = genesis_slot;
@@ -682,21 +689,20 @@ pub fn calculate_current_slot<Client, B>(
 
 			} else {
 				// At Era n, slot length need to be calculated
-				// log::info!(" Calculate at Era n");
+				log::info!(" Calculate at Era n");
 				// Slot interval used to calculate new slot length
-				let start_slot = current_slot - ERA_DURATION_IN_SLOTS - EPOCH_DURATION_IN_SLOTS / 2;
+				let start_slot = current_slot - ERA_DURATION_IN_SLOTS ;
 				let end_slot = current_slot - EPOCH_DURATION_IN_SLOTS / 2;
 
 				//
 				let last_slot_length = slot_length_set.era_slot_length(into_u32::<B>(current_era) as usize - 2);
 				let this_slot_length = slot_length_set.era_slot_length(into_u32::<B>(current_era) as usize - 1);
-				let start_time = current_time - (ERA_DURATION_IN_SLOTS * this_slot_length) as u128
-									- (EPOCH_DURATION_IN_SLOTS / 2 * last_slot_length) as u128;
+				let start_time = current_time - (ERA_DURATION_IN_SLOTS * this_slot_length) as u128;
 
 				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
-				let mut slot_pointer = start_slot;
+				let mut slot_pointer = start_slot - EPOCH_DURATION_IN_SLOTS / 2;
 				let mut delay = AverageDelay::new();
-
+				log::info!("last_slot_length {} this_slot_length {} start_time {}", last_slot_length, this_slot_length, start_time);
 				loop {
 
 					if let Some(adjusts) = extract_block_data(client.clone(), current_block){
@@ -835,7 +841,7 @@ where
 /// Option<(i32, i32)> => Option<(average_adjust_delay, average_block_delay)>.
 pub fn deal_adjusts<B:BlockT>(
 	adjusts: AdjustExtracts<B>,
-	start_slot: u64,
+	era_start_slot: u64,
 	end_slot: u64,
 	era: <<B as BlockT>::Header as HeaderT>::Number, // currently useless
 	this_slot_length: u64,
@@ -845,7 +851,7 @@ pub fn deal_adjusts<B:BlockT>(
 	let mut average_adjust_delay: i32 = 0 ;
 	let mut average_block_delay: i32 = 0 ;
 
-	if start_slot > end_slot {
+	if era_start_slot > end_slot {
 		log::error!("[Error] start_slot > end_slot");
 		return None
 	}
@@ -864,7 +870,7 @@ pub fn deal_adjusts<B:BlockT>(
 
 		let slot = adjust.slot.unwrap();
 
-		if start_slot <= slot && slot < end_slot {
+		if era_start_slot - EPOCH_DURATION_IN_SLOTS / 2 <= slot && slot < end_slot {
 
 			// calculate adjust delay
 			let delay = if adjust.send_time > adjust.receive_time {
@@ -873,7 +879,7 @@ pub fn deal_adjusts<B:BlockT>(
 				- ((adjust.receive_time - adjust.send_time) as i32)
 			};
 
-			if delay > 6000 || delay < -6000{
+			if delay > 6000 || delay < -6000 {
 				log::info!("{}, delay {}", line!(), delay);
 				log::info!("adjust.receive_time {}, adjust.receive_time {} slot {:?} ", adjust.receive_time, adjust.receive_time, slot)
 			}
@@ -898,10 +904,10 @@ pub fn deal_adjusts<B:BlockT>(
 				let slot = block.slot.unwrap();
 				let block_era = as_number::<B>((slot / ERA_DURATION_IN_SLOTS) as u32);
 
-				if  slot >= start_slot {
-					// `slot` should be less than `start_slot`, i.e. (slot < start_slot) = true,
-					// For when code goes here, start_slot must be the start slot of an Era
-					// and, `slot` belongs to last era
+				if  era_start_slot >=  slot{
+					// `slot` should be less than `era_start_slot`, i.e. (slot < start_slot) = true,
+					// For when code goes here, `era_start_slot` must be the start slot of an Era
+					// and, `slot` belongs to former era
 
 					if block_era < era {
 						// TODO: two if `block_era < era` and `slot >= start_slot` could switch places
@@ -910,7 +916,7 @@ pub fn deal_adjusts<B:BlockT>(
 						// continue
 					}
 
-					let gap = start_slot - slot;
+					let gap = era_start_slot - slot;
 					let slot_length = last_slot_length;
 					let slot_start_time = start_time - (gap * slot_length) as u128 ;
 					let mut delay = 0;
@@ -921,7 +927,8 @@ pub fn deal_adjusts<B:BlockT>(
 						delay = - ((slot_start_time - block.receive_time) as i32);
 					}
 
-					if delay > 6000 || delay < -6000{
+					// || era == as_number::<B>(1)
+					if delay > 6000 || delay < -6000 {
 						log::info!("{}, delay {}", line!(), delay);
 						log::info!("block.receive_time {}, slot_start_time {} slot {:?} gap {:?}", block.receive_time, slot_start_time, slot, gap)
 					}
@@ -930,7 +937,7 @@ pub fn deal_adjusts<B:BlockT>(
 
 				} else {
 					let slot_length = this_slot_length;
-					let gap = end_slot - slot;
+					let gap = slot - era_start_slot;
 					let slot_start_time = start_time + (gap * slot_length) as u128 ;
 					let mut delay = 0;
 
@@ -940,7 +947,8 @@ pub fn deal_adjusts<B:BlockT>(
 						delay = - ((slot_start_time - block.receive_time) as i32);
 					}
 
-					if delay > 6000 || delay < -6000{
+					// || era == as_number::<B>(1)
+					if delay > 6000 || delay < -6000 {
 						log::info!("{}, delay {}", line!(), delay);
 						log::info!("block.receive_time {}, slot_start_time {} slot {:?} gap {:?}", block.receive_time, slot_start_time, slot, gap)
 					}
