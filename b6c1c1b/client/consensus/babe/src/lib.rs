@@ -606,10 +606,10 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 	let select_adjust_future = async move {
 		loop {
 
-			let current_slot = if let Some((slot, era, length, start_time))
+			let current_slot = if let Some((slot, _era, length, _start_time))
 				= calculate_current_slot(client_clone.clone())
 			{
-				log::info!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
+				// log::info!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
 				std::thread::sleep(std::time::Duration::from_millis(length));
 				Slot::from(slot)
 			} else {
@@ -619,7 +619,6 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 				sp_consensus_babe::inherents::InherentDataProvider::test_slot()
 
 			};
-
 
 			if let Ok(mut adjusts) = adjusts_mutex_clone.clone().lock(){
 				let mut valid_adjusts = Vec::new();

@@ -1018,7 +1018,7 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 	// let adjusts_mutex_clone = adjusts_mutex.clone();
 	// let blocks_mutex_clone= blocks_mutex.clone();
 	loop {
-		info!("slots.next_slot()");
+		// info!("slots.next_slot()");
 		let slot_info = match slots.next_slot_with_client(Some(client.clone())).await {
 			Ok(r) => r,
 			Err(e) => {
@@ -1026,79 +1026,6 @@ pub async fn start_slot_worker_with_client<B, C, W, T, SO, CIDP, CAW, Proof, Cli
 				return
 			},
 		};
-		info!("");
-		info!("");
-
-		{
-			// {
-			// 	//
-			// let best_block_number = client.clone().usage_info().chain.best_number;
-
-			// 	// let one = <<B as BlockT>::Header as HeaderT>::Number::from(1u32);
-			// 	// let zero = <<B as BlockT>::Header as HeaderT>::Number::from(0u32);
-			// 	// let era_in_number = <<B as BlockT>::Header as HeaderT>::Number::from(ERA_DURATION_IN_SLOTS as u32); // currently `1 Era = 1 Epoch`
-			// 	//
-			// 	// let mut current_era = zero;
-			// 	// let target_era = best_block_number / era_in_number;
-			// 	// let mut counter = 0;
-			// 	// let slot_length_init = SLOT_DURATION as u32;
-			// 	// let mut slot_length = slot_length_init;
-			// 	// // Enum from 0 to best_block_number with 1 Era at a step
-			// 	// // block 0 is excluded for it could not contain useful adjust information
-			// 	// while current_era <= target_era {
-			// 	// 	let mut current_block = zero;
-			// 	//
-			// 	// 	if current_era < target_era {
-			// 	//
-			// 	// 		while current_block <= era_in_number {
-			// 	// 			counter += 1;
-			// 	// 			if current_block / era_in_number == zero {
-			// 	//
-			// 	// 			}
-			// 	// 			current_block = current_block + one;
-			// 	// 		}
-			// 	//
-			// 	// 	} else if current_era = target_era {
-			// 	// 		log::info!("[Test] loop now  current_era = target_era ");
-			// 	//
-			// 	// 		// Do nothing.
-			// 	//
-			// 	// 		// while current_block <= best_block_number % era_in_number {
-			// 	// 		// 	counter += 1;
-			// 	// 		// 	if current_block / era_in_number == zero{
-			// 	// 		//
-			// 	// 		// 	}
-			// 	// 		// 	current_block = current_block + one;
-			// 	// 		// }
-			// 	//
-			// 	// 	}
-			// 	//
-			// 	// 	current_era = current_era + one;
-			// 	// }
-			// 	//
-			// 	// log::info!("[Test] loop {:?} times", counter);
-			// 	// log::info!("[Test] best block hash {:?} from {:?}", (*client).block_hash(best_block_number), best_block_number);
-			// }
-			//
-			// let best_hash = client.clone().usage_info().chain.best_hash;
-			// // log::info!("[Test] best block hash from backend {:?}", best_hash);
-			// let engine_id = *b"ajst";
-			//
-			// if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(best_hash)){
-			// 	match AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice()){
-			// 		Ok(a) => {
-			// 			// log::info!("[Test] On chain {:?} adjust_raw contains {:?}", best_hash, a.len());
-			// 			// log::info!("[Test] On chain adjust_raw {:#?}", a);
-			// 		},
-			// 		Err(e) => {
-			// 			// log::info!("[Error][Test] On chain adjust_raw error {:?}", e);
-			// 		},
-			// 	};
-			//
-			// } else {
-			// 	// log::info!("[Test] get no adjust_raw");
-			// }
-		}
 
 		log::debug!("sync_oracle.is_major_syncing");
 		if sync_oracle.is_major_syncing() {

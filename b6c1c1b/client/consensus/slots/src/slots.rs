@@ -265,13 +265,16 @@ where
 				Some(d) => Some(d),
 			};
 
+			// SlotEnd functionality
 			// Wait until time to expire
 			if let Some(inner_delay) = self.inner_delay.take() {
 				inner_delay.await;
 			}
 
-			// log::info!("after inner_delay.await;");
-			// timeout has fired.
+			log::info!("");
+			log::info!("");
+
+			// Timeout has fired. New slot has began
 			// During this time, other running task maintain block import
 
 			let mut slot_res: Option<Slot>  = None ;
