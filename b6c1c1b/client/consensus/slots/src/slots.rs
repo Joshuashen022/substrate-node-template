@@ -26,28 +26,27 @@ use sp_inherents::{CreateInherentDataProviders, InherentData, InherentDataProvid
 use sp_runtime::traits::{Block as BlockT, Header as HeaderT};
 use sp_runtime::generic::BlockId;
 
-use sp_api::{ApiExt, ApiRef, ProvideRuntimeApi};
+use sp_api::ProvideRuntimeApi;
 use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles};
-use sp_blockchain::{Error as ClientError, HeaderMetadata, Result as ClientResult};
+use sp_blockchain::{Error as ClientError, HeaderMetadata};
 use sp_consensus_babe::BabeApi;
 use sp_block_builder::BlockBuilder;
-use codec::{Decode, Encode};
-use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTemplate}};
+use codec::Decode;
+use sc_network::protocol::message::AdjustExtracts;
 
 use sc_client_api::UsageProvider;
 use sc_client_api::client::BlockBackend;
 use sp_blockchain::HeaderBackend;
 
 use std::time::SystemTime;
-use crate::{MILLISECS_PER_BLOCK,
-			ERA_DURATION_IN_SLOTS, SLOT_DURATION,
-			EPOCH_DURATION_IN_BLOCKS, EPOCH_DURATION_IN_SLOTS,
-			W1, W2
+use crate::{
+	ERA_DURATION_IN_SLOTS, SLOT_DURATION,
+	EPOCH_DURATION_IN_SLOTS, W1, W2
 };
 
 use futures_timer::Delay;
 use std::time::{Duration, Instant};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 /// Returns current duration since unix epoch.
 pub fn duration_now() -> Duration {
 	let now = SystemTime::now();
@@ -259,8 +258,8 @@ where
 						time_until_next_slot(self.slot_duration)
 					};
 
+					// let wait_dur = time_until_next_slot(self.slot_duration);
 
-					let wait_dur = time_until_next_slot(self.slot_duration);
 					Some(Delay::new(wait_dur))
 				},
 				Some(d) => Some(d),
@@ -361,147 +360,6 @@ where
 	}
 
 }
-/// Calculate slot length
-pub fn calculate_slot_length<Client, B>(
-	_client: Arc<Client>,
-) where
-	Client: ProvideRuntimeApi<B>
-	+ ProvideUncles<B>
-	+ BlockchainEvents<B>
-	+ AuxStore
-	+ UsageProvider<B>
-	+ HeaderBackend<B>
-	+ HeaderMetadata<B, Error = ClientError>
-	+ BlockBackend<B>
-	+ Send
-	+ Sync
-	+ 'static,
-	Client::Api: BabeApi<B> + BlockBuilder<B>,
-	B: BlockT
-{
-	// let w1 = 0.3;
-	// let w2 = 0.1;
-	// //
-	// let best_block_number = client.clone().usage_info().chain.best_number;
-	// let zero = as_number::<B>(0u32);
-	// let one = as_number::<B>(1u32);
-	// let two = as_number::<B>(2u32);
-	// let epoch_length = as_number::<B>(EPOCH_DURATION_IN_SLOTS as u32); // currently `1 Era = 2 Epoch`
-	// let era_length = as_number::<B>(ERA_DURATION_IN_SLOTS as u32); // currently `1 Era = 2 Epoch`
-	// //
-	// let length: u32 =  into_u32::<B>(target_era);
-	// let mut slot_length_set = vec!(0u32; length as usize);
-	//
-	// // Get genesis slot and time
-	// let engine_id = *b"slot";
-	// let mut genesis_time: u128 = 0;
-	// let mut genesis_slot: u64 = 0;
-	// if let Ok(Some(block_one_hash)) = (*client).block_hash(one){
-	// 	if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(block_one_hash)){
-	// 		match Slot::decode(&mut adjust_raw.as_slice()){
-	// 			Ok(a) => {
-	// 				genesis_slot = u64::from(a);
-	// 				genesis_time = (u64::from(a) as u128) * (SLOT_DURATION as u128);
-	// 			},
-	// 			Err(e) => {
-	// 				log::info!("[Test] Genesis Error {:?}", e);
-	// 			},
-	// 		};
-	// 	} else{
-	// 		log::info!("[Test] Genesis Error");
-	// 	}
-	// };
-	//
-	// // check and make sure `genesis_time > 0` and `genesis_slot > 0`
-	// if genesis_time <= 0 || genesis_slot <= 0{
-	// 	return
-	// }
-	// log::info!("[Test] Genesis Slot {}, Genesis Time {:?}", genesis_slot, genesis_time);
-	//
-	// //
-	// let target_era = best_block_number / era_length;
-	// let mut counter = 0;
-	// let slot_length_init = SLOT_DURATION as u32;
-	// let mut slot_length = slot_length_init;
-	//
-	// // Enum from 0 to best_block_number with 1 Era at a step
-	// // block 0 is excluded for that it does not contain useful adjust information
-	// let mut current_era = zero;
-	// {
-	// 	let mut current_block = zero;
-	// 	loop {
-	//
-	//
-	// 		if current_era == zero {
-	// 			// At first Era, slot length is the initial slot length
-	// 			slot_length = slot_length_init;
-	// 			slot_length_set[0] = slot_length_init;
-	// 		} else if current_era == one {
-	// 			// At second Era, slot length is calculated differently than the following era
-	// 			let t_round = slot_length_init;
-	// 			let mut t_round_new = t_round;
-	// 			let start_slot_number = epoch_length / two;
-	// 			let end_slot_number = era_length - epoch_length / two;
-	//
-	// 			let mut current_time = genesis_time ;
-	// 			loop {
-	// 				counter += 1;
-	//
-	// 				log::info!("Block[{:?}], slot", current_block);
-	//
-	//
-	// 				current_block = current_block + one;
-	// 			}
-	//
-	// 		} else {
-	// 			// At other Era, slot length need to be calculated
-	//
-	// 			if slot_length_set[into_u32::<B>(target_era - one) as usize] == 0 {
-	// 				log::error!("Error at Calculate Slot length: slot_length_set empty");
-	// 				return
-	// 			}
-	// 			let t_round_1 = slot_length_set[into_u32::<B>(target_era - one) as usize]; // Era 1
-	// 			let t_round_2 = slot_length_set[into_u32::<B>(target_era - one - one) as usize]; // Era 0
-	// 			let mut t_round_1_new = t_round_1;
-	// 			let mut t_round_2_new = t_round_2;
-	//
-	// 			// Calculate for t_round_1_new
-	// 			let start_block_number_1 = (target_era - one - one) * era_length + era_length / two;
-	// 			let end_block_number_1 = (target_era - one ) * era_length ;
-	// 			let mut current_block = start_block_number_1;
-	// 			while current_block < end_block_number_1 {
-	// 				counter += 1;
-	//
-	//
-	// 				current_block = current_block + one;
-	// 			}
-	//
-	// 			// Calculate for t_round_2_new
-	// 			let start_block_number_2 = (target_era - one ) * era_length ;
-	// 			let end_block_number_2 = (target_era - one) * era_length + era_length / two;
-	// 			let mut current_block = start_block_number_2;
-	// 			while current_block < end_block_number_2 {
-	// 				counter += 1;
-	//
-	//
-	//
-	// 				current_block = current_block + one;
-	// 			}
-	//
-	// 		}
-	//
-	// 		current_era = current_era + one;
-	// 	}
-	// }
-	//
-	// log::info!("[Test] loop {:?} times", counter);
-	// log::info!("[Test] best block hash {:?} from {:?}", (*client).block_hash(best_block_number), best_block_number);
-
-	// let best_number = client.clone().usage_info().chain.best_number;
-	//
-	// // log::info!("BEFORE extract_block_data");
-	// extract_block_data(client, best_number);
-}
 
 /// Keep track of each known era with it's slot length
 #[derive(Default, Debug)]
@@ -549,18 +407,18 @@ pub fn calculate_current_slot<Client, B>(
 	let best_block_number = client.clone().usage_info().chain.best_number;
 	let zero = as_number::<B>(0u32);
 	let one = as_number::<B>(1u32);
-	let two = as_number::<B>(2u32);
-	let epoch_length = as_number::<B>(EPOCH_DURATION_IN_SLOTS as u32); // currently `1 Era = 2 Epoch`
+
 	let era_length = as_number::<B>(ERA_DURATION_IN_SLOTS as u32); // currently `1 Era = 2 Epoch`
 	//
 	let target_era = best_block_number / era_length;
 	let mut slot_length_set = EraSlot::new(into_u32::<B>(target_era) as usize);
 
 	// Get genesis slot and time
-	let engine_id = *b"slot";
+
 	let mut genesis_time: u128 = 0;
 	let mut genesis_slot: u64 = 0;
 	if let Ok(Some(block_one_hash)) = (*client).block_hash(one){
+		let engine_id = *b"slot";
 		if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(block_one_hash)){
 			match Slot::decode(&mut adjust_raw.as_slice()){
 				Ok(a) => {
@@ -623,7 +481,7 @@ pub fn calculate_current_slot<Client, B>(
 				let start_time = genesis_time + EPOCH_DURATION_IN_SLOTS as u128 * SLOT_DURATION as u128;
 
 				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
-				let mut slot_pointer = genesis_slot;
+
 				let mut delay = AverageDelay::new();
 
 				// Calculate AdjustExtracts in each Block for delay
@@ -1008,7 +866,7 @@ pub struct AverageDelay{
 	sum_adjust_delay: i32,
 	sum_block_delay: i32,
 }
-
+#[allow(dead_code)]
 impl AverageDelay {
 	pub fn new() -> Self {
 		Self{

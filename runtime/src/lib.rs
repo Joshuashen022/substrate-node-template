@@ -118,10 +118,6 @@ use sp_consensus_slots::MILLISECS_PER_BLOCK;
 //       Attempting to do so will brick block production.
 use sp_consensus_slots::SLOT_DURATION;
 // Time is measured by number of blocks.
-use sp_consensus_slots::MINUTES;
-// use sp_consensus_slots::HOURS;
-// use sp_consensus_slots::DAYS;
-// use sp_consensus_slots::EPOCH_DURATION_IN_BLOCKS;
 use sp_consensus_slots::EPOCH_DURATION_IN_SLOTS;
 
 // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.

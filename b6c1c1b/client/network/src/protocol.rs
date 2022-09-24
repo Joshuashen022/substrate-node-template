@@ -926,7 +926,6 @@ impl<B: BlockT> Protocol<B> {
 		let mut inner_blocks = 0;
 
 		let _blocks = if let Some(inner) = data.clone() {
-			inner_blocks = 0;
 			match BlockTemplates::<B>::decode(&mut inner.as_slice()){
 				Ok(b) => {
 					inner_blocks = b.len();
@@ -939,8 +938,7 @@ impl<B: BlockT> Protocol<B> {
 				}
 			}
 		} else {
-			inner_blocks = 0;
-			log::debug!("(announce_adjust) data is none");
+			log::debug!("(announce_adjust) {} data is none", inner_blocks);
 			return
 		};
 

@@ -60,10 +60,9 @@ use sc_network::{protocol::message::{ AdjustTemplate, AdjustExtracts, BlockTempl
 use sp_block_builder::BlockBuilder;
 use sp_consensus_babe::{BabeGenesisConfiguration, BabeApi};
 pub use crate::slots::calculate_current_slot;
-use crate::slots::{as_number, into_u32, duration_now};
-use std::time::SystemTime;
+use crate::slots::{as_number, duration_now};
 
-pub type BlockNumber = u32;
+// pub type BlockNumber = u32;
 
 pub use sp_consensus_slots::MILLISECS_PER_BLOCK;
 // pub const MILLISECS_PER_BLOCK: u64 = 6000;

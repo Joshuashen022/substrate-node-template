@@ -274,7 +274,7 @@ impl<B: BlockT> BlockTemplate<B>{
 		let &number = self.block.number();
 		let receive_time = self.receive_time;
 		let &engine_id = b"slot";
-		let slot = if let Some(mut data) = self.block.digest().pre_runtime_id(engine_id){
+		let slot = if let Some(data) = self.block.digest().pre_runtime_id(engine_id){
 			if let Ok(slot) = u64::decode(&mut data.as_slice()){
 				Some(slot)
 			} else{
@@ -289,7 +289,7 @@ impl<B: BlockT> BlockTemplate<B>{
 	/// Return inner slot
 	pub fn slot(&self) -> Option<u64> {
 		let &engine_id = b"slot";
-		if let Some(mut data) = self.block.digest().pre_runtime_id(engine_id){
+		if let Some(data) = self.block.digest().pre_runtime_id(engine_id){
 			if let Ok(block_slot) = u64::decode(&mut data.as_slice()){
 				Some(block_slot)
 			} else{
@@ -327,7 +327,6 @@ impl<B: BlockT> AdjustExtracts<B> {
 	/// Create a new AdjustExtracts from vector of AdjustTemplate.
 	pub fn new_from_vec(input: Vec<AdjustTemplate<B>>) -> Self {
 		let mut inner = Vec::new();
-		let engine_id = *b"slot";
 
 		for adjust_tmp in input {
 			// let header = adjust_tmp.clone().adjust.header;

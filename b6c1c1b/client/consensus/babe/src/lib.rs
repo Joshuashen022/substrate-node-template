@@ -121,7 +121,7 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header, Zero},
 	DigestItem,
 };
-use sc_network::{protocol::message::{AdjustTemplate, BlockTemplate, BlockTemplates}};
+use sc_network::{protocol::message::{AdjustTemplate, BlockTemplate}};
 use futures::{future::Either, Future, TryFutureExt};
 pub use sc_consensus_slots::{SlotProportion, SlotResult, calculate_current_slot};
 pub use sp_consensus::SyncOracle;
