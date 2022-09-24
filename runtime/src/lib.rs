@@ -125,7 +125,7 @@ use sp_consensus_slots::MINUTES;
 use sp_consensus_slots::EPOCH_DURATION_IN_SLOTS;
 
 // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
-
+use sp_consensus_slots::PRIMARY_PROBABILITY;
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
