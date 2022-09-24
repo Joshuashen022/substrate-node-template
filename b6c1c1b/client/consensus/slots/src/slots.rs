@@ -481,7 +481,7 @@ pub fn calculate_current_slot<Client, B>(
 				let start_time = genesis_time + EPOCH_DURATION_IN_SLOTS as u128 * SLOT_DURATION as u128;
 
 				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
-
+				let mut slot_pointer = genesis_slot;
 				let mut delay = AverageDelay::new();
 
 				// Calculate AdjustExtracts in each Block for delay
