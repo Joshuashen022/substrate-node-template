@@ -113,26 +113,32 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 /// up by `pallet_babe` to implement `fn slot_duration()`.
 ///
 /// Change this to adjust the block time.
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
-
+use sp_consensus_slots::MILLISECS_PER_BLOCK;
 // NOTE: Currently it is not possible to change the slot duration after the chain has started.
 //       Attempting to do so will brick block production.
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+use sp_consensus_slots::SLOT_DURATION;
+// pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
 // Time is measured by number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
+use sp_consensus_slots::MINUTES;
+use sp_consensus_slots::HOURS;
+use sp_consensus_slots::DAYS;
+// pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+// pub const HOURS: BlockNumber = MINUTES * 60;
+// pub const DAYS: BlockNumber = HOURS * 24;
 
-pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
-pub const EPOCH_DURATION_IN_SLOTS: u64 = {
-	const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64; // 1
-
-	(EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
-};
+use sp_consensus_slots::EPOCH_DURATION_IN_BLOCKS;
+// pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
+use sp_consensus_slots::EPOCH_DURATION_IN_SLOTS;
+// pub const EPOCH_DURATION_IN_SLOTS: u64 = {
+// 	const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64; // 1
+//
+// 	(EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
+// };
 
 // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
-pub const PRIMARY_PROBABILITY: (u64, u64) = (9, 10);
+use sp_consensus_slots::PRIMARY_PROBABILITY;
+// pub const PRIMARY_PROBABILITY: (u64, u64) = (9, 10);
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]

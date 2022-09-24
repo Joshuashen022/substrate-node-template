@@ -125,6 +125,11 @@ default-features = false
 path = "../b6c1c1b/primitives/consensus/babe"
 version = '0.10.0-dev'
 
+[dependencies.sp-consensus-slots]
+default-features = false
+path = "../b6c1c1b/primitives/consensus/slots"
+version = '0.10.0-dev'
+
 [dependencies.sp-core]
 default-features = false
 path = "../b6c1c1b/primitives/core"
@@ -197,6 +202,7 @@ std = [
     'sp-api/std',
     'sp-block-builder/std',
     'sp-consensus-babe/std',
+	'sp-consensus-slots/std',
     'sp-core/std',
     'sp-inherents/std',
     'sp-offchain/std',

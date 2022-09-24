@@ -113,3 +113,37 @@ pub struct EquivocationProof<Header, Id> {
 	/// The second header involved in the equivocation.
 	pub second_header: Header,
 }
+
+/// An index to a block.
+pub type BlockNumber = u32;
+/// This determines the average expected block time that we are targeting.
+/// Blocks will be produced at a minimum duration defined by `SLOT_DURATION`.
+/// `SLOT_DURATION` is picked up by `pallet_timestamp` which is in turn picked
+/// up by `pallet_babe` to implement `fn slot_duration()`.
+///
+/// Change this to adjust the block time.
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
+
+/// NOTE: Block duration is not really an spector of the block chain.
+/// However Slot duration is, and will be adjust each Era
+/// This is only consider as initial slot duration
+pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+/// Time is measured by number of blocks.
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+pub const HOURS: BlockNumber = MINUTES * 60;
+pub const DAYS: BlockNumber = HOURS * 24;
+
+pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 1 * MINUTES;
+/// Same as `EPOCH_DURATION_IN_BLOCKS` above
+pub const EPOCH_DURATION_IN_SLOTS: u64 = { //
+const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64; // 1
+	(EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
+};
+
+/// Same as `EPOCH_DURATION_IN_BLOCKS` above.
+/// Slot duration is only used to measure slot duration change
+pub const ERA_DURATION_IN_SLOTS: u64 = EPOCH_DURATION_IN_SLOTS * 2;
+
+/// 9 in 10 blocks (on average, not counting collisions) will be primary BABE blocks.
+pub const PRIMARY_PROBABILITY: (u64, u64) = (9, 10);
