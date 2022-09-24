@@ -198,7 +198,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 
 	let client_clone = client.clone();
 	let adjusts_mutex_clone = adjusts_mutex.clone();
-	let test_future = async move {
+	let _test_future = async move {
 		loop{
 			std::thread::sleep(std::time::Duration::from_millis(6000));
 			let engine_id = *b"ajst";
@@ -226,7 +226,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 			}
 		}
 	};
-	task_manager.spawn_handle().spawn("Test Block", None,test_future);
+	// task_manager.spawn_handle().spawn("Test Block", None,test_future);
 
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;

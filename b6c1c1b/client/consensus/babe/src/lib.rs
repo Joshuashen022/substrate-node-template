@@ -655,8 +655,8 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		}
 	};
 
-	task_manager.spawn_handle().spawn("Check Adjust", None,select_adjust_future);
-
+	task_manager.spawn_handle().spawn_blocking("network-worker", Some("Adjust"), select_adjust_future);
+	// spawn_handle.spawn_blocking("network-worker", Some("Adjust"), select_adjust_future)
 	let answer_requests =
 		answer_requests(worker_rx, config.0, client, babe_link.epoch_changes.clone());
 	Ok(BabeWorker {

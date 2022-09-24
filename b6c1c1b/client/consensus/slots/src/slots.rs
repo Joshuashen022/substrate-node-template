@@ -649,7 +649,8 @@ pub fn calculate_current_slot<Client, B>(
 						}
 
 					} else {
-						log::error!("[Error] Block [{}] not found", current_block)
+						log::error!("[Error] Block [{}] not found", current_block);
+						break;
 					}
 
 					if slot_pointer >= end_slot {
