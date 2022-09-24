@@ -649,8 +649,8 @@ pub fn calculate_current_slot<Client, B>(
 						}
 
 					} else {
-						log::error!("[Error] Block [{}] not found", current_block);
-						break;
+						log::error!("[Error] 1 Block [{}] not found", current_block);
+						return None;
 					}
 
 					if slot_pointer >= end_slot {
@@ -725,7 +725,8 @@ pub fn calculate_current_slot<Client, B>(
 						}
 
 					} else {
-						log::error!("[Error] Block [{}] not found", current_block)
+						log::error!("[Error] Era n Block [{}] not found", current_block);
+						return None;
 					}
 
 					if slot_pointer >= end_slot {
