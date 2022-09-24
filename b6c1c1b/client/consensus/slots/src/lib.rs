@@ -84,6 +84,7 @@ pub use sp_consensus_slots::EPOCH_DURATION_IN_SLOTS;
 // };
 // pub const ERA_DURATION_IN_SLOTS: u64 = EPOCH_DURATION_IN_SLOTS * 2;
 pub use sp_consensus_slots::ERA_DURATION_IN_SLOTS;
+pub use sp_consensus_slots::{W1, W2};
 /// Used to pass slot length information to `start_slot_worker`.
 ///
 /// Not used for other purpose currently.

@@ -41,7 +41,8 @@ use sp_blockchain::HeaderBackend;
 use std::time::SystemTime;
 use crate::{MILLISECS_PER_BLOCK,
 			ERA_DURATION_IN_SLOTS, SLOT_DURATION,
-			EPOCH_DURATION_IN_BLOCKS, EPOCH_DURATION_IN_SLOTS
+			EPOCH_DURATION_IN_BLOCKS, EPOCH_DURATION_IN_SLOTS,
+			W1, W2
 };
 
 use futures_timer::Delay;
@@ -541,8 +542,8 @@ pub fn calculate_current_slot<Client, B>(
 	+ BlockBackend<B>,
 	B: BlockT
 {
-	let w1 = 0.03;
-	let w2 = 0.01;
+	let w1 = W1;
+	let w2 = W2;
 	let w3 = 1.0 - w1 - w2 ;
 	//
 	let best_block_number = client.clone().usage_info().chain.best_number;
@@ -638,13 +639,13 @@ pub fn calculate_current_slot<Client, B>(
 
 						slot_pointer = adjusts.biggest_slot().unwrap();
 
-						// log::info!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
-						// log::info!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
+						log::trace!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
+						log::trace!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
 
 						let res = deal_adjusts(adjusts, start_slot, end_slot, zero, this_slot_length, last_slot_length, start_time);
 
 						if let Some((adjust_delay, block_delay)) = res {
-							// log::info!("Block [{}] (a,b) = {:?}", current_block, res);
+							log::trace!("Block [{}] (a,b) = {:?}", current_block, res);
 							delay.insert_adjust_block(adjust_delay, block_delay);
 						}
 
@@ -714,13 +715,13 @@ pub fn calculate_current_slot<Client, B>(
 
 						slot_pointer = adjusts.biggest_slot().unwrap();
 
-						// log::info!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
-						// log::info!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
+						log::trace!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
+						log::trace!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
 
 						let res = deal_adjusts(adjusts, start_slot, end_slot, current_era - one, this_slot_length, last_slot_length, start_time);
 
 						if let Some((adjust_delay, block_delay)) = res {
-							// log::info!("Block [{}] (a,b) = {:?}", current_block, res);
+							log::trace!("Block [{}] (a,b) = {:?}", current_block, res);
 							delay.insert_adjust_block(adjust_delay, block_delay);
 						}
 
@@ -801,8 +802,6 @@ where
 		if let Some(adjust_raw) = (*client).adjusts_raw(engine_id, &BlockId::hash(hash)){
 			match AdjustExtracts::<B>::decode(&mut adjust_raw.as_slice()){
 				Ok(a) => {
-					// log::info!("[Test] On chain {:?} adjust_raw contains {:?}", best_hash, a.len());
-					// log::info!("[Test] extract_block_data adjust_raw {:#?}", a);
 					Some(a)
 				},
 				Err(e) => {

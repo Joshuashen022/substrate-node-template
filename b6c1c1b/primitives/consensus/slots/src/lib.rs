@@ -147,3 +147,7 @@ pub const ERA_DURATION_IN_SLOTS: u64 = EPOCH_DURATION_IN_SLOTS * 2;
 
 /// 9 in 10 blocks (on average, not counting collisions) will be primary BABE blocks.
 pub const PRIMARY_PROBABILITY: (u64, u64) = (9, 10);
+
+/// Parameters used to adjust block length.
+pub const W1: f64 = 0.3;
+pub const W2: f64 = 0.1;
