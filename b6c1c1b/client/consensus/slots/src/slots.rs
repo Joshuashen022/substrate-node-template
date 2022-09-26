@@ -438,7 +438,7 @@ pub fn calculate_current_slot<Client, B>(
 	if genesis_time <= 0 || genesis_slot <= 0{
 		return None
 	}
-	log::trace!("[Test] Genesis Slot {}, Genesis Time {:?}", genesis_slot, genesis_time);
+	log::debug!("[Test] Genesis Slot {}, Genesis Time {:?} target_era {:?}", genesis_slot, genesis_time, target_era);
 
 	//
 	let mut counter = 0;
@@ -452,8 +452,8 @@ pub fn calculate_current_slot<Client, B>(
 	let mut current_time = genesis_time;
 	let mut current_block = one;
 	let mut current_slot = genesis_slot;
-	log::debug!("[Test] before loop now {:?}, slot_length {:?}, current_era {:?},  current_block {:?}, current_slot {:?}, current_time {:?}, counter {:?},",
-		now, slot_length, current_era,  current_block, current_slot, current_time, counter,
+	log::debug!("[Test] before loop now {:?}, slot_length_init {:?}, genesis_slot {:?}, current_time {:?}, counter {:?},",
+		now, slot_length, current_slot, current_time, counter,
 	);
 	{
 		loop {
@@ -573,8 +573,8 @@ pub fn calculate_current_slot<Client, B>(
 
 						slot_pointer = adjusts.biggest_slot().unwrap();
 
-						log::trace!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
-						log::trace!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
+						log::debug!("current_block [{}] slot_pointer {:?}", current_block, slot_pointer);
+						log::debug!("start_slot {:?} end_slot {:?} this_slot_length {} start_time {}", start_slot, end_slot, this_slot_length, start_time);
 
 						let res = deal_adjusts(adjusts, start_slot, end_slot, current_era - one, this_slot_length, last_slot_length, start_time);
 
@@ -626,6 +626,7 @@ pub fn calculate_current_slot<Client, B>(
 			if current_time > now {
 				loop{
 					if current_time <= now{
+						log::info!("current_time < now => {} < {}", current_time, now);
 						break
 					}
 
