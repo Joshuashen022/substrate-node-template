@@ -65,23 +65,10 @@ use crate::slots::{as_number, duration_now};
 // pub type BlockNumber = u32;
 
 pub use sp_consensus_slots::MILLISECS_PER_BLOCK;
-// pub const MILLISECS_PER_BLOCK: u64 = 6000;
 pub use sp_consensus_slots::SLOT_DURATION;
-// pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 pub use sp_consensus_slots::MINUTES;
-// pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-// pub const HOURS: BlockNumber = MINUTES * 60;
-// pub const DAYS: BlockNumber = HOURS * 24;
 pub use sp_consensus_slots::EPOCH_DURATION_IN_BLOCKS;
-// pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 1 * MINUTES;
-
 pub use sp_consensus_slots::EPOCH_DURATION_IN_SLOTS;
-/// Same as `EPOCH_DURATION_IN_BLOCKS` above
-// pub const EPOCH_DURATION_IN_SLOTS: u64 = { //
-// const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64; // 1
-// 	(EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
-// };
-// pub const ERA_DURATION_IN_SLOTS: u64 = EPOCH_DURATION_IN_SLOTS * 2;
 pub use sp_consensus_slots::ERA_DURATION_IN_SLOTS;
 pub use sp_consensus_slots::{W1, W2};
 /// Used to pass slot length information to `start_slot_worker`.
