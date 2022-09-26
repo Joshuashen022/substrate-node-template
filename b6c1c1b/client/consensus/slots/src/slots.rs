@@ -557,7 +557,7 @@ pub fn calculate_current_slot<Client, B>(
 				let this_slot_length = slot_length_set.era_slot_length(into_u32::<B>(current_era) as usize - 1);
 				let start_time = current_time - (ERA_DURATION_IN_SLOTS * this_slot_length) as u128;
 
-				let default_exit = counter + 2 * EPOCH_DURATION_IN_SLOTS;
+				let default_exit = counter + ERA_DURATION_IN_SLOTS + 1;
 				let mut slot_pointer = start_slot - EPOCH_DURATION_IN_SLOTS / 2;
 				let mut delay = AverageDelay::new();
 				log::debug!("last_slot_length {} this_slot_length {} start_time {}", last_slot_length, this_slot_length, start_time);
