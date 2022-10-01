@@ -726,10 +726,7 @@ pub fn deal_adjusts<B:BlockT>(
 				- ((adjust.receive_time - adjust.send_time) as i32)
 			};
 
-			if delay > 6000 || delay < -6000 {
-				log::info!("{}, delay {}", line!(), delay);
-				log::info!("adjust.receive_time {}, adjust.receive_time {} slot {:?} ", adjust.receive_time, adjust.receive_time, slot)
-			}
+			log::trace!("adjust.receive_time {}, adjust.receive_time {} slot {:?} {}", adjust.receive_time, adjust.receive_time, slot, line!());
 
 			sum_adjust_delay += delay;
 
@@ -774,11 +771,7 @@ pub fn deal_adjusts<B:BlockT>(
 						delay = - ((slot_start_time - block.receive_time) as i32);
 					}
 
-					// || era == as_number::<B>(1)
-					if delay > 6000 || delay < -6000 {
-						log::info!("{}, delay {}", line!(), delay);
-						log::info!("block.receive_time {}, slot_start_time {} slot {:?} gap {:?}", block.receive_time, slot_start_time, slot, gap)
-					}
+					log::trace!("block.receive_time {}, slot_start_time {} slot {:?} gap {:?} {}", block.receive_time, slot_start_time, slot, gap, line!());
 
 					sum_block_delay += delay;
 
@@ -794,11 +787,7 @@ pub fn deal_adjusts<B:BlockT>(
 						delay = - ((slot_start_time - block.receive_time) as i32);
 					}
 
-					// || era == as_number::<B>(1)
-					if delay > 6000 || delay < -6000 {
-						log::info!("{}, delay {}", line!(), delay);
-						log::info!("block.receive_time {}, slot_start_time {} slot {:?} gap {:?}", block.receive_time, slot_start_time, slot, gap)
-					}
+					log::trace!("block.receive_time {}, slot_start_time {} slot {:?} gap {:?} {}", block.receive_time, slot_start_time, slot, gap, line!());
 
 					sum_block_delay += delay;
 				}
