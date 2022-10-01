@@ -452,7 +452,7 @@ pub fn calculate_current_slot<Client, B>(
 	let mut current_time = genesis_time;
 	let mut current_block = one;
 	let mut current_slot = genesis_slot;
-	log::debug!("[Test] before loop now {:?}, slot_length_init {:?}, genesis_slot {:?}, current_time {:?}, counter {:?},",
+	log::debug!("[Test] before loop now {:?}, slot_length_init {:?}, genesis_slot {:?}, genesis_time {:?}, counter {:?},",
 		now, slot_length, current_slot, current_time, counter,
 	);
 	{
@@ -626,7 +626,7 @@ pub fn calculate_current_slot<Client, B>(
 			if current_time > now {
 				loop{
 					if current_time <= now{
-						log::info!("current_time < now => {} < {}", current_time, now);
+						log::debug!("current_time < now => {} < {}", current_time, now);
 						break
 					}
 
