@@ -1,0 +1,38 @@
+
+   0: sp_panic_handler::set::{{closure}}
+   1: std::panicking::rust_panic_with_hook
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/std/src/panicking.rs:628:17
+   2: std::panicking::begin_panic_handler::{{closure}}
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/std/src/panicking.rs:521:13
+   3: std::sys_common::backtrace::__rust_end_short_backtrace
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/std/src/sys_common/backtrace.rs:141:18
+   4: rust_begin_unwind
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/std/src/panicking.rs:517:5
+   5: core::panicking::panic_fmt
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/core/src/panicking.rs:101:14
+   6: core::result::unwrap_failed
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/core/src/result.rs:1617:5
+   7: sc_consensus_babe::check_adjust
+   8: sc_consensus_babe::start_autosyn::{{closure}}
+   9: <sc_service::task_manager::prometheus_future::PrometheusFuture<T> as core::future::future::Future>::poll
+  10: <futures_util::future::select::Select<A,B> as core::future::future::Future>::poll
+  11: <core::future::from_generator::GenFuture<T> as core::future::future::Future>::poll
+  12: std::thread::local::LocalKey<T>::with
+  13: tokio::park::thread::CachedParkThread::block_on
+  14: tokio::runtime::handle::Handle::block_on
+  15: tokio::runtime::task::core::CoreStage<T>::poll
+  16: tokio::runtime::task::harness::Harness<T,S>::poll
+  17: tokio::runtime::blocking::pool::Inner::run
+  18: std::sys_common::backtrace::__rust_begin_short_backtrace
+  19: core::ops::function::FnOnce::call_once{{vtable.shim}}
+  20: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/alloc/src/boxed.rs:1636:9
+      <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/alloc/src/boxed.rs:1636:9
+      std::sys::unix::thread::Thread::new::thread_start
+             at /rustc/09c42c45858d5f3aedfa670698275303a3d19afa/library/std/src/sys/unix/thread.rs:106:17
+  21: start_thread
+             at /build/glibc-SzIz7B/glibc-2.31/nptl/pthread_create.c:477:8
+  22: clone
+             at /build/glibc-SzIz7B/glibc-2.31/misc/../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+

@@ -131,7 +131,7 @@ pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 
-pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
+pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 5 * MINUTES;
 /// Same as `EPOCH_DURATION_IN_BLOCKS` above
 pub const EPOCH_DURATION_IN_SLOTS: u64 = { //
 const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64; // 1
