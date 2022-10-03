@@ -1660,9 +1660,17 @@ where
 {
 	let parent_hash = *header.parent_hash();
 
-	let parent_header_metadata = client
+	let parent_header_metadata =
+		match client
 		.header_metadata(parent_hash)
-		.map_err(Error::<Block>::FetchParentHeader).unwrap();
+		.map_err(Error::<Block>::FetchParentHeader){
+			Ok(headr) => header,
+			Err(e) => {
+				log::debug!("{:?}", e);
+				return false
+			}
+		};
+
 	let header_tmp = header.clone();
 	let pre_digest = find_pre_digest::<Block>(&header_tmp).unwrap();
 
