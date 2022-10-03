@@ -41,6 +41,7 @@ use sp_blockchain::HeaderBackend;
 use std::time::SystemTime;
 use crate::{
 	ERA_DURATION_IN_SLOTS, SLOT_DURATION,
+	MIN_MILLISECS_PER_BLOCK, MAX_MILLISECS_PER_BLOCK,
 	EPOCH_DURATION_IN_SLOTS, W1, W2
 };
 
@@ -534,7 +535,7 @@ pub fn calculate_current_slot<Client, B>(
 				);
 
 				// Calculated results
-				slot_length = era_1_slot_length ;
+				slot_length = in_between(MAX_MILLISECS_PER_BLOCK, MIN_MILLISECS_PER_BLOCK, era_1_slot_length);
 
 				// Record results
 				slot_length_set.set_value(1, slot_length);
@@ -610,7 +611,7 @@ pub fn calculate_current_slot<Client, B>(
 				);
 
 				// Calculated results
-				slot_length = era_n_slot_length ;
+				slot_length = in_between(MAX_MILLISECS_PER_BLOCK, MIN_MILLISECS_PER_BLOCK, era_n_slot_length);
 
 				// Record results
 				slot_length_set.set_value(into_u32::<B>(current_era) as usize, slot_length);
@@ -678,6 +679,16 @@ where
 
 	adjust
 
+}
+/// Return value between max and min
+fn in_between(max: u64, min: u64, num: u64) -> u64 {
+	if max < num{
+		max
+	} else if min < num && num < max {
+		num
+	} else {
+		min
+	}
 }
 
 /// Calculate `average_adjust_delay`, `average_block_delay` between two given slot.

@@ -120,6 +120,8 @@ pub type BlockNumber = u32;
 ///
 /// Change this to adjust the block time.
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const MIN_MILLISECS_PER_BLOCK: u64 = 4000;
+pub const MAX_MILLISECS_PER_BLOCK: u64 = 8000;
 
 /// NOTE: Block duration is not really an spector of the block chain.
 /// However Slot duration is, and will be adjust each Era

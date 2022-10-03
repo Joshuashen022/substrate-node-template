@@ -70,6 +70,7 @@ pub use sp_consensus_slots::MINUTES;
 pub use sp_consensus_slots::EPOCH_DURATION_IN_BLOCKS;
 pub use sp_consensus_slots::EPOCH_DURATION_IN_SLOTS;
 pub use sp_consensus_slots::ERA_DURATION_IN_SLOTS;
+pub use sp_consensus_slots::{MIN_MILLISECS_PER_BLOCK, MAX_MILLISECS_PER_BLOCK};
 pub use sp_consensus_slots::{W1, W2};
 /// Used to pass slot length information to `start_slot_worker`.
 ///
