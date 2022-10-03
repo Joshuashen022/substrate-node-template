@@ -71,7 +71,7 @@ pub use sc_chain_spec::{
 	ChainSpec, ChainType, Extension as ChainSpecExtension, GenericChainSpec, NoExtension,
 	Properties, RuntimeGenesis,
 };
-use sc_client_api::{blockchain::HeaderBackend, BlockchainEvents};
+use sc_client_api::{blockchain::HeaderBackend, BlockchainEvents, BlockImportNotification};
 pub use sc_consensus::ImportQueue;
 pub use sc_executor::NativeExecutionDispatch;
 #[doc(hidden)]
@@ -250,7 +250,7 @@ async fn  build_network_future<
 
 			// List of blocks that the client has imported.
 			notification = imported_blocks_stream.next() => {
-				// log::info!("[Network] imported blocks stream");
+
 				let notification = match notification {
 					Some(n) => n,
 					// If this stream is shut down, that means the client has shut down, and the
@@ -258,42 +258,9 @@ async fn  build_network_future<
 					None => return,
 				};
 				// Announce block to all of the network peers
+				log::info!("[Network] imported blocks stream origin {:?}", notification.own());
 				if announce_imported_blocks {
-					// log::info!("notification {:?}", notification.header.number());
-					let &current_header = notification.header.number();
-
-					let mut tmp1 = Vec::new();
-					if let Ok(mut guard) = blocks_mutex.clone().lock(){
-						log::debug!("notification blocks_mutex len {:?}", (*guard).len());
-						let mut tmp2 = Vec::new();
-						for block in (*guard).clone() {
-							if tmp1.contains(&block) {
-								log::info!("tmp1.contains(&block)");
-								continue
-							}
-
-							if current_header < block.number() {
-								log::info!("block is too new");
-								tmp2.push(block.clone());
-								continue
-							}
-							let gap_number = <<B as BlockT>::Header as HeaderT>::Number::from(2u32);
-							if current_header - block.clone().number() > gap_number {
-								log::info!("block is too old by {:?}", current_header - block.clone().number());
-								continue
-							}
-
-							tmp1.push(block.clone());
-						}
-						*guard = tmp2.clone();
-					}
-
-					let input = if tmp1.len() > 0{
-						Some(BlockTemplates::new(tmp1).encode())
-					} else {
-						None
-					};
-
+					let input = block_announce_data(blocks_mutex.clone(), notification.clone());
 					network.service().announce_block(notification.hash, input);
 				}
 
@@ -399,6 +366,53 @@ async fn  build_network_future<
 		}
 	}
 }
+
+fn block_announce_data <B:BlockT>(
+	blocks_mutex: Arc<Mutex<Vec<BlockTemplate<B>>>>,
+	notification: BlockImportNotification<B>
+) -> Option<Vec<u8>>{
+
+	// Make sure this block is generated locally
+	if !notification.own(){
+		return None
+	}
+
+	// TODO:: Change header number to slot number in digest
+	let &current_header = notification.header.number();
+	let mut tmp1 = Vec::new();
+
+	if let Ok(mut guard) = blocks_mutex.clone().lock(){
+		log::debug!("notification blocks_mutex len {:?}", (*guard).len());
+		let mut tmp2 = Vec::new();
+		for block in (*guard).clone() {
+			if tmp1.contains(&block) {
+				log::error!("tmp1.contains(&block)");
+				continue
+			}
+
+			if current_header < block.number() {
+				log::error!("block is too new");
+				tmp2.push(block.clone());
+				continue
+			}
+			let gap_number = <<B as BlockT>::Header as HeaderT>::Number::from(2u32);
+			if current_header - block.clone().number() > gap_number {
+				log::error!("block is too old by {:?}", current_header - block.clone().number());
+				continue
+			}
+
+			tmp1.push(block.clone());
+		}
+		*guard = tmp2.clone();
+	}
+
+	if tmp1.len() > 0 {
+		Some(BlockTemplates::new(tmp1).encode())
+	} else {
+		None
+	}
+}
+
 
 // Wrapper for HTTP and WS servers that makes sure they are properly shut down.
 mod waiting {

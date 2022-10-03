@@ -277,6 +277,17 @@ pub struct BlockImportNotification<Block: BlockT> {
 	pub tree_route: Option<Arc<sp_blockchain::TreeRoute<Block>>>,
 }
 
+impl<Block: BlockT> BlockImportNotification<Block> {
+
+	/// If the block is self generated returns true.
+	pub fn own(&self) -> bool {
+		match self.origin {
+			BlockOrigin::Own => true,
+			_ => false,
+		}
+	}
+}
+
 /// Summary of a finalized block.
 #[derive(Clone, Debug)]
 pub struct FinalityNotification<Block: BlockT> {

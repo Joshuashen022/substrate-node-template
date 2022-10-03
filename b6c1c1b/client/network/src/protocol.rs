@@ -873,7 +873,8 @@ impl<B: BlockT> Protocol<B> {
 	/// at least temporarily synced.
 	pub fn announce_block(&mut self, hash: B::Hash, data: Option<Vec<u8>>) {
 		log::debug!("(announce_block) data.is_some() {}", data.is_some());
-		self.announce_adjust(hash,data.clone());
+		let announce_data = data.clone();
+
 		let data = None;
 		let header = match self.chain.header(BlockId::Hash(hash)) {
 			Ok(Some(header)) => header,
@@ -898,6 +899,8 @@ impl<B: BlockT> Protocol<B> {
 		let data = data
 			.or_else(|| self.block_announce_data_cache.get(&hash).cloned())
 			.unwrap_or_default();
+
+		self.announce_adjust(hash, announce_data);
 
 		for (who, ref mut peer) in self.peers.iter_mut() {
 			let inserted = peer.known_blocks.insert(hash);
