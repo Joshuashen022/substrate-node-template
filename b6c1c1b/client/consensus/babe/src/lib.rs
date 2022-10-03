@@ -1661,10 +1661,8 @@ where
 	let parent_hash = *header.parent_hash();
 
 	let parent_header_metadata =
-		match client
-		.header_metadata(parent_hash)
-		.map_err(Error::<Block>::FetchParentHeader){
-			Ok(headr) => header,
+		match client.header_metadata(parent_hash){
+			Ok(header) => header,
 			Err(e) => {
 				log::debug!("{:?}", e);
 				return false
