@@ -666,6 +666,10 @@ pub trait SimpleSlotWorker<B: BlockT> {
 
 			// Select out valid adjust templates
 			for adjust in (*guard).clone(){
+
+				// Slot in Header of AdjustTemplate should greater than current slot for a certain number
+				// TODO?:: change a certain number to a valid number
+
 				if adjust.created_before_slot(u64::from(slot)){
 					valid_adjusts.push(adjust);
 				} else{

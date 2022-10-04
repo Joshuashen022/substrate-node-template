@@ -583,6 +583,8 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		telemetry,
 	};
 
+	let valid_adjusts_mutex: Arc<MutexS<Vec<AdjustTemplate<B>>>> = Arc::new(MutexS::new(Vec::new()));
+
 	info!(target: "babe", "👶 Starting BABE Authorship worker");
 	let inner = sc_consensus_slots::start_slot_worker_with_client(
 		client.clone(),
@@ -592,32 +594,32 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		sync_oracle,
 		create_inherent_data_providers,
 		can_author_with,
-		adjusts_mutex.clone(),
+		valid_adjusts_mutex.clone(),
 		blocks_mutex,
 	);
 
 	let (worker_tx, worker_rx) = channel(HANDLE_BUFFER_SIZE);
 
 	let adjusts_mutex_clone = adjusts_mutex.clone();
+	let valid_adjusts_mutex_clone = valid_adjusts_mutex.clone();
 	let epoch_change = babe_link.epoch_changes.clone();
 	let client_clone = client.clone();
 	let config_clone = config.clone();
 
+	// TODO:: Try to move this inside function `start_slot_worker_with_client`
 	let select_adjust_future = async move {
 		loop {
 
-			let current_slot = if let Some((slot, _era, length, _start_time))
+			let current_slot = if let Some((slot, era, length, start_time))
 				= calculate_current_slot(client_clone.clone())
 			{
-				// log::info!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
+				log::debug!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
 				std::thread::sleep(std::time::Duration::from_millis(length));
 				Slot::from(slot)
 			} else {
 				log::info!("[A Sel] Using default sleep time 6000 and InherentDataProvider");
 				std::thread::sleep(std::time::Duration::from_millis(6000));
-
 				sp_consensus_babe::inherents::InherentDataProvider::test_slot()
-
 			};
 
 			if let Ok(mut adjusts) = adjusts_mutex_clone.clone().lock(){
@@ -627,16 +629,10 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 					let blocks_data = template.clone().adjust.data;
 
 					if blocks_data.is_none(){
-						log::info!("[ERROR] Adjust[{:?}]({:?}) contains empty block data", header.number(), header.hash());
+						log::debug!("[ERROR] Adjust[{:?}]({:?}) contains empty block data", header.number(), header.hash());
 						continue
 					}
 
-					// let current_slot = sp_consensus_babe::inherents::InherentDataProvider::test_slot();// current slot
-
-					// Slot of each Block.Header inside AdjustTemplate should greater than current slot for a certain number
-					// TODO?:: change a certain number to a valid number
-					// Slot in Header of AdjustTemplate should greater than current slot for a certain number
-					// TODO?:: change a certain number to a valid number
 					// Make sure block inside each adjust is created before adjust
 					// TODO:: adjust.slot > max {each block.slot}
 
@@ -650,7 +646,11 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 						valid_adjusts.push(template.clone());
 					}
 				}
-				(*adjusts) = valid_adjusts;
+				if let Ok(mut guard) = valid_adjusts_mutex_clone.clone().lock(){
+					(*guard).append(&mut valid_adjusts);
+					(*adjusts).drain(..);
+				}
+				// (*adjusts) = valid_adjusts;
 			}
 		}
 	};
