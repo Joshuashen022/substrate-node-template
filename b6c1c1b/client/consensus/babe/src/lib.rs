@@ -614,13 +614,15 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 				= calculate_current_slot(client_clone.clone())
 			{
 				log::debug!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
-				std::thread::sleep(std::time::Duration::from_millis(length));
+
 				Slot::from(slot)
 			} else {
 				log::info!("[A Sel] Using default sleep time 6000 and InherentDataProvider");
-				std::thread::sleep(std::time::Duration::from_millis(6000));
+
 				sp_consensus_babe::inherents::InherentDataProvider::test_slot()
 			};
+
+			std::thread::sleep(std::time::Duration::from_millis(2000));
 
 			if let Ok(mut adjusts) = adjusts_mutex_clone.clone().lock(){
 				let mut valid_adjusts = Vec::new();
