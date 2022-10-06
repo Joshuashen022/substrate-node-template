@@ -506,6 +506,44 @@ impl<B: BlockT> AdjustTemplate<B> {
 		}
 	}
 
+	/// Check if block inside each adjust is created before adjust
+	/// And some data form is correct
+	/// I.E. `adjust.slot > max {each block.slot}`
+	pub fn slot_validity(&self) -> bool {
+		let &engine_id = b"slot";
+		let adjust_slot = match self.slot(){
+			Some(slot) => slot,
+			None => {
+				log::trace!("Adjust slot can not be empty!");
+				return false
+			}
+		};
+
+		if let Some( blocks) = self.blocks(){
+			for block in blocks.blocks(){
+				if let Some(data) = block.block.digest().pre_runtime_id(engine_id){
+					if let Ok(slot) = u64::decode(&mut data.as_slice()){
+						if adjust_slot <= slot {
+							log::trace!("Block slot should not be greater than adjust slot");
+							return false
+						}
+					} else{
+						log::trace!("Slot data decode error!");
+						return false
+					}
+				} else {
+					log::trace!("Get slot data error!");
+					return false
+				};
+			}
+
+		} else{
+			log::trace!("Get inner block error!");
+			return false
+		}
+		true
+	}
+
 	/// Decode self inner slot, if slot data is not empty
 	pub fn slot(&self) -> Option<u64>{
 		let &engine_id = b"slot";
@@ -583,6 +621,21 @@ impl<B: BlockT> AdjustTemplate<B> {
 			true
 		} else {
 			false
+		}
+	}
+
+	/// Return decoded inner BlockTemplates
+	fn blocks(&self) -> Option<BlockTemplates<B>>{
+
+		let blocks_data = match self.clone().adjust.data{
+			Some(data) => data,
+			None => return None,
+		};
+
+		if let Ok(blocks) = BlockTemplates::<B>::decode(&mut blocks_data.as_slice()){
+			Some(blocks)
+		} else {
+			None
 		}
 	}
 }

@@ -636,7 +636,10 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 					}
 
 					// Make sure block inside each adjust is created before adjust
-					// TODO:: adjust.slot > max {each block.slot}
+					if !template.slot_validity(){
+						log::debug!("Slot Validity check failed");
+						continue
+					}
 
 					if check_adjust(
 						epoch_change.clone(),
