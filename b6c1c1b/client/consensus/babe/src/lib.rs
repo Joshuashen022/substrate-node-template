@@ -606,7 +606,6 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 	let client_clone = client.clone();
 	let config_clone = config.clone();
 
-	// TODO:: Try to move this inside function `start_slot_worker_with_client`
 	let select_adjust_future = async move {
 		loop {
 
@@ -655,7 +654,6 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 					(*guard).append(&mut valid_adjusts);
 					(*adjusts).drain(..);
 				}
-				// (*adjusts) = valid_adjusts;
 			}
 		}
 	};
