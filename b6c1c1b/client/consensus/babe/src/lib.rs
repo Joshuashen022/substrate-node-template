@@ -610,6 +610,12 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 	let select_adjust_future = async move {
 		loop {
 
+			if sync_oracle_clone.clone().is_major_syncing() {
+				info!(target: "slots", "Skipping select adjust due to sync.");
+				std::thread::sleep(std::time::Duration::from_millis(6000));
+				continue
+			}
+
 			let current_slot = if let Some((slot, era, length, start_time))
 				= calculate_current_slot(client_clone.clone())
 			{
@@ -622,10 +628,7 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 				sp_consensus_babe::inherents::InherentDataProvider::test_slot()
 			};
 
-			if sync_oracle_clone.clone().is_major_syncing() {
-				info!(target: "slots", "Skipping select adjust due to sync.");
-				continue
-			}
+
 
 			std::thread::sleep(std::time::Duration::from_millis(2000));
 
