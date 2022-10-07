@@ -2225,16 +2225,13 @@ pub(crate) fn add_timestamp<B: BlockT>(incoming_blocks: &mut Vec<IncomingBlock<B
 
 	let now_data = duration_now().as_millis().to_be_bytes().to_vec(); // [u8; 16]
 	let engine = TIMESTAMP_ENGINE;
-	let mut error = false;
+
 	for blocks in incoming_blocks{
-		if let Err(_) = blocks.add_timestamp(engine, now_data.clone()){
-			error = true;
+		if let Err(e) = blocks.add_timestamp(engine, now_data.clone()){
+			log::debug!("Add timestamp error: {:?}", e);
 		};
 	}
 
-	if error {
-		log::error!("Add timestamp error");
-	}
 }
 
 /// Retrieve timestamp to `incoming_block`.

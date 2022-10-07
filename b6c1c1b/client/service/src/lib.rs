@@ -395,18 +395,18 @@ fn block_announce_data <B:BlockT>(
 			};
 
 			if tmp1.contains(&block) {
-				log::error!("tmp1.contains(&block)");
+				log::debug!("tmp1.contains(&block)");
 				continue
 			}
 
 			if current_header < block.number() {
-				log::error!("block is too new");
+				log::debug!("block is too new");
 				tmp2.push(block.clone());
 				continue
 			}
 
 			if current_slot - slot > 2 {
-				log::error!("block is too old by {:?}", current_slot - slot);
+				log::debug!("block is too old by {:?}", current_slot - slot);
 				continue
 			}
 
