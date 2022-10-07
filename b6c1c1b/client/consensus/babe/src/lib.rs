@@ -591,7 +591,7 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		config.0.clone(),
 		select_chain,
 		worker,
-		sync_oracle,
+		sync_oracle.clone(),
 		create_inherent_data_providers,
 		can_author_with,
 		valid_adjusts_mutex.clone(),
@@ -603,6 +603,7 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 	let adjusts_mutex_clone = adjusts_mutex.clone();
 	let valid_adjusts_mutex_clone = valid_adjusts_mutex.clone();
 	let epoch_change = babe_link.epoch_changes.clone();
+	let sync_oracle_clone = sync_oracle.clone();
 	let client_clone = client.clone();
 	let config_clone = config.clone();
 
@@ -612,14 +613,19 @@ pub fn start_autosyn<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 			let current_slot = if let Some((slot, era, length, start_time))
 				= calculate_current_slot(client_clone.clone())
 			{
-				log::debug!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
+				debug!("[A Sel] slot {} era {}, length {}, start_time {}", slot, era, length, start_time);
 
 				Slot::from(slot)
 			} else {
-				log::info!("[A Sel] Using default sleep time 6000 and InherentDataProvider");
+				info!("[A Sel] Using default sleep time 6000 and InherentDataProvider");
 
 				sp_consensus_babe::inherents::InherentDataProvider::test_slot()
 			};
+
+			if sync_oracle_clone.clone().is_major_syncing() {
+				info!(target: "slots", "Skipping select adjust due to sync.");
+				continue
+			}
 
 			std::thread::sleep(std::time::Duration::from_millis(2000));
 
