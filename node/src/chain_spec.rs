@@ -98,7 +98,6 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		"local_testnet",
 		ChainType::Local,
 		move || {
-			// println!("calling (testnet_genesis) {}", line!());
 			testnet_genesis(
 				wasm_binary,
 				// Initial PoA authorities
@@ -114,7 +113,6 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					authority_keys_from_seed("Ian"),
 					authority_keys_from_seed("Jack"),
 					authority_keys_from_seed("Karen"),
-					authority_keys_from_seed("Ferdie"),
 					authority_keys_from_seed("Lacey"),
 					authority_keys_from_seed("Monica"),
 					authority_keys_from_seed("Nancy"),
@@ -123,6 +121,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					authority_keys_from_seed("Quinn"),
 					authority_keys_from_seed("Ross"),
 					authority_keys_from_seed("Sabrina"),
+					authority_keys_from_seed("Taylor"),
 				],
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -139,7 +138,6 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Ian"),
 					get_account_id_from_seed::<sr25519::Public>("Jack"),
 					get_account_id_from_seed::<sr25519::Public>("Karen"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
 					get_account_id_from_seed::<sr25519::Public>("Lacey"),
 					get_account_id_from_seed::<sr25519::Public>("Monica"),
 					get_account_id_from_seed::<sr25519::Public>("Nancy"),
@@ -148,6 +146,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Quinn"),
 					get_account_id_from_seed::<sr25519::Public>("Ross"),
 					get_account_id_from_seed::<sr25519::Public>("Sabrina"),
+					get_account_id_from_seed::<sr25519::Public>("Taylor"),
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
@@ -159,7 +158,6 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Ian//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Jack//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Karen//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Lacey//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Monica//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Nancy//stash"),
@@ -168,6 +166,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Quinn//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ross//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Sabrina//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Taylor//stash"),
 				],
 				true,
 			)

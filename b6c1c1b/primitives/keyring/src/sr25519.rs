@@ -25,6 +25,7 @@ use sp_core::{
 };
 use sp_runtime::AccountId32;
 use std::{collections::HashMap, ops::Deref};
+use crate::sr25519::Keyring::Sabrina;
 
 /// Set of test accounts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::EnumIter)]
@@ -37,6 +38,20 @@ pub enum Keyring {
 	Ferdie,
 	One,
 	Two,
+	Gabe,
+	Hadley,
+	Ian,
+	Jack,
+	Karen,
+	Lacey,
+	Monica,
+	Nancy,
+	Oliver,
+	Pam,
+	Quinn,
+	Ross,
+	Sabrina,
+	Taylor,
 }
 
 impl Keyring {
@@ -116,6 +131,20 @@ impl From<Keyring> for &'static str {
 			Keyring::Ferdie => "Ferdie",
 			Keyring::One => "One",
 			Keyring::Two => "Two",
+			Keyring::Gabe => "Gabe",
+			Keyring::Hadley => "Hadley",
+			Keyring::Ian => "Ian",
+			Keyring::Jack => "Jack",
+			Keyring::Karen => "Karen",
+			Keyring::Lacey => "Lacey",
+			Keyring::Monica => "Monica",
+			Keyring::Nancy => "Nancy",
+			Keyring::Oliver => "Oliver",
+			Keyring::Pam => "Pam",
+			Keyring::Quinn => "Quinn",
+			Keyring::Ross => "Ross",
+			Keyring::Sabrina => "Sabrina",
+			Keyring::Taylor => "Taylor",
 		}
 	}
 }
@@ -148,6 +177,20 @@ impl std::str::FromStr for Keyring {
 			"ferdie" => Ok(Keyring::Ferdie),
 			"one" => Ok(Keyring::One),
 			"two" => Ok(Keyring::Two),
+			"gabe" => Ok(Keyring::Gabe),
+			"hadley" => Ok(Keyring::Hadley),
+			"ian" => Ok(Keyring::Ian),
+			"jack" => Ok(Keyring::Jack),
+			"karen" => Ok(Keyring::Karen),
+			"lacey" => Ok(Keyring::Lacey ),
+			"monica" => Ok(Keyring::Monica ),
+			"nancy" => Ok(Keyring::Nancy),
+			"oliver" => Ok(Keyring::Oliver ),
+			"pam" => Ok(Keyring::Pam ),
+			"quinn" => Ok(Keyring::Quinn ),
+			"ross" => Ok(Keyring::Ross),
+			"sabrina" => Ok(Keyring::Sabrina ),
+			"taylor" => Ok(Keyring::Taylor),
 			_ => Err(ParseKeyringError),
 		}
 	}

@@ -224,6 +224,62 @@ pub struct RunCmd {
 	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
 	pub two: bool,
 
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub gabe: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub hadley: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub ian: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub jack: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub karen: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub lacey: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub monica: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub nancy: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub oliver: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub pam: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub quinn: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub ross: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub sabrina: bool,
+
+	#[allow(missing_docs)]
+	#[structopt(long, conflicts_with_all = &["alice", "bob", "charlie", "dave", "eve", "ferdie", "one"])]
+	pub taylor: bool,
+
 	/// Enable authoring even when offline.
 	#[structopt(long = "force-authoring")]
 	pub force_authoring: bool,
@@ -272,6 +328,32 @@ impl RunCmd {
 			Some(One)
 		} else if self.two {
 			Some(Two)
+		} else if self.gabe {
+			Some(Gabe)
+		} else if self.hadley {
+			Some(Hadley)
+		} else if self.ian {
+			Some(Ian)
+		} else if self.jack {
+			Some(Jack)
+		} else if self.lacey {
+			Some(Lacey)
+		} else if self.monica {
+			Some(Monica)
+		} else if self.nancy {
+			Some(Nancy)
+		} else if self.oliver {
+			Some(Oliver)
+		} else if self.pam {
+			Some(Pam)
+		} else if self.quinn {
+			Some(Quinn)
+		} else if self.ross {
+			Some(Ross)
+		}  else if self.sabrina {
+			Some(Sabrina)
+		} else if self.taylor {
+			Some(Taylor)
 		} else {
 			None
 		}
