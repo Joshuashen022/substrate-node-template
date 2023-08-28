@@ -273,3 +273,16 @@ by appending your own. A few useful ones are as follow.
 # Check whether the code is compilable
 ./scripts/docker_run.sh cargo check
 ```
+
+# ISSUES
+______
+
+## CARGO BUILD FAILED
+When running `cargo build` using rust version `^1.70.0` may fail.
+Change version to stable and change rust version under `1.70.0`,
+known worked version is `1.56.0`
+**Solution**
+```shell
+rustup toolchain remove nightly
+rustup default 1.56.0
+```
