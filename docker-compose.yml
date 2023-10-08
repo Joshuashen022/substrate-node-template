@@ -1,12 +1,79 @@
 version: "3.2"
 
 services:
-  dev:
-    container_name: AutoSynProject
-    image: substrate-node:0.0.15
+  alice:
+    container_name: Alice
+    image: joshua022/autosyn:0.0.1
     network_mode: "host"
     environment:
       - TEMP_VALUE=1
-#    volumes:
-#      - .:/var/www/node-template
-    command: ./node-template --no-mdns
+    volumes:
+      - ./genesis.json:/root/genesis.json
+    command: ./node-template --chain=genesis.json --alice --no-grandpa --ws-port 9944
+
+  bob:
+    container_name: Bob
+    image: joshua022/autosyn:0.0.1
+    network_mode: "host"
+    environment:
+      - TEMP_VALUE=1
+    volumes:
+      - ./genesis.json:/root/genesis.json
+    command: ./node-template --chain=genesis.json --bob --no-grandpa --ws-port 9945 --port 30334
+
+  charlie:
+    container_name: Charlie
+    image: joshua022/autosyn:0.0.1
+    network_mode: "host"
+    environment:
+      - TEMP_VALUE=1
+    volumes:
+      - ./genesis.json:/root/genesis.json
+    command: ./node-template --chain=genesis.json --bob --no-grandpa --ws-port 9945 --port 30334
+
+
+#  } else if self.charlie {
+#  Some(Charlie)
+#  } else if self.dave {
+#  Some(Dave)
+#  } else if self.eve {
+#  Some(Eve)
+#  } else if self.ferdie {
+#  Some(Ferdie)
+#  } else if self.one {
+#  Some(One)
+#  } else if self.two {
+#  Some(Two)
+#  } else if self.gabe {
+#  Some(Gabe)
+#  } else if self.hadley {
+#  Some(Hadley)
+#  } else if self.ian {
+#  Some(Ian)
+#  } else if self.jack {
+#  Some(Jack)
+#  } else if self.lacey {
+#  Some(Lacey)
+#  } else if self.monica {
+#  Some(Monica)
+#  } else if self.nancy {
+#  Some(Nancy)
+#  } else if self.oliver {
+#  Some(Oliver)
+#  } else if self.pam {
+#  Some(Pam)
+#  } else if self.quinn {
+#  Some(Quinn)
+#  } else if self.ross {
+#  Some(Ross)
+#  }  else if self.sabrina {
+#  Some(Sabrina)
+#  } else if self.taylor {
+#  Some(Taylor)
+
+#  nohup ../../target/release/node-template --chain=genesis.json \
+#  --alice \
+#  --no-grandpa \
+#  -d /tmp/alice \
+#  --ws-port 9944\
+#  2>&1 >log_alice &  tail -f log_alice
