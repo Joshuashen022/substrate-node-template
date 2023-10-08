@@ -9,8 +9,8 @@ RUN rustup toolchain install nightly-2021-11-01
 RUN #rustup update nightly
 RUN rustup target add wasm32-unknown-unknown --toolchain nightly-2021-11-01
 
-ENV CARGO_HOME=/build/.cargo
-COPY .cargo /build/.cargo
+#ENV CARGO_HOME=/build/.cargo
+#COPY .cargo /build/.cargo
 
 #RUN cargo install cargo-chef
 COPY . .
