@@ -13,6 +13,7 @@ services:
     volumes:
       - ./genesis.json:/root/genesis.json
     command: ./node-template --chain=genesis.json --alice --no-grandpa --ws-port 9944 --port 30333
+    mem_limit: "300M"
 
   bob:
     container_name: Bob
@@ -26,6 +27,7 @@ services:
     volumes:
       - ./genesis.json:/root/genesis.json
     command: ./node-template --chain=genesis.json --bob --no-grandpa --ws-port 9945 --port 30334
+    mem_limit: "300M"
 
   charlie:
     container_name: Charlie
@@ -38,6 +40,7 @@ services:
     volumes:
       - ./genesis.json:/root/genesis.json
     command: ./node-template --chain=genesis.json --bob --no-grandpa --ws-port 9946 --port 30335
+    mem_limit: "300M"
 
   dave:
     container_name: Dave
@@ -50,6 +53,7 @@ services:
     volumes:
       - ./genesis.json:/root/genesis.json
     command: ./node-template --chain=genesis.json --dave --no-grandpa --ws-port 9947 --port 30336
+    mem_limit: "300M"
 
   eve:
     container_name: Eve
@@ -62,6 +66,9 @@ services:
     volumes:
       - ./genesis.json:/root/genesis.json
     command: ./node-template --chain=genesis.json --eve --no-grandpa --ws-port 9948 --port 30337
+    mem_limit: "300M"
+
+
 #
 #  feride:
 #    container_name: Feride
