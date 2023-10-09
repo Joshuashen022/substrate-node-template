@@ -50,16 +50,18 @@ services:
     volumes:
       - ./genesis.json:/root/genesis.json
     command: ./node-template --chain=genesis.json --dave --no-grandpa --ws-port 9947 --port 30336
-#
-#  eve:
-#    container_name: Eve
-#    image: joshua022/autosyn:0.0.1
-#    network_mode: "host"
-#    environment:
-#      - TEMP_VALUE=1
-#    volumes:
-#      - ./genesis.json:/root/genesis.json
-#    command: ./node-template --chain=genesis.json --eve --no-grandpa --ws-port 9948 --port 30337
+
+  eve:
+    container_name: Eve
+    image: joshua022/autosyn:0.0.2
+    networks:
+      net1:
+        ipv4_address: 192.168.1.104
+    environment:
+      - TEMP_VALUE=1
+    volumes:
+      - ./genesis.json:/root/genesis.json
+    command: ./node-template --chain=genesis.json --eve --no-grandpa --ws-port 9948 --port 30337
 #
 #  feride:
 #    container_name: Feride
