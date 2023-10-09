@@ -3,18 +3,24 @@ version: "3.2"
 services:
   alice:
     container_name: Alice
-    image: joshua022/autosyn:0.0.1
-    network_mode: "host"
+    image: joshua022/autosyn:0.0.2
+    networks:
+      net1:
+        ipv4_address: 192.168.1.100
     environment:
       - TEMP_VALUE=1
+    privileged: true
     volumes:
       - ./genesis.json:/root/genesis.json
-    command: ./node-template --chain=genesis.json --alice --no-grandpa --ws-port 9944
+    command: ./node-template --chain=genesis.json --alice --no-grandpa --ws-port 9944 --port 30333
 
   bob:
     container_name: Bob
-    image: joshua022/autosyn:0.0.1
-    network_mode: "host"
+    image: joshua022/autosyn:0.0.2
+    networks:
+      net1:
+        ipv4_address: 192.168.1.101
+    privileged: true
     environment:
       - TEMP_VALUE=1
     volumes:
@@ -23,21 +29,48 @@ services:
 
   charlie:
     container_name: Charlie
-    image: joshua022/autosyn:0.0.1
-    network_mode: "host"
+    image: joshua022/autosyn:0.0.2
+    networks:
+      net1:
+        ipv4_address: 192.168.1.102
     environment:
       - TEMP_VALUE=1
     volumes:
       - ./genesis.json:/root/genesis.json
-    command: ./node-template --chain=genesis.json --bob --no-grandpa --ws-port 9945 --port 30334
+    command: ./node-template --chain=genesis.json --bob --no-grandpa --ws-port 9946 --port 30335
 
+  dave:
+    container_name: Dave
+    image: joshua022/autosyn:0.0.2
+    networks:
+      net1:
+        ipv4_address: 192.168.1.103
+    environment:
+      - TEMP_VALUE=1
+    volumes:
+      - ./genesis.json:/root/genesis.json
+    command: ./node-template --chain=genesis.json --dave --no-grandpa --ws-port 9947 --port 30336
+#
+#  eve:
+#    container_name: Eve
+#    image: joshua022/autosyn:0.0.1
+#    network_mode: "host"
+#    environment:
+#      - TEMP_VALUE=1
+#    volumes:
+#      - ./genesis.json:/root/genesis.json
+#    command: ./node-template --chain=genesis.json --eve --no-grandpa --ws-port 9948 --port 30337
+#
+#  feride:
+#    container_name: Feride
+#    image: joshua022/autosyn:0.0.1
+#    network_mode: "host"
+#    environment:
+#      - TEMP_VALUE=1
+#    volumes:
+#      - ./genesis.json:/root/genesis.json
+#    command: ./node-template --chain=genesis.json --feride --no-grandpa --ws-port 9949 --port 30338
 
-#  } else if self.charlie {
-#  Some(Charlie)
-#  } else if self.dave {
-#  Some(Dave)
-#  } else if self.eve {
-#  Some(Eve)
 #  } else if self.ferdie {
 #  Some(Ferdie)
 #  } else if self.one {
@@ -71,9 +104,9 @@ services:
 #  } else if self.taylor {
 #  Some(Taylor)
 
-#  nohup ../../target/release/node-template --chain=genesis.json \
-#  --alice \
-#  --no-grandpa \
-#  -d /tmp/alice \
-#  --ws-port 9944\
-#  2>&1 >log_alice &  tail -f log_alice
+networks:
+  net1:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24

@@ -27,7 +27,7 @@ RUN cargo build --release -j 3
 
 FROM rust:1.56.0
 
-RUN apt-get update && apt-get install git -y
+RUN apt-get update && apt-get install git inetutils-ping iproute2 -y
 RUN git config --global --add safe.directory '*'
 
 WORKDIR /root
