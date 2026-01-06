@@ -1,39 +1,70 @@
-# Substrate Node Template
-https://zhuanlan.zhihu.com/p/161293660
-
-https://zhuanlan.zhihu.com/p/261336716
-
-https://github.com/kaichaosun/tao
-
-https://polkadot.js.org/apps/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/
-
-**Branch**: origin/babe
-
-**Target**: change consensus from `babe` to `praos`
-
-**Done**:
-
-Using Babe without GRANDPA
-
-Epoch change fixed by adding `session` pallet
-
-Add function of validator change but without stake ratio change
-
-Seemingly accomplished Praos
-
-Add `transfer_async.js` to make a transfer by sctips.
-
-**P.S.** :
-Currently no finalize is constructed. Wait to see if it's a problem,
-since we are not using GRANDPA.
-
-Author: Joshua022
------------------
-
-
 [![Try on playground](https://img.shields.io/badge/Playground-Node_Template-brightgreen?logo=Parity%20Substrate)](https://playground.substrate.dev/?deploy=node-template) [![Matrix](https://img.shields.io/matrix/substrate-technical:matrix.org)](https://matrix.to/#/#substrate-technical:matrix.org)
 
 A fresh FRAME-based [Substrate](https://www.substrate.io/) node, ready for hacking :rocket:
+
+# Project Overview
+
+This repository contains a research-oriented modification of the Substrate Node Template, developed as an experimental platform for investigating consensus mechanisms in Polkadot-like networks.
+
+The project is based on the Polkadot consensus model but introduces non-trivial modifications to the original BABE + GRANDPA architecture. Specifically, the original consensus pipeline has been redesigned by replacing BABE block production and GRANDPA finality with a PRAOS-style consensus protocol, enabling probabilistic leader election without an explicit finality gadget.
+
+In addition, this node integrates an adjust module, derived from the analytical model proposed in our accompanying research work (arXiv:2601.00370). The module is designed to dynamically adjust protocol behavior according to network conditions and protocol parameters defined in the paper.
+
+Experimental Status
+
+✅ Consensus logic migrated from BABE to PRAOS
+
+✅ Session-based epoch transitions implemented via the session pallet
+
+✅ Dynamic validator set updates supported (without stake ratio adjustment)
+
+✅ Node successfully operates in a 3-node local network
+
+❌ No GRANDPA-based finality mechanism is currently implemented
+
+❌ Large-scale multi-node experiments and stress testing have not yet been conducted
+
+At the current stage, the system demonstrates functional block production and validator rotation under a small-scale network setting. While no explicit finality gadget is deployed, blocks are produced continuously, allowing observation of fork behavior and protocol liveness under PRAOS-style assumptions.
+
+Research Context
+
+This codebase serves as an experimental infrastructure rather than a production-ready blockchain implementation. It is primarily intended to:
+
+Validate theoretical assumptions proposed in the paper
+
+Explore the feasibility of PRAOS-style consensus in a Substrate-based environment
+
+Observe protocol behavior under simplified network conditions
+
+Act as a foundation for future experiments involving larger validator sets and adversarial scenarios
+
+The experiments related to this repository were partially completed and not included in the final version of the paper. However, the implementation reflects the concrete system-level exploration that motivated the theoretical analysis.
+
+Limitations and Future Work
+
+The current implementation has several known limitations:
+
+No block finality mechanism (e.g., GRANDPA) is included
+
+Experiments are limited to small-scale (3-node) deployments
+
+No performance benchmarking or stress testing has been conducted
+
+Adversarial network conditions have not yet been simulated
+
+Future work includes extending the system to multi-node environments, conducting performance and liveness evaluations, and integrating finality or hybrid consensus mechanisms for comparison.
+
+Branch Information
+
+Active Branch: origin/babe
+
+Target: Transition consensus from BABE to PRAOS
+
+Author Joshua022
+
+contact: joshuashen183@gmail.com
+
+
 
 ## Getting Started
 
@@ -252,7 +283,35 @@ A FRAME pallet is compromised of a number of blockchain primitives:
 First, install [Docker](https://docs.docker.com/get-docker/) and
 [Docker Compose](https://docs.docker.com/compose/install/).
 
-Then run the following command to start a single node development chain.
+#### Using Makefile and Docker Compose
+
+Build the Docker image using Makefile:
+
+```bash
+make image
+```
+
+This will create a Docker image named `substrate-node:0.0.15`. Then start the node using Docker Compose:
+
+```bash
+docker compose up
+```
+
+To run in detached mode (background):
+
+```bash
+docker compose up -d
+```
+
+To stop the node:
+
+```bash
+docker compose down
+```
+
+#### Using Docker Run Script
+
+Alternatively, you can use the provided script to start a single node development chain.
 
 ```bash
 ./scripts/docker_run.sh
@@ -275,7 +334,7 @@ by appending your own. A few useful ones are as follow.
 ```
 
 # ISSUES
-______
+
 
 ## CARGO BUILD FAILED
 When running `cargo build` using rust version `^1.70.0` may fail.

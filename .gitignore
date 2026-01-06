@@ -11,3 +11,5 @@ rust-toolchain
 
 # direnv cache
 .direnv
+
+.idea/
