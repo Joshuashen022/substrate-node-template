@@ -1,12 +1,65 @@
 version: "3.2"
 
 services:
-  dev:
-    container_name: AutoSynProject
+  build-spec:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: substrate-node:0.0.15
+    pull_policy: never
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: sh -c "mkdir -p build && /root/node-template build-spec > build/genesis.json && echo 'genesis.json generated successfully'"
+
+  alice:
+    container_name: alice
+    image: substrate-node:0.0.15   
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: never
     network_mode: "host"
     environment:
       - TEMP_VALUE=1
-#    volumes:
-#      - .:/var/www/node-template
-    command: ./node-template --no-mdns
+    volumes:
+      - ./build/genesis.json:/workspace/genesis.json
+      - ./build/tmp/alice:/alice
+      - ./build/keys:/workspace/build/keys
+    working_dir: /workspace
+    command: /root/node-template --chain=/workspace/genesis.json --alice --no-grandpa --node-key-file=/workspace/build/keys/alice_node_key -d /tmp/alice --port 30333 --ws-port 9944 
+
+  bob:
+    container_name: bob
+    image: substrate-node:0.0.15   
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: never
+    network_mode: "host"
+    environment:
+      - TEMP_VALUE=1
+    volumes:
+      - ./build/genesis.json:/workspace/genesis.json
+      - ./build/tmp/bob:/bob
+      - ./build/keys:/workspace/build/keys
+    working_dir: /workspace
+    command: /root/node-template --chain=/workspace/genesis.json --bob --no-grandpa --node-key-file=/workspace/build/keys/bob_node_key -d /tmp/bob --port 30334 --ws-port 9945 --bootnodes '/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWRJ9pqmCS59PrjfkwYghqTcyme4RpZr7qXUWTB8SCCVEy' 
+
+  charlie:
+    container_name: charlie
+    image: substrate-node:0.0.15   
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: never
+    network_mode: "host"
+    environment:
+      - TEMP_VALUE=1
+    volumes:
+      - ./build/genesis.json:/workspace/genesis.json
+      - ./build/tmp/charlie:/charlie
+      - ./build/keys:/workspace/build/keys
+    working_dir: /workspace
+    command: /root/node-template --chain=/workspace/genesis.json --charlie --validator --no-grandpa --node-key-file=/workspace/build/keys/charlie_node_key -d /tmp/charlie --port 30335 --ws-port 9946 --bootnodes '/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWRJ9pqmCS59PrjfkwYghqTcyme4RpZr7qXUWTB8SCCVEy' 
+

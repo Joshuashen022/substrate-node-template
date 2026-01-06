@@ -13,3 +13,4 @@ rust-toolchain
 .direnv
 
 .idea/
+.build/
